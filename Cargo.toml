@@ -5,6 +5,9 @@ edition = "2021"
 description = "Fast, light, accurate library built for retrieval embedding generation"
 license = "MIT"
 authors = ["Anush008 <anushshetty90@gmail.com>"]
+documentation = "https://docs.rs/fastembed"
+repository = "https://github.com/Anush008/fastembed-rs"
+homepage = "https://crates.io/crates/fastembed"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
