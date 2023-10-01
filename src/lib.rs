@@ -31,14 +31,14 @@ type Tokenizer = tokenizers::TokenizerImpl<
 
 #[derive(Debug, Clone)]
 pub enum EmbeddingModel {
-    /// The most popular sentence embedding model
+    /// Sentence Transformer model, MiniLM-L6-v2
     AllMiniLML6V2,
-    /// Smaller variant of the highest ranked sentence embedding model
+    /// Base English model
     BGEBaseEN,
-    /// The highest ranked sentence embedding model
+    /// Fast and Default English model
     BGESmallEN,
     /// Multilingual model, e5-large. Recommend using this model for non-English languages.
-    MLE5Large
+    MLE5Large,
 }
 
 impl ToString for EmbeddingModel {
@@ -77,6 +77,9 @@ impl Default for InitOptions {
 pub trait EmbeddingBase<S: AsRef<str>> {
     /// The base embedding method for generating senytence embeddings
     fn embed(&self, texts: Vec<S>, batch_size: Option<usize>) -> Result<Vec<Embedding>>;
+
+    /// List the supported models by fastembed-rs
+    fn list_supported_models() -> Vec<ModelInfo>;
 
     /// Generate sentence embeddings for passages, prefixed with "passage"
     fn passage_embed(&self, texts: Vec<S>, batch_size: Option<usize>) -> Result<Vec<Embedding>>;
@@ -291,6 +294,36 @@ impl<S: AsRef<str> + Send + Sync> EmbeddingBase<S> for FlagEmbedding {
         let query_embedding = self.embed(vec![&query], None);
         Ok(query_embedding?[0].to_owned())
     }
+
+    fn list_supported_models() -> Vec<ModelInfo> {
+        vec![ModelInfo {
+            model: EmbeddingModel::AllMiniLML6V2,
+            dim: 384,
+            description: String::from("Sentence Transformer model, MiniLM-L6-v2"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::BGEBaseEN,
+            dim: 768,
+            description: String::from("Base English model"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::BGESmallEN,
+            dim: 384,
+            description: String::from("Fast and Default English model"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::MLE5Large,
+            dim: 1024,
+            description: String::from("Multilingual model, e5-large. Recommend using this model for non-English languages."),
+        }
+        ]
+    }
+}
+
+pub struct ModelInfo {
+    pub model: EmbeddingModel,
+    pub dim: usize,
+    pub description: String,
 }
 
 fn normalize(v: &mut [f32]) -> Vec<f32> {
