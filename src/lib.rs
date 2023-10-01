@@ -37,6 +37,8 @@ pub enum EmbeddingModel {
     BGEBaseEN,
     /// The highest ranked sentence embedding model
     BGESmallEN,
+    /// Multilingual model, e5-large. Recommend using this model for non-English languages.
+    MLE5Large
 }
 
 impl ToString for EmbeddingModel {
@@ -45,6 +47,7 @@ impl ToString for EmbeddingModel {
             EmbeddingModel::AllMiniLML6V2 => String::from("fast-all-MiniLM-L6-v2"),
             EmbeddingModel::BGEBaseEN => String::from("fast-bge-base-en"),
             EmbeddingModel::BGESmallEN => String::from("fast-bge-small-en"),
+            EmbeddingModel::MLE5Large => String::from("intfloat-multilingual-e5-large"),
         }
     }
 }

@@ -1,8 +1,8 @@
 [package]
 name = "fastembed"
-version = "0.2.0"
+version = "0.3.2"
 edition = "2021"
-description = "Fast, light, accurate library built for retrieval embedding generation"
+description = "Rust implementation of https://github.com/qdrant/fastembed"
 license = "MIT"
 authors = ["Anush008 <anushshetty90@gmail.com>"]
 documentation = "https://docs.rs/fastembed"
