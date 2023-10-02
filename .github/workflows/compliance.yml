@@ -1,0 +1,15 @@
+name: "Compliance"
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+
+permissions:
+  pull-requests: write
+
+jobs:
+  compliance:
+    uses: open-sauced/hot/.github/workflows/compliance.yml@main
