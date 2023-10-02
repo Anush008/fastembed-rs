@@ -41,4 +41,4 @@ jobs:
           GIT_AUTHOR_NAME: ${{ steps.author_info.outputs.AUTHOR_NAME }}
           GIT_AUTHOR_EMAIL: ${{ steps.author_info.outputs.AUTHOR_EMAIL }}
         run: |
-            echo $GIT_AUTHOR_NAME
+            bun x semantic-release
