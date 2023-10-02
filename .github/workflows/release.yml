@@ -1,0 +1,40 @@
+name: Semantic Release
+on:
+  push:
+    branches:
+      - main
+      - beta
+  workflow_dispatch:
+  
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "☁️ checkout repository"
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: "🔧 setup Bun"
+        uses: oven-sh/setup-bun@v1
+
+      - name: "📦 install dependencies"
+        run: bun install
+
+      - name: "Semantic release🚀"
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
+        run: |
+            bun x semantic-release
+  
+      - name: "echo outputs"
+        run: |
+          echo "RELEASE_TAG: ${{ env.RELEASE_TAG }}"
+          echo "RELEASE_VERSION: ${{ env.RELEASE_VERSION }}"
+          echo "outputs.release-tag: ${{ steps.release.outputs.release-tag }}"
+          echo "outputs.release-version: ${{ steps.release.outputs.release-version }}"
+      
