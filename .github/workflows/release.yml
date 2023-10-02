@@ -21,7 +21,7 @@ jobs:
         uses: oven-sh/setup-bun@v1
 
       - name: "📦 install dependencies"
-        run: bun install
+        run: bun install -D conventional-changelog-conventionalcommits semantic-release-cargo
 
       - name: Get Author Name and Email
         run: |
