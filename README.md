@@ -7,9 +7,10 @@
 </div>
 
 ## 🍕 Features
-* Supports synchronous usage. No dependency on Tokio.
-* Uses [@huggingface/tokenizers](https://github.com/huggingface/tokenizers) for blazing-fast encodings.
-* Supports batch embedddings with parallelism using Rayon.
+
+- Supports synchronous usage. No dependency on Tokio.
+- Uses [@huggingface/tokenizers](https://github.com/huggingface/tokenizers) for blazing-fast encodings.
+- Supports batch embedddings with parallelism using Rayon.
 
 The default embedding supports "query" and "passage" prefixes for the input text. The default model is Flag Embedding, which is top of the [MTEB](https://huggingface.co/spaces/mteb/leaderboard) leaderboard.
 
@@ -20,13 +21,18 @@ The default embedding supports "query" and "passage" prefixes for the input text
 - [**sentence-transformers/all-MiniLM-L12-v2**](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2)
 - [**intfloat/multilingual-e5-large**](https://huggingface.co/intfloat/multilingual-e5-large)
 
-
 ## 🚀 Installation
 
-To install the FastEmbed library, Cargo works: 
+Run the following Cargo command in your project directory:
 
 ```bash
 cargo add fastembed
+```
+
+Or add the following line to your Cargo.toml:
+
+```toml
+fastembed = "1"
 ```
 
 ## 📖 Usage
@@ -59,6 +65,7 @@ let documents = vec![
 ```
 
 ### Supports passage and query embeddings for more accurate results
+
 ```rust
  // Generate embeddings for the passages
  // The texts are prefixed with "passage" for better results
@@ -92,8 +99,14 @@ It's important we justify the "fast" in FastEmbed. FastEmbed is fast because:
 2. ONNX Runtime which allows for inference on CPU, GPU, and other dedicated runtimes
 
 ### Why light?
+
 1. No hidden dependencies via Huggingface Transformers
 
 ### Why accurate?
+
 1. Better than OpenAI Ada-002
 2. Top of the Embedding leaderboards e.g. [MTEB](https://huggingface.co/spaces/mteb/leaderboard)
+
+## 📄 LICENSE
+
+MIT © [2023](https://github.com/Anush008/fastembed-rs/blob/main/LICENSE)
