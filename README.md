@@ -17,7 +17,7 @@ The default embedding supports "query" and "passage" prefixes for the input text
 ## 🔍 Not looking for Rust?
 
 - Python 🐍: [fastembed](https://github.com/qdrant/fastembed)
-- Go 🐳: [fastembed-rs](https://github.com/Anush008/fastembed-go)
+- Go 🐳: [fastembed-go](https://github.com/Anush008/fastembed-go)
 - JavaScript 🌐: [fastembed-js](https://github.com/Anush008/fastembed-js)
 
 ## 🤖 Models
