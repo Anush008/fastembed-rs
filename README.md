@@ -14,6 +14,12 @@
 
 The default embedding supports "query" and "passage" prefixes for the input text. The default model is Flag Embedding, which is top of the [MTEB](https://huggingface.co/spaces/mteb/leaderboard) leaderboard.
 
+## 🔍 Not looking for Rust?
+
+- Python 🐍: [fastembed](https://github.com/qdrant/fastembed)
+- Go 🐳: [fastembed-rs](https://github.com/Anush008/fastembed-go)
+- JavaScript 🌐: [fastembed-js](https://github.com/Anush008/fastembed-js)
+
 ## 🤖 Models
 
 - [**BAAI/bge-base-en-v1.5**](https://huggingface.co/BAAI/bge-base-en-v1.5)
