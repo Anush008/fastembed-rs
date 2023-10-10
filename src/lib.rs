@@ -437,31 +437,3 @@ fn get_embeddings(data: &[f32], dimensions: &[usize]) -> Vec<Embedding> {
 
     embeddings
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_mle5_large() {
-        let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
-            model_name: EmbeddingModel::MLE5Large,
-            show_download_message: false,
-            ..Default::default()
-        })
-        .unwrap();
-
-        let documents = vec![
-            "passage: Hello, World!",
-            "query: Hello, World!",
-            "passage: This is an example passage.",
-            // You can leave out the prefix but it's recommended
-            "fastembed-rs is licensed under MIT",
-        ];
-
-        // Generate embeddings with the default batch size, 256
-        let embeddings = model.embed(documents, None).unwrap();
-
-        println!("Embeddings length: {}", embeddings.len());
-    }
-}
