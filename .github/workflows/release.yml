@@ -9,8 +9,28 @@ on:
 env:
   CARGO_TERM_COLOR: always
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run tests
+        run: cargo test
+  
   release:
     runs-on: ubuntu-latest
+    needs:
+      - test
     steps:
       - name: "☁️ checkout repository"
         uses: actions/checkout@v3
