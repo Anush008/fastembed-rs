@@ -15,9 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Run tests
-        run: cargo test
-
       - uses: actions/cache@v3
         with:
           path: |
@@ -28,3 +25,6 @@ jobs:
             target/
             local_cache/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run tests
+        run: cargo test
