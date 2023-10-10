@@ -127,7 +127,7 @@ impl ToString for EmbeddingModel {
             EmbeddingModel::AllMiniLML6V2 => String::from("fast-all-MiniLM-L6-v2"),
             EmbeddingModel::BGEBaseEN => String::from("fast-bge-base-en"),
             EmbeddingModel::BGESmallEN => String::from("fast-bge-small-en"),
-            EmbeddingModel::MLE5Large => String::from("intfloat-multilingual-e5-large"),
+            EmbeddingModel::MLE5Large => String::from("fast-multilingual-e5-large"),
         }
     }
 }
@@ -232,7 +232,15 @@ impl FlagEmbedding {
     }
 
     /// Download and unpack the model from Google Cloud Storage
-    fn download_from_gcs(fast_model_name: &str, output_directory: &PathBuf) -> Result<()> {
+    fn download_from_gcs(model: EmbeddingModel, output_directory: &PathBuf) -> Result<()> {
+        let mut fast_model_name = model.to_string();
+
+        // The MLE5Large model URL doesn't follow the same naming convention as the other models
+        // So, we tranform "fast-multilingual-e5-large" -> "intfloat-multilingual-e5-large" in the download URL
+        // The model directory name in the GCS storage is "fast-multilingual-e5-large", like the others
+        if let EmbeddingModel::MLE5Large = model {
+            fast_model_name = String::from("intfloat-multilingual-e5-large");
+        }
         let download_url =
             format!("https://storage.googleapis.com/qdrant-fastembed/{fast_model_name}.tar.gz");
 
@@ -273,7 +281,7 @@ impl FlagEmbedding {
             println!("Downloading {} model", fast_model_name);
         }
 
-        FlagEmbedding::download_from_gcs(&fast_model_name, cache_dir)?;
+        FlagEmbedding::download_from_gcs(model, cache_dir)?;
 
         Ok(output_path)
     }
