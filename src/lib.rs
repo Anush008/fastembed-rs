@@ -76,6 +76,7 @@
 //!
 
 use std::{
+    fs::File,
     path::{Path, PathBuf},
     thread::available_parallelism,
 };
@@ -90,7 +91,7 @@ use rayon::{
     slice::ParallelSlice,
 };
 use tar::Archive;
-use tokenizers::{PaddingParams, PaddingStrategy, TruncationParams};
+use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
@@ -177,7 +178,8 @@ pub trait EmbeddingBase<S: AsRef<str>> {
 /// Rust representation of the FlagEmbedding model
 pub struct FlagEmbedding {
     tokenizer: Tokenizer,
-    model: Session,
+    session: Session,
+    model: EmbeddingModel,
 }
 
 impl FlagEmbedding {
@@ -198,37 +200,28 @@ impl FlagEmbedding {
         let threads = available_parallelism()?.get() as i16;
 
         let model_path =
-            FlagEmbedding::retrieve_model(model_name, &cache_dir, show_download_message)?;
+            FlagEmbedding::retrieve_model(model_name.clone(), &cache_dir, show_download_message)?;
 
         let environment = Environment::builder()
             .with_name("Fastembed")
             .with_execution_providers(execution_providers)
             .build()?;
-        let model = SessionBuilder::new(&environment.into())?
+        let session = SessionBuilder::new(&environment.into())?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(threads)?
             .with_model_from_file(model_path.join("model_optimized.onnx"))?;
 
-        let mut tokenizer =
-            tokenizers::Tokenizer::from_file(model_path.join("tokenizer.json")).unwrap();
-        let tokenizer: Tokenizer = tokenizer
-            .with_truncation(Some(TruncationParams {
-                max_length,
-                ..Default::default()
-            }))
-            .unwrap()
-            .with_padding(Some(PaddingParams {
-                strategy: PaddingStrategy::Fixed(max_length),
-                pad_token: "[PAD]".into(),
-                ..Default::default()
-            }))
-            .clone();
-        Ok(Self::new(tokenizer, model))
+        let tokenizer = FlagEmbedding::load_tokenizer(model_path, max_length)?;
+        Ok(Self::new(tokenizer, session, model_name))
     }
 
     /// Private method to return an instance
-    fn new(tokenizer: Tokenizer, model: Session) -> Self {
-        Self { tokenizer, model }
+    fn new(tokenizer: Tokenizer, session: Session, model: EmbeddingModel) -> Self {
+        Self {
+            tokenizer,
+            session,
+            model,
+        }
     }
 
     /// Download and unpack the model from Google Cloud Storage
@@ -284,6 +277,67 @@ impl FlagEmbedding {
         FlagEmbedding::download_from_gcs(model, cache_dir)?;
 
         Ok(output_path)
+    }
+
+    fn load_tokenizer(model_path: PathBuf, max_length: usize) -> Result<Tokenizer> {
+        let config_path = model_path.join("config.json");
+        let file = File::open(config_path)?;
+        let config: serde_json::Value = serde_json::from_reader(file)?;
+
+        let tokenizer_config_path = model_path.join("tokenizer_config.json");
+        let file = File::open(tokenizer_config_path)?;
+        let tokenizer_config: serde_json::Value = serde_json::from_reader(file)?;
+
+        let special_tokens_map_path = model_path.join("special_tokens_map.json");
+        let file = File::open(special_tokens_map_path)?;
+        let special_tokens_map: serde_json::Value = serde_json::from_reader(file)?;
+
+        let tokenizer_path = model_path.join("tokenizer.json");
+        let mut tokenizer =
+            tokenizers::Tokenizer::from_file(tokenizer_path).map_err(|e| anyhow::Error::msg(e))?;
+
+        //For BGEBaseSmall, the model_max_length value is set to 1000000000000000019884624838656. Which fits in a f64
+        let model_max_length = tokenizer_config["model_max_length"].as_f64().unwrap();
+        let max_length = max_length.min(model_max_length as usize);
+        let pad_id = config["pad_token_id"]
+            .as_u64()
+            .expect("couldn't parse pad_token_id") as u32;
+        let pad_token = tokenizer_config["pad_token"].as_str().unwrap().into();
+
+        let mut tokenizer = tokenizer
+            .with_padding(Some(PaddingParams {
+                strategy: PaddingStrategy::Fixed(max_length),
+                pad_token,
+                pad_id,
+                ..Default::default()
+            }))
+            .with_truncation(Some(TruncationParams {
+                max_length,
+                ..Default::default()
+            }))
+            .map_err(|e| anyhow::Error::msg(e))?
+            .clone();
+        if let serde_json::Value::Object(root_object) = special_tokens_map {
+            for (_, value) in root_object.iter() {
+                if value.is_string() {
+                    tokenizer.add_special_tokens(&[AddedToken {
+                        content: value.as_str().unwrap().into(),
+                        special: true,
+                        ..Default::default()
+                    }]);
+                } else if value.is_object() {
+                    tokenizer.add_special_tokens(&[AddedToken {
+                        content: value["content"].as_str().unwrap().into(),
+                        special: true,
+                        single_word: value["single_word"].as_bool().unwrap(),
+                        lstrip: value["lstrip"].as_bool().unwrap(),
+                        rstrip: value["rstrip"].as_bool().unwrap(),
+                        normalized: value["normalized"].as_bool().unwrap(),
+                    }]);
+                }
+            }
+        }
+        Ok(tokenizer)
     }
 
     /// Retrieve a list of supported modelsc
@@ -371,13 +425,19 @@ impl<S: AsRef<str> + Send + Sync> EmbeddingBase<S> for FlagEmbedding {
                 )?)
                 .into_dyn();
 
-                // Run the model with inputs
-                let outputs = self.model.run(vec![
-                    Value::from_array(self.model.allocator(), &inputs_ids_array)?,
-                    Value::from_array(self.model.allocator(), &attention_mask_array)?,
-                    Value::from_array(self.model.allocator(), &token_type_ids_array)?,
-                ])?;
+                let mut inputs = vec![
+                    Value::from_array(self.session.allocator(), &inputs_ids_array)?,
+                    Value::from_array(self.session.allocator(), &attention_mask_array)?,
+                    Value::from_array(self.session.allocator(), &token_type_ids_array)?,
+                ];
 
+                // Remove the token_type_ids_array if the model is MLE5Large
+                if let EmbeddingModel::MLE5Large = self.model {
+                    inputs.pop();
+                }
+
+                // Run the model with inputs
+                let outputs = self.session.run(inputs)?;
                 // Extract and normalize embeddings
                 let output_data = outputs[0].try_extract::<f32>()?;
                 let view = output_data.view();
@@ -441,7 +501,7 @@ fn get_embeddings(data: &[f32], dimensions: &[usize]) -> Vec<Embedding> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    const epsilon: f32 = 1e-4;
+    const EPSILON: f32 = 1e-4;
 
     #[test]
     fn test_bgesmall() {
@@ -462,7 +522,7 @@ mod tests {
 
         for (i, v) in expected.into_iter().enumerate() {
             let difference = (v - embeddings[0][i]).abs();
-            assert!(difference < epsilon, "Difference: {}", difference)
+            assert!(difference < EPSILON, "Difference: {}", difference)
         }
     }
 
@@ -484,7 +544,7 @@ mod tests {
 
         for (i, v) in expected.into_iter().enumerate() {
             let difference = (v - embeddings[0][i]).abs();
-            assert!(difference < epsilon, "Difference: {}", difference)
+            assert!(difference < EPSILON, "Difference: {}", difference)
         }
     }
 
@@ -507,30 +567,30 @@ mod tests {
 
         for (i, v) in expected.into_iter().enumerate() {
             let difference = (v - embeddings[0][i]).abs();
-            assert!(difference < epsilon, "Difference: {}", difference)
+            assert!(difference < EPSILON, "Difference: {}", difference)
         }
     }
 
-    // #[test]
-    // fn test_mle5large() {
-    //     let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
-    //         model_name: EmbeddingModel::MLE5Large,
-    //         ..Default::default()
-    //     })
-    //     .unwrap();
+    #[test]
+    fn test_mle5large() {
+        let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
+            model_name: EmbeddingModel::MLE5Large,
+            ..Default::default()
+        })
+        .unwrap();
 
-    //     let expected: Vec<f32> = vec![
-    //         0.00961, 0.00443, 0.00658, -0.03532, 0.00703, -0.02878, -0.03671, 0.03482, 0.06343,
-    //         -0.04731,
-    //     ];
-    //     let documents = vec!["hello world"];
+        let expected: Vec<f32> = vec![
+            0.00961, 0.00443, 0.00658, -0.03532, 0.00703, -0.02878, -0.03671, 0.03482, 0.06343,
+            -0.04731,
+        ];
+        let documents = vec!["hello world"];
 
-    //     // Generate embeddings with the default batch size, 256
-    //     let embeddings = model.embed(documents, None).unwrap();
-    
-    //     for (i, v) in expected.into_iter().enumerate() {
-    //         let difference = (v - embeddings[0][i]).abs();
-    //         assert!(difference < epsilon, "Difference: {}", difference)
-    //     }
-    // }
+        // Generate embeddings with the default batch size, 256
+        let embeddings = model.embed(documents, None).unwrap();
+
+        for (i, v) in expected.into_iter().enumerate() {
+            let difference = (v - embeddings[0][i]).abs();
+            assert!(difference < EPSILON, "Difference: {}", difference)
+        }
+    }
 }
