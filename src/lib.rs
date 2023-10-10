@@ -441,37 +441,12 @@ fn get_embeddings(data: &[f32], dimensions: &[usize]) -> Vec<Embedding> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_allminilm() {
-        let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
-            model_name: EmbeddingModel::AllMiniLML6V2,
-            show_download_message: false,
-            ..Default::default()
-        })
-        .unwrap();
-
-        let expected: Vec<f32> = vec![
-            0.02591, 0.00573, 0.01147, 0.03796, -0.0232, -0.0549, 0.01404, -0.0107, -0.0244,
-            -0.01822,
-        ];
-        let documents = vec!["hello world"];
-
-        // Generate embeddings with the default batch size, 256
-        let embeddings = model.embed(documents, None).unwrap();
-
-        let epsilon = 1e-4;
-        for (i, v) in expected.into_iter().enumerate() {
-            let difference = (v - embeddings[0][i]).abs();
-            assert!(difference < epsilon, "Difference: {}", difference)
-        }
-    }
+    const epsilon: f32 = 1e-4;
 
     #[test]
     fn test_bgesmall() {
         let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
             model_name: EmbeddingModel::BGESmallEN,
-            show_download_message: false,
             ..Default::default()
         })
         .unwrap();
@@ -485,7 +460,6 @@ mod tests {
         // Generate embeddings with the default batch size, 256
         let embeddings = model.embed(documents, None).unwrap();
 
-        let epsilon = 1e-4;
         for (i, v) in expected.into_iter().enumerate() {
             let difference = (v - embeddings[0][i]).abs();
             assert!(difference < epsilon, "Difference: {}", difference)
@@ -496,7 +470,6 @@ mod tests {
     fn test_bgebase() {
         let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
             model_name: EmbeddingModel::BGEBaseEN,
-            show_download_message: false,
             ..Default::default()
         })
         .unwrap();
@@ -509,7 +482,29 @@ mod tests {
         // Generate embeddings with the default batch size, 256
         let embeddings = model.embed(documents, None).unwrap();
 
-        let epsilon = 1e-4;
+        for (i, v) in expected.into_iter().enumerate() {
+            let difference = (v - embeddings[0][i]).abs();
+            assert!(difference < epsilon, "Difference: {}", difference)
+        }
+    }
+
+    #[test]
+    fn test_allminilm() {
+        let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
+            model_name: EmbeddingModel::AllMiniLML6V2,
+            ..Default::default()
+        })
+        .unwrap();
+
+        let expected: Vec<f32> = vec![
+            0.02591, 0.00573, 0.01147, 0.03796, -0.0232, -0.0549, 0.01404, -0.0107, -0.0244,
+            -0.01822,
+        ];
+        let documents = vec!["hello world"];
+
+        // Generate embeddings with the default batch size, 256
+        let embeddings = model.embed(documents, None).unwrap();
+
         for (i, v) in expected.into_iter().enumerate() {
             let difference = (v - embeddings[0][i]).abs();
             assert!(difference < epsilon, "Difference: {}", difference)
@@ -520,7 +515,6 @@ mod tests {
     // fn test_mle5large() {
     //     let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
     //         model_name: EmbeddingModel::MLE5Large,
-    //         show_download_message: false,
     //         ..Default::default()
     //     })
     //     .unwrap();
@@ -533,9 +527,7 @@ mod tests {
 
     //     // Generate embeddings with the default batch size, 256
     //     let embeddings = model.embed(documents, None).unwrap();
-
-    //     dbg!(&embeddings[0]);
-    //     let epsilon = 1e-4;
+    
     //     for (i, v) in expected.into_iter().enumerate() {
     //         let difference = (v - embeddings[0][i]).abs();
     //         assert!(difference < epsilon, "Difference: {}", difference)
