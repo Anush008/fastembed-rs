@@ -1,6 +1,6 @@
 [package]
 name = "fastembed"
-version = "1.5.0"
+version = "1.6.0"
 edition = "2021"
 description = "Rust implementation of https://github.com/qdrant/fastembed"
 license = "MIT"
