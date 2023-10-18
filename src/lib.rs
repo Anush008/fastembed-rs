@@ -362,9 +362,24 @@ impl FlagEmbedding {
             description: String::from("Base English model"),
         },
         ModelInfo {
+            model: EmbeddingModel::BGEBaseENV15,
+            dim: 768,
+            description: String::from("v1.5 release of the base English model"),
+        },
+        ModelInfo {
             model: EmbeddingModel::BGESmallEN,
             dim: 384,
-            description: String::from("Fast and Default English model"),
+            description: String::from("Fast English model"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::BGESmallENV15,
+            dim: 384,
+            description: String::from("v1.5 release of the fast and default English model"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::BGESmallZH,
+            dim: 512,
+            description: String::from("v1.5 release of the fast and Chinese model"),
         },
         ModelInfo {
             model: EmbeddingModel::MLE5Large,
