@@ -515,13 +515,34 @@ mod tests {
     #[test]
     fn test_embeddings() {
         let models_and_expected_values = vec![
-            (EmbeddingModel::BGESmallEN, vec![-0.02313, -0.02552, 0.017357, -0.06393, -0.00061, 0.022123, -0.01472, 0.039255, 0.034447, 0.004598]),
-            (EmbeddingModel::BGEBaseEN, vec![0.0114, 0.03722, 0.02941, 0.0123, 0.03451, 0.00876, 0.02356, 0.05414, -0.0294, -0.0547]),
-            (EmbeddingModel::AllMiniLML6V2, vec![0.02591, 0.00573, 0.01147, 0.03796, -0.0232, -0.0549, 0.01404, -0.0107, -0.0244, -0.01822]),
-            (EmbeddingModel::MLE5Large, vec![0.00961, 0.00443, 0.00658, -0.03532, 0.00703, -0.02878, -0.03671, 0.03482, 0.06343, -0.04731]),
-            (EmbeddingModel::BGEBaseENV15, vec![0.01129394, 0.05493144, 0.02615099, 0.00328772, 0.02996045]),
-            (EmbeddingModel::BGESmallENV15, vec![0.01522374, -0.02271799, 0.00860278, -0.07424029, 0.00386434]),
-            (EmbeddingModel::BGESmallZH, vec![-0.01023294, 0.07634465, 0.0691722, -0.04458365, -0.03160762]),
+            (
+                EmbeddingModel::BGESmallEN,
+                vec![-0.02313, -0.02552, 0.017357, -0.06393, -0.00061],
+            ),
+            (
+                EmbeddingModel::BGEBaseEN,
+                vec![0.0114, 0.03722, 0.02941, 0.0123, 0.03451],
+            ),
+            (
+                EmbeddingModel::AllMiniLML6V2,
+                vec![0.02591, 0.00573, 0.01147, 0.03796, -0.0232],
+            ),
+            (
+                EmbeddingModel::MLE5Large,
+                vec![0.00961, 0.00443, 0.00658, -0.03532, 0.00703],
+            ),
+            (
+                EmbeddingModel::BGEBaseENV15,
+                vec![0.01129394, 0.05493144, 0.02615099, 0.00328772, 0.02996045],
+            ),
+            (
+                EmbeddingModel::BGESmallENV15,
+                vec![0.01522374, -0.02271799, 0.00860278, -0.07424029, 0.00386434],
+            ),
+            (
+                EmbeddingModel::BGESmallZH,
+                vec![-0.01023294, 0.07634465, 0.0691722, -0.04458365, -0.03160762],
+            ),
         ];
 
         for (model_name, expected) in models_and_expected_values {
@@ -538,9 +559,13 @@ mod tests {
 
             for (i, v) in expected.into_iter().enumerate() {
                 let difference = (v - embeddings[0][i]).abs();
-                assert!(difference < EPSILON, "Difference for {}: {}", model_name.to_string(), difference)
+                assert!(
+                    difference < EPSILON,
+                    "Difference for {}: {}",
+                    model_name.to_string(),
+                    difference
+                )
             }
         }
     }
 }
-
