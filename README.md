@@ -24,8 +24,8 @@ The default embedding supports "query" and "passage" prefixes for the input text
 
 - [**BAAI/bge-base-en**](https://huggingface.co/BAAI/bge-base-en)
 - [**BAAI/bge-base-en-v1.5**](https://huggingface.co/BAAI/bge-base-en-v1.5)
-- [**BAAI/bge-small-en**](https://huggingface.co/BAAI/bge-small-en) - Default
-- [**BAAI/bge-small-en-v1.5**](https://huggingface.co/BAAI/bge-small-en-v1.5)
+- [**BAAI/bge-small-en**](https://huggingface.co/BAAI/bge-small-en)
+- [**BAAI/bge-small-en-v1.5**](https://huggingface.co/BAAI/bge-small-en-v1.5) - Default
 - [**BAAI/bge-base-zh-v1.5**](https://huggingface.co/BAAI/bge-base-zh-v1.5)
 - [**sentence-transformers/all-MiniLM-L6-v2**](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
 - [**intfloat/multilingual-e5-large**](https://huggingface.co/intfloat/multilingual-e5-large)
