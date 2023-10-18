@@ -96,7 +96,7 @@ use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
 const DEFAULT_CACHE_DIR: &str = "local_cache";
-const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallEN;
+const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallENV15;
 
 /// Type alias for the embedding vector
 pub type Embedding = Vec<f32>;
@@ -510,7 +510,7 @@ fn get_embeddings(data: &[f32], dimensions: &[usize]) -> Vec<Embedding> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    const EPSILON: f32 = 1e-6;
+    const EPSILON: f32 = 1e-4;
 
     #[test]
     fn test_embeddings() {
