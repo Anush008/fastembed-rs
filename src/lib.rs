@@ -96,7 +96,7 @@ use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
 const DEFAULT_CACHE_DIR: &str = "local_cache";
-const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallEN;
+const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallENV15;
 
 /// Type alias for the embedding vector
 pub type Embedding = Vec<f32>;
@@ -116,8 +116,14 @@ pub enum EmbeddingModel {
     AllMiniLML6V2,
     /// Base English model
     BGEBaseEN,
+    /// v1.5 release of the Base English model
+    BGEBaseENV15,
     /// Fast and Default English model
     BGESmallEN,
+    /// v1.5 release of the BGESmallEN model
+    BGESmallENV15,
+    /// v1.5 release of the Fast Chinese model
+    BGESmallZH,
     /// Multilingual model, e5-large. Recommend using this model for non-English languages.
     MLE5Large,
 }
@@ -127,7 +133,10 @@ impl ToString for EmbeddingModel {
         match self {
             EmbeddingModel::AllMiniLML6V2 => String::from("fast-all-MiniLM-L6-v2"),
             EmbeddingModel::BGEBaseEN => String::from("fast-bge-base-en"),
+            EmbeddingModel::BGEBaseENV15 => String::from("fast-bge-base-en-v1.5"),
             EmbeddingModel::BGESmallEN => String::from("fast-bge-small-en"),
+            EmbeddingModel::BGESmallENV15 => String::from("fast-bge-small-en-v1.5"),
+            EmbeddingModel::BGESmallZH => String::from("fast-bge-small-zh-v1.5"),
             EmbeddingModel::MLE5Large => String::from("fast-multilingual-e5-large"),
         }
     }
@@ -353,9 +362,24 @@ impl FlagEmbedding {
             description: String::from("Base English model"),
         },
         ModelInfo {
+            model: EmbeddingModel::BGEBaseENV15,
+            dim: 768,
+            description: String::from("v1.5 release of the base English model"),
+        },
+        ModelInfo {
             model: EmbeddingModel::BGESmallEN,
             dim: 384,
-            description: String::from("Fast and Default English model"),
+            description: String::from("Fast English model"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::BGESmallENV15,
+            dim: 384,
+            description: String::from("v1.5 release of the fast and default English model"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::BGESmallZH,
+            dim: 512,
+            description: String::from("v1.5 release of the fast and Chinese model"),
         },
         ModelInfo {
             model: EmbeddingModel::MLE5Large,
@@ -504,93 +528,59 @@ mod tests {
     const EPSILON: f32 = 1e-4;
 
     #[test]
-    fn test_bgesmall() {
-        let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
-            model_name: EmbeddingModel::BGESmallEN,
-            ..Default::default()
-        })
-        .unwrap();
-
-        let expected: Vec<f32> = vec![
-            -0.02313, -0.02552, 0.017357, -0.06393, -0.00061, 0.022123, -0.01472, 0.039255,
-            0.034447, 0.004598,
+    fn test_embeddings() {
+        let models_and_expected_values = vec![
+            (
+                EmbeddingModel::BGESmallEN,
+                vec![-0.02313, -0.02552, 0.017357, -0.06393, -0.00061],
+            ),
+            (
+                EmbeddingModel::BGEBaseEN,
+                vec![0.0114, 0.03722, 0.02941, 0.0123, 0.03451],
+            ),
+            (
+                EmbeddingModel::AllMiniLML6V2,
+                vec![0.02591, 0.00573, 0.01147, 0.03796, -0.0232],
+            ),
+            (
+                EmbeddingModel::MLE5Large,
+                vec![0.00961, 0.00443, 0.00658, -0.03532, 0.00703],
+            ),
+            (
+                EmbeddingModel::BGEBaseENV15,
+                vec![0.01129394, 0.05493144, 0.02615099, 0.00328772, 0.02996045],
+            ),
+            (
+                EmbeddingModel::BGESmallENV15,
+                vec![0.01522374, -0.02271799, 0.00860278, -0.07424029, 0.00386434],
+            ),
+            (
+                EmbeddingModel::BGESmallZH,
+                vec![-0.01023294, 0.07634465, 0.0691722, -0.04458365, -0.03160762],
+            ),
         ];
-        let documents = vec!["hello world"];
 
-        // Generate embeddings with the default batch size, 256
-        let embeddings = model.embed(documents, None).unwrap();
+        for (model_name, expected) in models_and_expected_values {
+            let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
+                model_name: model_name.clone(),
+                ..Default::default()
+            })
+            .unwrap();
 
-        for (i, v) in expected.into_iter().enumerate() {
-            let difference = (v - embeddings[0][i]).abs();
-            assert!(difference < EPSILON, "Difference: {}", difference)
-        }
-    }
+            let documents = vec!["hello world"];
 
-    #[test]
-    fn test_bgebase() {
-        let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
-            model_name: EmbeddingModel::BGEBaseEN,
-            ..Default::default()
-        })
-        .unwrap();
+            // Generate embeddings with the default batch size, 256
+            let embeddings = model.embed(documents, None).unwrap();
 
-        let expected: Vec<f32> = vec![
-            0.0114, 0.03722, 0.02941, 0.0123, 0.03451, 0.00876, 0.02356, 0.05414, -0.0294, -0.0547,
-        ];
-        let documents = vec!["hello world"];
-
-        // Generate embeddings with the default batch size, 256
-        let embeddings = model.embed(documents, None).unwrap();
-
-        for (i, v) in expected.into_iter().enumerate() {
-            let difference = (v - embeddings[0][i]).abs();
-            assert!(difference < EPSILON, "Difference: {}", difference)
-        }
-    }
-
-    #[test]
-    fn test_allminilm() {
-        let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
-            model_name: EmbeddingModel::AllMiniLML6V2,
-            ..Default::default()
-        })
-        .unwrap();
-
-        let expected: Vec<f32> = vec![
-            0.02591, 0.00573, 0.01147, 0.03796, -0.0232, -0.0549, 0.01404, -0.0107, -0.0244,
-            -0.01822,
-        ];
-        let documents = vec!["hello world"];
-
-        // Generate embeddings with the default batch size, 256
-        let embeddings = model.embed(documents, None).unwrap();
-
-        for (i, v) in expected.into_iter().enumerate() {
-            let difference = (v - embeddings[0][i]).abs();
-            assert!(difference < EPSILON, "Difference: {}", difference)
-        }
-    }
-
-    #[test]
-    fn test_mle5large() {
-        let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
-            model_name: EmbeddingModel::MLE5Large,
-            ..Default::default()
-        })
-        .unwrap();
-
-        let expected: Vec<f32> = vec![
-            0.00961, 0.00443, 0.00658, -0.03532, 0.00703, -0.02878, -0.03671, 0.03482, 0.06343,
-            -0.04731,
-        ];
-        let documents = vec!["hello world"];
-
-        // Generate embeddings with the default batch size, 256
-        let embeddings = model.embed(documents, None).unwrap();
-
-        for (i, v) in expected.into_iter().enumerate() {
-            let difference = (v - embeddings[0][i]).abs();
-            assert!(difference < EPSILON, "Difference: {}", difference)
+            for (i, v) in expected.into_iter().enumerate() {
+                let difference = (v - embeddings[0][i]).abs();
+                assert!(
+                    difference < EPSILON,
+                    "Difference for {}: {}",
+                    model_name.to_string(),
+                    difference
+                )
+            }
         }
     }
 }
