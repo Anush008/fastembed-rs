@@ -71,6 +71,7 @@ let documents = vec![
  let embeddings = model.embed(documents, None)?;
 
  println!("Embeddings length: {}", embeddings.len()); // -> Embeddings length: 4
+ println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 768
 ```
 
 ### Supports passage and query embeddings for more accurate results
@@ -88,6 +89,7 @@ let documents = vec![
  let embeddings = model.passage_embed(passages, Some(1))?;
 
  println!("Passage embeddings length: {}", embeddings.len()); // -> Embeddings length: 3
+ println!("Passage embedding dimension: {}", embeddings[0].len()); // -> Passage embedding dimension: 768
 
  // Generate embeddings for the query
  // The text is prefixed with "query" for better retrieval
