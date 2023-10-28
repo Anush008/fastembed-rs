@@ -55,7 +55,7 @@ let model: FlagEmbedding = FlagEmbedding::try_new(Default::default())?;
 // With custom InitOptions
 let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
     model_name: EmbeddingModel::BGEBaseEN,
-    show_download_message: false,
+    show_download_message: true,
     ..Default::default()
 })?;
 
