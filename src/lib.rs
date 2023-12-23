@@ -186,7 +186,7 @@ pub trait EmbeddingBase<S: AsRef<str>> {
 
 /// Rust representation of the FlagEmbedding model
 pub struct FlagEmbedding {
-    tokenizer: Tokenizer,
+    pub tokenizer: Tokenizer,
     session: Session,
     model: EmbeddingModel,
 }
