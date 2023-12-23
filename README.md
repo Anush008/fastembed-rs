@@ -64,7 +64,7 @@ let documents = vec![
     "query: Hello, World!",
     "passage: This is an example passage.",
     // You can leave out the prefix but it's recommended
-    "fastembed-rs is licensed under MIT"
+    "fastembed-rs is licensed under Apache  2.0"
     ];
 
  // Generate embeddings with the default batch size, 256
@@ -120,4 +120,4 @@ It's important we justify the "fast" in FastEmbed. FastEmbed is fast because:
 
 ## 📄 LICENSE
 
-MIT © [2023](https://github.com/Anush008/fastembed-rs/blob/main/LICENSE)
+Apache 2.0 © [2023](https://github.com/Anush008/fastembed-rs/blob/main/LICENSE)
