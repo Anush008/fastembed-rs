@@ -32,7 +32,7 @@ The default embedding supports "query" and "passage" prefixes for the input text
 
 ## 🚀 Installation
 
-Run the following Cargo command in your project directory:
+Run the following command in your project directory:
 
 ```bash
 cargo add fastembed
