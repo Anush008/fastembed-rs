@@ -120,4 +120,4 @@ It's important we justify the "fast" in FastEmbed. FastEmbed is fast because:
 
 ## 📄 LICENSE
 
-Apache 2.0 © [2023](https://github.com/Anush008/fastembed-rs/blob/main/LICENSE)
+Apache 2.0 © [2024](https://github.com/Anush008/fastembed-rs/blob/main/LICENSE)
