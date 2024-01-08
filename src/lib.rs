@@ -83,9 +83,9 @@ use std::{
 
 use anyhow::{Ok, Result};
 use flate2::read::GzDecoder;
-use ndarray::{Array, CowArray};
-pub use ort::ExecutionProvider;
-use ort::{Environment, GraphOptimizationLevel, Session, SessionBuilder, Value};
+use ndarray::Array;
+pub use ort::{ExecutionProvider, ExecutionProviderDispatch};
+use ort::{GraphOptimizationLevel, Session, Value};
 use rayon::{
     prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator},
     slice::ParallelSlice,
@@ -146,7 +146,7 @@ impl ToString for EmbeddingModel {
 #[derive(Debug, Clone)]
 pub struct InitOptions {
     pub model_name: EmbeddingModel,
-    pub execution_providers: Vec<ExecutionProvider>,
+    pub execution_providers: Vec<ExecutionProviderDispatch>,
     pub max_length: usize,
     pub cache_dir: PathBuf,
     pub show_download_message: bool,
@@ -211,11 +211,11 @@ impl FlagEmbedding {
         let model_path =
             FlagEmbedding::retrieve_model(model_name.clone(), &cache_dir, show_download_message)?;
 
-        let environment = Environment::builder()
+        ort::init()
             .with_name("Fastembed")
             .with_execution_providers(execution_providers)
-            .build()?;
-        let session = SessionBuilder::new(&environment.into())?
+            .commit()?;
+        let session = Session::builder()?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(threads)?
             .with_model_from_file(model_path.join("model_optimized.onnx"))?;
@@ -315,7 +315,8 @@ impl FlagEmbedding {
 
         let mut tokenizer = tokenizer
             .with_padding(Some(PaddingParams {
-                strategy: PaddingStrategy::Fixed(max_length),
+                // TODO: the user should able to choose the padding strategy
+                strategy: PaddingStrategy::BatchLongest,
                 pad_token,
                 pad_id,
                 ..Default::default()
@@ -431,39 +432,30 @@ impl<S: AsRef<str> + Send + Sync> EmbeddingBase<S> for FlagEmbedding {
                 });
 
                 // Create CowArrays from vectors
-                let inputs_ids_array = CowArray::from(Array::from_shape_vec(
-                    (batch_size, encoding_length),
-                    ids_array,
-                )?)
-                .into_dyn();
+                let inputs_ids_array =
+                    Array::from_shape_vec((batch_size, encoding_length), ids_array)?;
 
-                let attention_mask_array = CowArray::from(Array::from_shape_vec(
-                    (batch_size, encoding_length),
-                    mask_array,
-                )?)
-                .into_dyn();
+                let attention_mask_array =
+                    Array::from_shape_vec((batch_size, encoding_length), mask_array)?;
 
-                let token_type_ids_array = CowArray::from(Array::from_shape_vec(
-                    (batch_size, encoding_length),
-                    typeids_array,
-                )?)
-                .into_dyn();
-
-                let mut inputs = vec![
-                    Value::from_array(self.session.allocator(), &inputs_ids_array)?,
-                    Value::from_array(self.session.allocator(), &attention_mask_array)?,
-                    Value::from_array(self.session.allocator(), &token_type_ids_array)?,
-                ];
+                let token_type_ids_array =
+                    Array::from_shape_vec((batch_size, encoding_length), typeids_array)?;
 
                 // Remove the token_type_ids_array if the model is MLE5Large
-                if let EmbeddingModel::MLE5Large = self.model {
-                    inputs.pop();
-                }
-
-                // Run the model with inputs
-                let outputs = self.session.run(inputs)?;
+                let outputs = if let EmbeddingModel::MLE5Large = self.model {
+                    self.session.run(ort::inputs![
+                        "input_ids" => Value::from_array(inputs_ids_array)?,
+                        "attention_mask" => Value::from_array(attention_mask_array)?,
+                    ]?)?
+                } else {
+                    self.session.run(ort::inputs![
+                        "input_ids" => Value::from_array(inputs_ids_array)?,
+                        "attention_mask" => Value::from_array(attention_mask_array)?,
+                        "token_type_ids" => Value::from_array(token_type_ids_array)?,
+                    ]?)?
+                };
                 // Extract and normalize embeddings
-                let output_data = outputs[0].try_extract::<f32>()?;
+                let output_data = outputs["last_hidden_state"].extract_tensor::<f32>()?;
                 let view = output_data.view();
                 let shape = view.shape();
                 let flattened = view.as_slice().unwrap();
@@ -490,11 +482,65 @@ impl<S: AsRef<str> + Send + Sync> EmbeddingBase<S> for FlagEmbedding {
         self.embed(passages, batch_size)
     }
 
-    // Method implementation for query embeddings. Prefixed with "query"
+    // Method implementation for query embeddings. Prefixed with "query" and made sequential for performance
     fn query_embed(&self, query: S) -> Result<Embedding> {
-        let query = format!("query: {}", query.as_ref());
-        let query_embedding = self.embed(vec![&query], None);
-        Ok(query_embedding?[0].to_owned())
+        let text = format!("query: {}", query.as_ref());
+
+        // Encode the texts in the batch
+        let encoding = self.tokenizer.encode(text.as_str(), true).unwrap();
+
+        // Extract the encoding length and batch size
+        let encoding_length = encoding.len();
+
+        // Preallocate arrays with the encoding length
+        let mut ids_array = Vec::with_capacity(encoding_length);
+        let mut mask_array = Vec::with_capacity(encoding_length);
+        let mut typeids_array = Vec::with_capacity(encoding_length);
+
+        // Not using par_iter because the closure needs to be FnMut
+        let ids = encoding.get_ids();
+        let mask = encoding.get_attention_mask();
+        let typeids = encoding.get_type_ids();
+
+        // Extend the preallocated arrays with the current encoding
+        ids_array.extend(ids.iter().map(|x| *x as i64));
+        mask_array.extend(mask.iter().map(|x| *x as i64));
+        typeids_array.extend(typeids.iter().map(|x| *x as i64));
+
+        // Create Array from vectors
+        let inputs_ids_array = Array::from_shape_vec((1, encoding_length), ids_array)?;
+
+        let attention_mask_array = Array::from_shape_vec((1, encoding_length), mask_array)?;
+
+        let token_type_ids_array = Array::from_shape_vec((1, encoding_length), typeids_array)?;
+
+        // Remove the token_type_ids_array if the model is MLE5Large
+        let outputs = if let EmbeddingModel::MLE5Large = self.model {
+            self.session.run(ort::inputs![
+                "input_ids" => Value::from_array(inputs_ids_array)?,
+                "attention_mask" => Value::from_array(attention_mask_array)?,
+            ]?)?
+        } else {
+            self.session.run(ort::inputs![
+                "input_ids" => Value::from_array(inputs_ids_array)?,
+                "attention_mask" => Value::from_array(attention_mask_array)?,
+                "token_type_ids" => Value::from_array(token_type_ids_array)?,
+            ]?)?
+        };
+
+        // Extract and normalize embeddings
+        let output_data = outputs["last_hidden_state"].extract_tensor::<f32>()?;
+        let view = output_data.view();
+        let shape = view.shape();
+        let flattened = view.as_slice().unwrap();
+        let data = get_embeddings(flattened, shape);
+        let embeddings: Embedding = data
+            .into_iter()
+            .map(|mut d| normalize(&mut d))
+            .next()
+            .unwrap();
+
+        Ok(embeddings)
     }
 }
 

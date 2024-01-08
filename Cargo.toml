@@ -1,10 +1,10 @@
 [package]
 name = "fastembed"
-version = "1.10.0"
+version = "2.0.0"
 edition = "2021"
 description = "Rust implementation of https://github.com/qdrant/fastembed"
 license = "MIT"
-authors = ["Anush008 <anushshetty90@gmail.com>"]
+authors = ["Anush008 <anushshetty90@gmail.com>", "Josh Niemelä <josh@jniemela.dk>"]
 documentation = "https://docs.rs/fastembed"
 repository = "https://github.com/Anush008/fastembed-rs"
 homepage = "https://crates.io/crates/fastembed"
@@ -16,8 +16,11 @@ anyhow = { version = "1.0" }
 flate2 = { version = "1.0" }
 minreq = { version = "2.10", default-features = false, features = ["https-rustls"] }
 ndarray = { version = "0.15", default-features = false }
-ort = { version = "1", features = ["load-dynamic"] }
+ort = { version = "2.0.0-alpha.4", default-features = false, features = [ "ndarray" ] }
 rayon = { version = "1.7", default-features = false }
 serde_json = {version = "1"}
 tar = { version = "0.4", default-features = false }
 tokenizers = { version = "0.14", default-features = false, features = ["onig"]}
+
+[dev-dependencies]
+ort = "2.0.0-alpha.4"
