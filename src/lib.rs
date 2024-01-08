@@ -441,12 +441,19 @@ impl<S: AsRef<str> + Send + Sync> EmbeddingBase<S> for FlagEmbedding {
                 let token_type_ids_array =
                     Array::from_shape_vec((batch_size, encoding_length), typeids_array)?;
 
-                // Run the model with inputs
-                let outputs = self.session.run(ort::inputs![
-                    "input_ids" => Value::from_array(inputs_ids_array)?,
-                    "attention_mask" => Value::from_array(attention_mask_array)?,
-                    "token_type_ids" => Value::from_array(token_type_ids_array)?,
-                ]?)?;
+                // Remove the token_type_ids_array if the model is MLE5Large
+                let outputs = if let EmbeddingModel::MLE5Large = self.model {
+                    self.session.run(ort::inputs![
+                        "input_ids" => Value::from_array(inputs_ids_array)?,
+                        "attention_mask" => Value::from_array(attention_mask_array)?,
+                    ]?)?
+                } else {
+                    self.session.run(ort::inputs![
+                        "input_ids" => Value::from_array(inputs_ids_array)?,
+                        "attention_mask" => Value::from_array(attention_mask_array)?,
+                        "token_type_ids" => Value::from_array(token_type_ids_array)?,
+                    ]?)?
+                };
                 // Extract and normalize embeddings
                 let output_data = outputs["last_hidden_state"].extract_tensor::<f32>()?;
                 let view = output_data.view();
@@ -507,12 +514,20 @@ impl<S: AsRef<str> + Send + Sync> EmbeddingBase<S> for FlagEmbedding {
 
         let token_type_ids_array = Array::from_shape_vec((1, encoding_length), typeids_array)?;
 
-        // Run the model with inputs
-        let outputs = self.session.run(ort::inputs![
-            "input_ids" => Value::from_array(inputs_ids_array)?,
-            "attention_mask" => Value::from_array(attention_mask_array)?,
-            "token_type_ids" => Value::from_array(token_type_ids_array)?,
-        ]?)?;
+        // Remove the token_type_ids_array if the model is MLE5Large
+        let outputs = if let EmbeddingModel::MLE5Large = self.model {
+            self.session.run(ort::inputs![
+                "input_ids" => Value::from_array(inputs_ids_array)?,
+                "attention_mask" => Value::from_array(attention_mask_array)?,
+            ]?)?
+        } else {
+            self.session.run(ort::inputs![
+                "input_ids" => Value::from_array(inputs_ids_array)?,
+                "attention_mask" => Value::from_array(attention_mask_array)?,
+                "token_type_ids" => Value::from_array(token_type_ids_array)?,
+            ]?)?
+        };
+
         // Extract and normalize embeddings
         let output_data = outputs["last_hidden_state"].extract_tensor::<f32>()?;
         let view = output_data.view();
