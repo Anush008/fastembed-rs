@@ -79,7 +79,6 @@ let documents = vec![
 ```rust
  // Generate embeddings for the passages
  // The texts are prefixed with "passage" for better results
- // The batch size is set to 1 for demonstration purposes
  let passages = vec![
      "This is the first passage. It contains provides more context for retrieval.",
      "Here's the second passage, which is longer than the first one. It includes additional information.",
