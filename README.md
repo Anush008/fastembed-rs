@@ -41,7 +41,7 @@ cargo add fastembed
 Or add the following line to your Cargo.toml:
 
 ```toml
-fastembed = "1"
+fastembed = "2"
 ```
 
 ## 📖 Usage
