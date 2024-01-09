@@ -76,6 +76,7 @@
 //!
 
 use std::{
+    fmt::Display,
     fs::File,
     path::{Path, PathBuf},
     thread::available_parallelism,
@@ -110,7 +111,7 @@ type Tokenizer = tokenizers::TokenizerImpl<
 >;
 
 /// Enum for the available models
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EmbeddingModel {
     /// Sentence Transformer model, MiniLM-L6-v2
     AllMiniLML6V2,
@@ -128,17 +129,13 @@ pub enum EmbeddingModel {
     MLE5Large,
 }
 
-impl ToString for EmbeddingModel {
-    fn to_string(&self) -> String {
-        match self {
-            EmbeddingModel::AllMiniLML6V2 => String::from("fast-all-MiniLM-L6-v2"),
-            EmbeddingModel::BGEBaseEN => String::from("fast-bge-base-en"),
-            EmbeddingModel::BGEBaseENV15 => String::from("fast-bge-base-en-v1.5"),
-            EmbeddingModel::BGESmallEN => String::from("fast-bge-small-en"),
-            EmbeddingModel::BGESmallENV15 => String::from("fast-bge-small-en-v1.5"),
-            EmbeddingModel::BGESmallZH => String::from("fast-bge-small-zh-v1.5"),
-            EmbeddingModel::MLE5Large => String::from("fast-multilingual-e5-large"),
-        }
+impl Display for EmbeddingModel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let model_info = FlagEmbedding::list_supported_models()
+            .into_iter()
+            .find(|model| model.model == *self)
+            .unwrap();
+        write!(f, "{}", model_info.model_code)
     }
 }
 
@@ -170,6 +167,7 @@ pub struct ModelInfo {
     pub model: EmbeddingModel,
     pub dim: usize,
     pub description: String,
+    pub model_code: String,
 }
 
 /// Base for implementing an embedding model
@@ -356,36 +354,43 @@ impl FlagEmbedding {
             model: EmbeddingModel::AllMiniLML6V2,
             dim: 384,
             description: String::from("Sentence Transformer model, MiniLM-L6-v2"),
+            model_code: String::from("fast-all-MiniLM-L6-v2")
         },
         ModelInfo {
             model: EmbeddingModel::BGEBaseEN,
             dim: 768,
             description: String::from("Base English model"),
+            model_code: String::from("fast-bge-base-en")
         },
         ModelInfo {
             model: EmbeddingModel::BGEBaseENV15,
             dim: 768,
             description: String::from("v1.5 release of the base English model"),
+            model_code: String::from("fast-bge-base-en-v1.5")
         },
         ModelInfo {
             model: EmbeddingModel::BGESmallEN,
             dim: 384,
             description: String::from("Fast English model"),
+            model_code: String::from("fast-bge-small-en")
         },
         ModelInfo {
             model: EmbeddingModel::BGESmallENV15,
             dim: 384,
             description: String::from("v1.5 release of the fast and default English model"),
+            model_code: String::from("fast-bge-small-en-v1.5")
         },
         ModelInfo {
             model: EmbeddingModel::BGESmallZH,
             dim: 512,
             description: String::from("v1.5 release of the fast and Chinese model"),
+            model_code: String::from("fast-bge-small-zh-v1.5")
         },
         ModelInfo {
             model: EmbeddingModel::MLE5Large,
             dim: 1024,
             description: String::from("Multilingual model, e5-large. Recommend using this model for non-English languages."),
+            model_code: String::from("fast-multilingual-e5-large")
         }
         ]
     }
