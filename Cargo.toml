@@ -16,7 +16,7 @@ anyhow = { version = "1.0" }
 flate2 = { version = "1.0" }
 minreq = { version = "2.10", default-features = false, features = ["https-rustls"] }
 ndarray = { version = "0.15", default-features = false }
-ort = { version = "2.0.0-alpha.4", default-features = false, features = [ "ndarray" ] }
+ort = { version = "2.0.0-alpha.4", default-features = false, features = [ "ndarray", "download-binaries" ] }
 rayon = { version = "1.7", default-features = false }
 serde_json = {version = "1"}
 tar = { version = "0.4", default-features = false }
