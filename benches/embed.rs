@@ -55,6 +55,8 @@ fn criterion_benchmark(c: &mut Criterion) {
     .map(|x| x.to_string())
     .collect::<Vec<_>>();
 
+    let query_text = "Hello, World! What is the meaning of life?";
+
     c.bench_function("passage embed AllMiniLML6V2 short", |b| {
         b.iter(|| model.passage_embed(short_texts.clone(), None).unwrap())
     });
@@ -63,11 +65,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
     // This one doesn't use parallelisation and is therefore a different benchmark
     c.bench_function("query embed AllMiniLML6V2", |b| {
-        b.iter(|| {
-            model
-                .query_embed("Hello, World! What is the meaning of life?")
-                .unwrap()
-        })
+        b.iter(|| model.query_embed(query_text.clone()).unwrap())
     });
 
     let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
@@ -85,11 +83,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 
     c.bench_function("query embed BGEBaseEN", |b| {
-        b.iter(|| {
-            model
-                .query_embed("Hello, World! What is the meaning of life?")
-                .unwrap()
-        })
+        b.iter(|| model.query_embed(query_text.clone()).unwrap())
     });
 }
 
