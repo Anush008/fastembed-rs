@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use codspeed_criterion_compat::{criterion_group, criterion_main, Criterion};
 use fastembed::{EmbeddingBase, EmbeddingModel, FlagEmbedding, InitOptions};
 use std::time::Duration;
 
@@ -65,7 +65,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
     // This one doesn't use parallelisation and is therefore a different benchmark
     c.bench_function("query embed AllMiniLML6V2", |b| {
-        b.iter(|| model.query_embed(query_text.clone()).unwrap())
+        b.iter(|| model.query_embed(query_text).unwrap())
     });
 
     let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
@@ -83,7 +83,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 
     c.bench_function("query embed BGEBaseEN", |b| {
-        b.iter(|| model.query_embed(query_text.clone()).unwrap())
+        b.iter(|| model.query_embed(query_text).unwrap())
     });
 }
 

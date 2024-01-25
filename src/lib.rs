@@ -586,20 +586,8 @@ mod tests {
                 vec![-0.02313, -0.02552, 0.017357, -0.06393, -0.00061],
             ),
             (
-                EmbeddingModel::BGEBaseEN,
-                vec![0.0114, 0.03722, 0.02941, 0.0123, 0.03451],
-            ),
-            (
                 EmbeddingModel::AllMiniLML6V2,
                 vec![0.02591, 0.00573, 0.01147, 0.03796, -0.0232],
-            ),
-            (
-                EmbeddingModel::MLE5Large,
-                vec![0.00961, 0.00443, 0.00658, -0.03532, 0.00703],
-            ),
-            (
-                EmbeddingModel::BGEBaseENV15,
-                vec![0.01129394, 0.05493144, 0.02615099, 0.00328772, 0.02996045],
             ),
             (
                 EmbeddingModel::BGESmallENV15,

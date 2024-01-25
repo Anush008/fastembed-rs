@@ -25,6 +25,7 @@ tokenizers = { version = "0.14", default-features = false, features = ["onig"]}
 [dev-dependencies]
 ort = "2.0.0-alpha.4"
 criterion = "0.5.1"
+codspeed-criterion-compat = "2.3.3"
 
 [[bench]]
 name="embed"
