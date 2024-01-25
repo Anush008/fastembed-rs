@@ -69,20 +69,20 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 
     let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
-        model_name: EmbeddingModel::BGEBaseEN,
+        model_name: EmbeddingModel::BGESmallENV15,
         show_download_message: false,
         ..Default::default()
     })
     .unwrap();
 
-    c.bench_function("passage embed BGEBaseEN short", |b| {
+    c.bench_function("passage embed BGESmallENV15short", |b| {
         b.iter(|| model.passage_embed(short_texts.clone(), None).unwrap())
     });
-    c.bench_function("passage embed BGEBaseEN long", |b| {
+    c.bench_function("passage embed BGESmallENV15 long", |b| {
         b.iter(|| model.passage_embed(long_texts.clone(), None).unwrap())
     });
 
-    c.bench_function("query embed BGEBaseEN", |b| {
+    c.bench_function("query embed BGESmallENV15", |b| {
         b.iter(|| model.query_embed(query_text).unwrap())
     });
 }
