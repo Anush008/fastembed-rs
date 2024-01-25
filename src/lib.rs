@@ -301,7 +301,7 @@ impl FlagEmbedding {
 
         let tokenizer_path = model_path.join("tokenizer.json");
         let mut tokenizer =
-            tokenizers::Tokenizer::from_file(tokenizer_path).map_err(|e| anyhow::Error::msg(e))?;
+            tokenizers::Tokenizer::from_file(tokenizer_path).map_err(anyhow::Error::msg)?;
 
         //For BGEBaseSmall, the model_max_length value is set to 1000000000000000019884624838656. Which fits in a f64
         let model_max_length = tokenizer_config["model_max_length"].as_f64().unwrap();
@@ -323,7 +323,7 @@ impl FlagEmbedding {
                 max_length,
                 ..Default::default()
             }))
-            .map_err(|e| anyhow::Error::msg(e))?
+            .map_err(anyhow::Error::msg)?
             .clone();
         if let serde_json::Value::Object(root_object) = special_tokens_map {
             for (_, value) in root_object.iter() {
