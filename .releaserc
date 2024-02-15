@@ -59,7 +59,7 @@
           },
           {
             "type": "chore",
-            "release": false
+            "release": "patch"
           }
         ]
       }
