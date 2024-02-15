@@ -209,11 +209,8 @@ impl FlagEmbedding {
         let model_path =
             FlagEmbedding::retrieve_model(model_name.clone(), &cache_dir, show_download_message)?;
 
-        ort::init()
-            .with_name("Fastembed")
-            .with_execution_providers(execution_providers)
-            .commit()?;
         let session = Session::builder()?
+            .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(threads)?
             .with_model_from_file(model_path.join("model_optimized.onnx"))?;
