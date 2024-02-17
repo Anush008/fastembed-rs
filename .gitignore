@@ -70,3 +70,4 @@ tests/rustdoc-gui/src/**.lock
 
 ## Model cache
 local_cache
+main.rs
