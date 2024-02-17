@@ -54,7 +54,7 @@ let model: FlagEmbedding = FlagEmbedding::try_new(Default::default())?;
 
 // With custom InitOptions
 let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
-    model_name: EmbeddingModel::BGEBaseEN,
+    model_name: EmbeddingModel::AllMiniLML6V2,
     show_download_message: true,
     ..Default::default()
 })?;
@@ -71,7 +71,7 @@ let documents = vec![
  let embeddings = model.embed(documents, None)?;
 
  println!("Embeddings length: {}", embeddings.len()); // -> Embeddings length: 4
- println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 768
+ println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 384
 ```
 
 ### Supports passage and query embeddings for more accurate results
