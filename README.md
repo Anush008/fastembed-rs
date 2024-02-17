@@ -9,8 +9,8 @@
 ## 🍕 Features
 
 - Supports synchronous usage. No dependency on Tokio.
-- Uses [@huggingface/tokenizers](https://github.com/huggingface/tokenizers) for blazing-fast encodings.
-- Supports batch embedddings with parallelism using Rayon.
+- Uses [@huggingface/tokenizers](https://github.com/huggingface/tokenizers) for fast encodings.
+- Supports batch embedddings generation with parallelism using [@rayon-rs/rayon](https://github.com/rayon-rs/rayon).
 
 The default embedding supports "query" and "passage" prefixes for the input text. The default model is Flag Embedding, which is top of the [MTEB](https://huggingface.co/spaces/mteb/leaderboard) leaderboard.
 
@@ -22,13 +22,12 @@ The default embedding supports "query" and "passage" prefixes for the input text
 
 ## 🤖 Models
 
-- [**BAAI/bge-base-en**](https://huggingface.co/BAAI/bge-base-en)
 - [**BAAI/bge-base-en-v1.5**](https://huggingface.co/BAAI/bge-base-en-v1.5)
-- [**BAAI/bge-small-en**](https://huggingface.co/BAAI/bge-small-en)
 - [**BAAI/bge-small-en-v1.5**](https://huggingface.co/BAAI/bge-small-en-v1.5) - Default
-- [**BAAI/bge-base-zh-v1.5**](https://huggingface.co/BAAI/bge-base-zh-v1.5)
+- [**BAAI/bge-large-en-v1.5**](https://huggingface.co/BAAI/bge-large-en-v1.5)
 - [**sentence-transformers/all-MiniLM-L6-v2**](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
-- [**intfloat/multilingual-e5-large**](https://huggingface.co/intfloat/multilingual-e5-large)
+- [**sentence-transformers/paraphrase-MiniLM-L12-v2**](https://huggingface.co/sentence-transformers/paraphrase-MiniLM-L12-v2)
+- [**nomic-ai/nomic-embed-text-v1**](https://huggingface.co/nomic-ai/nomic-embed-text-v1)
 
 ## 🚀 Installation
 
@@ -41,7 +40,8 @@ cargo add fastembed
 Or add the following line to your Cargo.toml:
 
 ```toml
-fastembed = "2"
+[dependencies]
+fastembed = "3"
 ```
 
 ## 📖 Usage
