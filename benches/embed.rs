@@ -10,20 +10,17 @@ fn criterion_benchmark(c: &mut Criterion) {
     })
     .unwrap();
 
-    let short_texts = vec![
-        "Hello, World!",
+    let short_texts = ["Hello, World!",
         "This is an example passage.",
         "fastembed-rs is licensed under MIT",
-        "Some other short text here blah blah blah",
-    ]
+        "Some other short text here blah blah blah"]
     .iter()
     .cycle()
     .take(100)
     .map(|x| x.to_string())
     .collect::<Vec<_>>();
 
-    let long_texts = vec![
-        "Contribution shall mean any work of authorship, including
+    let long_texts = ["Contribution shall mean any work of authorship, including
       the original version of the Work and any modifications or additions
       to that Work or Derivative Works thereof, that is intentionally
       submitted to Licensor for inclusion in the Work by the copyright owner
@@ -47,8 +44,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         as a whole, an original work of authorship. For the purposes of this
         License, Derivative Works shall not include works that remain
         separable from, or merely link (or bind by name) to the interfaces of,
-        the Work and Derivative Works thereof.",
-    ]
+        the Work and Derivative Works thereof."]
     .iter()
     .cycle()
     .take(20)
@@ -65,11 +61,11 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
     // This one doesn't use parallelisation and is therefore a different benchmark
     c.bench_function("query embed AllMiniLML6V2", |b| {
-        b.iter(|| model.query_embed(query_text.clone()).unwrap())
+        b.iter(|| model.query_embed(query_text).unwrap())
     });
 
     let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
-        model_name: EmbeddingModel::BGEBaseEN,
+        model_name: EmbeddingModel::BGEBaseENV15,
         show_download_message: false,
         ..Default::default()
     })
@@ -83,7 +79,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 
     c.bench_function("query embed BGEBaseEN", |b| {
-        b.iter(|| model.query_embed(query_text.clone()).unwrap())
+        b.iter(|| model.query_embed(query_text).unwrap())
     });
 }
 

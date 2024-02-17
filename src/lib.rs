@@ -15,7 +15,7 @@
 //!
 //! // With custom InitOptions
 //! let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
-//!     model_name: EmbeddingModel::BGEBaseEN,
+//!     model_name: EmbeddingModel::BGEBaseENV15,
 //!     show_download_message: false,
 //!     ..Default::default()
 //! })?;
@@ -74,7 +74,6 @@
 //! # }
 //! ```
 //!
-
 use std::{
     fmt::Display,
     fs::File,
@@ -83,7 +82,8 @@ use std::{
 };
 
 use anyhow::{Ok, Result};
-use flate2::read::GzDecoder;
+use hf_hub::api::sync::ApiRepo;
+use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::Array;
 pub use ort::{ExecutionProvider, ExecutionProviderDispatch};
 use ort::{GraphOptimizationLevel, Session, Value};
@@ -91,7 +91,6 @@ use rayon::{
     prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator},
     slice::ParallelSlice,
 };
-use tar::Archive;
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 
 const DEFAULT_BATCH_SIZE: usize = 256;
@@ -115,18 +114,17 @@ type Tokenizer = tokenizers::TokenizerImpl<
 pub enum EmbeddingModel {
     /// Sentence Transformer model, MiniLM-L6-v2
     AllMiniLML6V2,
-    /// Base English model
-    BGEBaseEN,
-    /// v1.5 release of the Base English model
+    /// v1.5 release of the base English model
     BGEBaseENV15,
+    /// v1.5 release of the large English model
+    BGELargeENV15,
     /// Fast and Default English model
-    BGESmallEN,
-    /// v1.5 release of the BGESmallEN model
     BGESmallENV15,
-    /// v1.5 release of the Fast Chinese model
-    BGESmallZH,
-    /// Multilingual model, e5-large. Recommend using this model for non-English languages.
-    MLE5Large,
+    /// 8192 context length english model
+    NomicEmbedTextV1,
+    /// Multi-lingual model
+    ParaphraseMLMiniLML12V2,
+
 }
 
 impl Display for EmbeddingModel {
@@ -184,9 +182,8 @@ pub trait EmbeddingBase<S: AsRef<str>> {
 
 /// Rust representation of the FlagEmbedding model
 pub struct FlagEmbedding {
-    pub tokenizer: Tokenizer,
+    tokenizer: Tokenizer,
     session: Session,
-    model: EmbeddingModel,
 }
 
 impl FlagEmbedding {
@@ -206,106 +203,72 @@ impl FlagEmbedding {
 
         let threads = available_parallelism()?.get() as i16;
 
-        let model_path =
-            FlagEmbedding::retrieve_model(model_name.clone(), &cache_dir, show_download_message)?;
+        let model_repo =
+            FlagEmbedding::retrieve_model(model_name.clone(), cache_dir, show_download_message)?;
+
+        // The model files could be placed in subdirectories
+        let model_file = model_repo
+            .info()?
+            .siblings
+            .into_iter()
+            .find(|f| {
+                f.rfilename.ends_with("model.onnx") || f.rfilename.ends_with("model_optimized.onnx")
+            })
+            .unwrap();
+
+        let model_file = model_repo.get(&model_file.rfilename)?;
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(threads)?
-            .with_model_from_file(model_path.join("model_optimized.onnx"))?;
+            .with_model_from_file(model_file)?;
 
-        let tokenizer = FlagEmbedding::load_tokenizer(model_path, max_length)?;
-        Ok(Self::new(tokenizer, session, model_name))
+        let tokenizer = FlagEmbedding::load_tokenizer(model_repo, max_length)?;
+        Ok(Self::new(tokenizer, session))
     }
 
     /// Private method to return an instance
-    fn new(tokenizer: Tokenizer, session: Session, model: EmbeddingModel) -> Self {
-        Self {
-            tokenizer,
-            session,
-            model,
-        }
+    fn new(tokenizer: Tokenizer, session: Session) -> Self {
+        Self { tokenizer, session }
     }
-
-    /// Download and unpack the model from Google Cloud Storage
-    fn download_from_gcs(model: EmbeddingModel, output_directory: &PathBuf) -> Result<()> {
-        let mut fast_model_name = model.to_string();
-
-        // The MLE5Large model URL doesn't follow the same naming convention as the other models
-        // So, we tranform "fast-multilingual-e5-large" -> "intfloat-multilingual-e5-large" in the download URL
-        // The model directory name in the GCS storage is "fast-multilingual-e5-large", like the others
-        if let EmbeddingModel::MLE5Large = model {
-            fast_model_name = String::from("intfloat-multilingual-e5-large");
-        }
-        let download_url =
-            format!("https://storage.googleapis.com/qdrant-fastembed/{fast_model_name}.tar.gz");
-
-        let response = minreq::get(download_url).send()?;
-
-        let data = match response.status_code {
-            200..=299 => response.as_bytes(),
-            _ => anyhow::bail!(
-                "{} {}: {}",
-                response.status_code,
-                response.reason_phrase,
-                response.as_str()?
-            ),
-        };
-
-        let tar = GzDecoder::new(data);
-        let mut archive = Archive::new(tar);
-        archive.unpack(output_directory)?;
-        Ok(())
-    }
-
     /// Return the FlagEmbedding model's directory from cache or remote retrieval
     fn retrieve_model(
         model: EmbeddingModel,
-        cache_dir: &PathBuf,
+        cache_dir: PathBuf,
         show_download_message: bool,
-    ) -> Result<PathBuf> {
-        let fast_model_name = model.to_string();
-        let output_path = Path::new(&cache_dir).join(&fast_model_name);
+    ) -> Result<ApiRepo> {
+        let cache = Cache::new(cache_dir);
+        let api = ApiBuilder::from_cache(cache)
+            .with_progress(show_download_message)
+            .build()
+            .unwrap();
 
-        if output_path.exists() {
-            return Ok(output_path);
-        }
-
-        // A progress indicator hasn't been implemented as it doesn't seem possible with a synchronous flow and minreq
-        // I've kept the lib sync as I'd love users to be able to try it out quickly without a dependency on tokio or some heavy async runtime
-        if show_download_message {
-            println!("Downloading {} model", fast_model_name);
-        }
-
-        FlagEmbedding::download_from_gcs(model, cache_dir)?;
-
-        Ok(output_path)
+        let repo = api.model(model.to_string());
+        Ok(repo)
     }
 
-    fn load_tokenizer(model_path: PathBuf, max_length: usize) -> Result<Tokenizer> {
-        let config_path = model_path.join("config.json");
+    fn load_tokenizer(model_repo: ApiRepo, max_length: usize) -> Result<Tokenizer> {
+        let config_path = model_repo.get("config.json")?;
         let file = File::open(config_path)?;
         let config: serde_json::Value = serde_json::from_reader(file)?;
 
-        let tokenizer_config_path = model_path.join("tokenizer_config.json");
+        let tokenizer_config_path = model_repo.get("tokenizer_config.json")?;
         let file = File::open(tokenizer_config_path)?;
         let tokenizer_config: serde_json::Value = serde_json::from_reader(file)?;
 
-        let special_tokens_map_path = model_path.join("special_tokens_map.json");
+        let special_tokens_map_path = model_repo.get("special_tokens_map.json")?;
         let file = File::open(special_tokens_map_path)?;
         let special_tokens_map: serde_json::Value = serde_json::from_reader(file)?;
 
-        let tokenizer_path = model_path.join("tokenizer.json");
+        let tokenizer_path = model_repo.get("tokenizer.json")?;
         let mut tokenizer =
             tokenizers::Tokenizer::from_file(tokenizer_path).map_err(anyhow::Error::msg)?;
 
         //For BGEBaseSmall, the model_max_length value is set to 1000000000000000019884624838656. Which fits in a f64
         let model_max_length = tokenizer_config["model_max_length"].as_f64().unwrap();
         let max_length = max_length.min(model_max_length as usize);
-        let pad_id = config["pad_token_id"]
-            .as_u64()
-            .expect("couldn't parse pad_token_id") as u32;
+        let pad_id = config["pad_token_id"].as_u64().unwrap_or(0) as u32;
         let pad_token = tokenizer_config["pad_token"].as_str().unwrap().into();
 
         let mut tokenizer = tokenizer
@@ -347,48 +310,43 @@ impl FlagEmbedding {
 
     /// Retrieve a list of supported modelsc
     pub fn list_supported_models() -> Vec<ModelInfo> {
-        vec![ModelInfo {
-            model: EmbeddingModel::AllMiniLML6V2,
-            dim: 384,
-            description: String::from("Sentence Transformer model, MiniLM-L6-v2"),
-            model_code: String::from("fast-all-MiniLM-L6-v2")
-        },
-        ModelInfo {
-            model: EmbeddingModel::BGEBaseEN,
-            dim: 768,
-            description: String::from("Base English model"),
-            model_code: String::from("fast-bge-base-en")
-        },
-        ModelInfo {
-            model: EmbeddingModel::BGEBaseENV15,
-            dim: 768,
-            description: String::from("v1.5 release of the base English model"),
-            model_code: String::from("fast-bge-base-en-v1.5")
-        },
-        ModelInfo {
-            model: EmbeddingModel::BGESmallEN,
-            dim: 384,
-            description: String::from("Fast English model"),
-            model_code: String::from("fast-bge-small-en")
-        },
-        ModelInfo {
-            model: EmbeddingModel::BGESmallENV15,
-            dim: 384,
-            description: String::from("v1.5 release of the fast and default English model"),
-            model_code: String::from("fast-bge-small-en-v1.5")
-        },
-        ModelInfo {
-            model: EmbeddingModel::BGESmallZH,
-            dim: 512,
-            description: String::from("v1.5 release of the fast and Chinese model"),
-            model_code: String::from("fast-bge-small-zh-v1.5")
-        },
-        ModelInfo {
-            model: EmbeddingModel::MLE5Large,
-            dim: 1024,
-            description: String::from("Multilingual model, e5-large. Recommend using this model for non-English languages."),
-            model_code: String::from("fast-multilingual-e5-large")
-        }
+        vec![
+            ModelInfo {
+                model: EmbeddingModel::AllMiniLML6V2,
+                dim: 384,
+                description: String::from("Sentence Transformer model, MiniLM-L6-v2"),
+                model_code: String::from("Qdrant/all-MiniLM-L6-v2-onnx"),
+            },
+            ModelInfo {
+                model: EmbeddingModel::BGEBaseENV15,
+                dim: 768,
+                description: String::from("v1.5 release of the base English model"),
+                model_code: String::from("Qdrant/bge-base-en-v1.5-onnx-Q"),
+            },
+            ModelInfo {
+                model: EmbeddingModel::BGELargeENV15,
+                dim: 1024,
+                description: String::from("v1.5 release of the large English model"),
+                model_code: String::from("Qdrant/bge-large-en-v1.5-onnx-Q"),
+            },
+            ModelInfo {
+                model: EmbeddingModel::BGESmallENV15,
+                dim: 384,
+                description: String::from("v1.5 release of the fast and default English model"),
+                model_code: String::from("Qdrant/bge-small-en-v1.5-onnx-Q"),
+            },
+            ModelInfo {
+                model: EmbeddingModel::NomicEmbedTextV1,
+                dim: 768,
+                description: String::from("8192 context length english model"),
+                model_code: String::from("nomic-ai/nomic-embed-text-v1"),
+            },
+            ModelInfo {
+                model: EmbeddingModel::ParaphraseMLMiniLML12V2,
+                dim: 384,
+                description: String::from("Multi-lingual model"),
+                model_code: String::from("Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q"),
+            }
         ]
     }
 }
@@ -443,19 +401,12 @@ impl<S: AsRef<str> + Send + Sync> EmbeddingBase<S> for FlagEmbedding {
                 let token_type_ids_array =
                     Array::from_shape_vec((batch_size, encoding_length), typeids_array)?;
 
-                // Remove the token_type_ids_array if the model is MLE5Large
-                let outputs = if let EmbeddingModel::MLE5Large = self.model {
-                    self.session.run(ort::inputs![
-                        "input_ids" => Value::from_array(inputs_ids_array)?,
-                        "attention_mask" => Value::from_array(attention_mask_array)?,
-                    ]?)?
-                } else {
-                    self.session.run(ort::inputs![
-                        "input_ids" => Value::from_array(inputs_ids_array)?,
-                        "attention_mask" => Value::from_array(attention_mask_array)?,
-                        "token_type_ids" => Value::from_array(token_type_ids_array)?,
-                    ]?)?
-                };
+                let outputs = self.session.run(ort::inputs![
+                    "input_ids" => Value::from_array(inputs_ids_array)?,
+                    "attention_mask" => Value::from_array(attention_mask_array)?,
+                    "token_type_ids" => Value::from_array(token_type_ids_array)?,
+                ]?)?;
+
                 // Extract and normalize embeddings
                 let output_data = outputs["last_hidden_state"].extract_tensor::<f32>()?;
                 let view = output_data.view();
@@ -484,63 +435,11 @@ impl<S: AsRef<str> + Send + Sync> EmbeddingBase<S> for FlagEmbedding {
         self.embed(passages, batch_size)
     }
 
-    // Method implementation for query embeddings. Prefixed with "query" and made sequential for performance
+    // Method implementation for query embeddings prefixed with "query".
     fn query_embed(&self, query: S) -> Result<Embedding> {
-        let text = format!("query: {}", query.as_ref());
+        let query = format!("query: {}", query.as_ref());
 
-        // Encode the texts in the batch
-        let encoding = self.tokenizer.encode(text.as_str(), true).unwrap();
-
-        // Extract the encoding length and batch size
-        let encoding_length = encoding.len();
-
-        // Preallocate arrays with the encoding length
-        let mut ids_array = Vec::with_capacity(encoding_length);
-        let mut mask_array = Vec::with_capacity(encoding_length);
-        let mut typeids_array = Vec::with_capacity(encoding_length);
-
-        // Not using par_iter because the closure needs to be FnMut
-        let ids = encoding.get_ids();
-        let mask = encoding.get_attention_mask();
-        let typeids = encoding.get_type_ids();
-
-        // Extend the preallocated arrays with the current encoding
-        ids_array.extend(ids.iter().map(|x| *x as i64));
-        mask_array.extend(mask.iter().map(|x| *x as i64));
-        typeids_array.extend(typeids.iter().map(|x| *x as i64));
-
-        // Create Array from vectors
-        let inputs_ids_array = Array::from_shape_vec((1, encoding_length), ids_array)?;
-
-        let attention_mask_array = Array::from_shape_vec((1, encoding_length), mask_array)?;
-
-        let token_type_ids_array = Array::from_shape_vec((1, encoding_length), typeids_array)?;
-
-        // Remove the token_type_ids_array if the model is MLE5Large
-        let outputs = if let EmbeddingModel::MLE5Large = self.model {
-            self.session.run(ort::inputs![
-                "input_ids" => Value::from_array(inputs_ids_array)?,
-                "attention_mask" => Value::from_array(attention_mask_array)?,
-            ]?)?
-        } else {
-            self.session.run(ort::inputs![
-                "input_ids" => Value::from_array(inputs_ids_array)?,
-                "attention_mask" => Value::from_array(attention_mask_array)?,
-                "token_type_ids" => Value::from_array(token_type_ids_array)?,
-            ]?)?
-        };
-
-        // Extract and normalize embeddings
-        let output_data = outputs["last_hidden_state"].extract_tensor::<f32>()?;
-        let view = output_data.view();
-        let shape = view.shape();
-        let flattened = view.as_slice().unwrap();
-        let data = get_embeddings(flattened, shape);
-        let embeddings: Embedding = data
-            .into_iter()
-            .map(|mut d| normalize(&mut d))
-            .next()
-            .unwrap();
+        let embeddings = self.embed(vec![query], None)?[0].clone();
 
         Ok(embeddings)
     }
@@ -579,20 +478,8 @@ mod tests {
     fn test_embeddings() {
         let models_and_expected_values = vec![
             (
-                EmbeddingModel::BGESmallEN,
-                vec![-0.02313, -0.02552, 0.017357, -0.06393, -0.00061],
-            ),
-            (
-                EmbeddingModel::BGEBaseEN,
-                vec![0.0114, 0.03722, 0.02941, 0.0123, 0.03451],
-            ),
-            (
                 EmbeddingModel::AllMiniLML6V2,
                 vec![0.02591, 0.00573, 0.01147, 0.03796, -0.0232],
-            ),
-            (
-                EmbeddingModel::MLE5Large,
-                vec![0.00961, 0.00443, 0.00658, -0.03532, 0.00703],
             ),
             (
                 EmbeddingModel::BGEBaseENV15,
@@ -601,10 +488,6 @@ mod tests {
             (
                 EmbeddingModel::BGESmallENV15,
                 vec![0.01522374, -0.02271799, 0.00860278, -0.07424029, 0.00386434],
-            ),
-            (
-                EmbeddingModel::BGESmallZH,
-                vec![-0.01023294, 0.07634465, 0.0691722, -0.04458365, -0.03160762],
             ),
         ];
 
@@ -625,7 +508,7 @@ mod tests {
                 assert!(
                     difference < EPSILON,
                     "Difference for {}: {}",
-                    model_name.to_string(),
+                    model_name,
                     difference
                 )
             }
