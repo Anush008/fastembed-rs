@@ -121,7 +121,10 @@ pub enum EmbeddingModel {
     /// Fast and Default English model
     BGESmallENV15,
     /// 8192 context length english model
-    NomicEmbedTextV1
+    NomicEmbedTextV1,
+    /// Multi-lingual model
+    ParaphraseMLMiniLML12V2,
+
 }
 
 impl Display for EmbeddingModel {
@@ -322,7 +325,7 @@ impl FlagEmbedding {
             },
             ModelInfo {
                 model: EmbeddingModel::BGELargeENV15,
-                dim: 768,
+                dim: 1024,
                 description: String::from("v1.5 release of the large English model"),
                 model_code: String::from("Qdrant/bge-large-en-v1.5-onnx-Q"),
             },
@@ -338,6 +341,12 @@ impl FlagEmbedding {
                 description: String::from("8192 context length english model"),
                 model_code: String::from("nomic-ai/nomic-embed-text-v1"),
             },
+            ModelInfo {
+                model: EmbeddingModel::ParaphraseMLMiniLML12V2,
+                dim: 384,
+                description: String::from("Multi-lingual model"),
+                model_code: String::from("Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q"),
+            }
         ]
     }
 }
@@ -426,56 +435,11 @@ impl<S: AsRef<str> + Send + Sync> EmbeddingBase<S> for FlagEmbedding {
         self.embed(passages, batch_size)
     }
 
-    // Method implementation for query embeddings. Prefixed with "query" and made sequential for performance
+    // Method implementation for query embeddings prefixed with "query".
     fn query_embed(&self, query: S) -> Result<Embedding> {
-        let text = format!("query: {}", query.as_ref());
+        let query = format!("query: {}", query.as_ref());
 
-        // Encode the texts in the batch
-        let encoding = self.tokenizer.encode(text.as_str(), true).unwrap();
-
-        // Extract the encoding length and batch size
-        let encoding_length = encoding.len();
-
-        // Preallocate arrays with the encoding length
-        let mut ids_array = Vec::with_capacity(encoding_length);
-        let mut mask_array = Vec::with_capacity(encoding_length);
-        let mut typeids_array = Vec::with_capacity(encoding_length);
-
-        // Not using par_iter because the closure needs to be FnMut
-        let ids = encoding.get_ids();
-        let mask = encoding.get_attention_mask();
-        let typeids = encoding.get_type_ids();
-
-        // Extend the preallocated arrays with the current encoding
-        ids_array.extend(ids.iter().map(|x| *x as i64));
-        mask_array.extend(mask.iter().map(|x| *x as i64));
-        typeids_array.extend(typeids.iter().map(|x| *x as i64));
-
-        // Create Array from vectors
-        let inputs_ids_array = Array::from_shape_vec((1, encoding_length), ids_array)?;
-
-        let attention_mask_array = Array::from_shape_vec((1, encoding_length), mask_array)?;
-
-        let token_type_ids_array = Array::from_shape_vec((1, encoding_length), typeids_array)?;
-
-        // Remove the token_type_ids_array if the model is MLE5Large
-        let outputs = self.session.run(ort::inputs![
-            "input_ids" => Value::from_array(inputs_ids_array)?,
-            "attention_mask" => Value::from_array(attention_mask_array)?,
-            "token_type_ids" => Value::from_array(token_type_ids_array)?,
-        ]?)?;
-
-        // Extract and normalize embeddings
-        let output_data = outputs["last_hidden_state"].extract_tensor::<f32>()?;
-        let view = output_data.view();
-        let shape = view.shape();
-        let flattened = view.as_slice().unwrap();
-        let data = get_embeddings(flattened, shape);
-        let embeddings: Embedding = data
-            .into_iter()
-            .map(|mut d| normalize(&mut d))
-            .next()
-            .unwrap();
+        let embeddings = self.embed(vec![query], None)?[0].clone();
 
         Ok(embeddings)
     }
