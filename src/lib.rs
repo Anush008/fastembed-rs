@@ -1,20 +1,20 @@
 //! [FastEmbed](https://github.com/Anush008/fastembed-rs) - Fast, light, accurate library built for retrieval embedding generation.
 //!
-//! The library provides the FlagEmbedding struct to interface with the Flag embedding models.
+//! The library provides the TextEmbedding struct to interface with the Flag embedding models.
 //!
-//! ### Instantiating [FlagEmbedding](crate::FlagEmbedding)
+//! ### Instantiating [TextEmbedding](crate::TextEmbedding)
 //! ```
-//! use fastembed::{FlagEmbedding, InitOptions, EmbeddingModel};
+//! use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
 //!
 //!# fn model_demo() -> anyhow::Result<()> {
 //! // With default InitOptions
-//! let model: FlagEmbedding = FlagEmbedding::try_new(Default::default())?;
+//! let model = TextEmbedding::try_new(Default::default())?;
 //!
 //! // List all supported models
-//! dbg!(FlagEmbedding::list_supported_models());
+//! dbg!(TextEmbedding::list_supported_models());
 //!
 //! // With custom InitOptions
-//! let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
+//! let model = TextEmbedding::try_new(InitOptions {
 //!     model_name: EmbeddingModel::BGEBaseENV15,
 //!     show_download_message: false,
 //!     ..Default::default()
@@ -26,9 +26,9 @@
 //!
 //! ### Embeddings generation
 //!```
-//!# use fastembed::{FlagEmbedding, InitOptions, EmbeddingModel};
+//!# use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
 //!# fn embedding_demo() -> anyhow::Result<()> {
-//!# let model: FlagEmbedding = FlagEmbedding::try_new(Default::default())?;
+//!# let model: TextEmbedding = TextEmbedding::try_new(Default::default())?;
 //! let documents = vec![
 //!    "passage: Hello, World!",
 //!    "query: Hello, World!",
@@ -100,7 +100,7 @@ pub enum EmbeddingModel {
 
 impl Display for EmbeddingModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let model_info = FlagEmbedding::list_supported_models()
+        let model_info = TextEmbedding::list_supported_models()
             .into_iter()
             .find(|model| model.model == *self)
             .unwrap();
@@ -108,7 +108,7 @@ impl Display for EmbeddingModel {
     }
 }
 
-/// Options for initializing the FlagEmbedding model
+/// Options for initializing the TextEmbedding model
 #[derive(Debug, Clone)]
 pub struct InitOptions {
     pub model_name: EmbeddingModel,
@@ -139,14 +139,14 @@ pub struct ModelInfo {
     pub model_code: String,
 }
 
-/// Rust representation of the FlagEmbedding model
-pub struct FlagEmbedding {
+/// Rust representation of the TextEmbedding model
+pub struct TextEmbedding {
     tokenizer: Tokenizer,
     session: Session,
 }
 
-impl FlagEmbedding {
-    /// Try to generate a new FlagEmbedding Instance
+impl TextEmbedding {
+    /// Try to generate a new TextEmbedding Instance
     ///
     /// Uses the highest level of Graph optimization
     ///
@@ -163,7 +163,7 @@ impl FlagEmbedding {
         let threads = available_parallelism()?.get() as i16;
 
         let model_repo =
-            FlagEmbedding::retrieve_model(model_name.clone(), cache_dir, show_download_message)?;
+            TextEmbedding::retrieve_model(model_name.clone(), cache_dir, show_download_message)?;
 
         // The model files could be placed in subdirectories
         let model_file = model_repo
@@ -183,7 +183,7 @@ impl FlagEmbedding {
             .with_intra_threads(threads)?
             .with_model_from_file(model_file)?;
 
-        let tokenizer = FlagEmbedding::load_tokenizer(model_repo, max_length)?;
+        let tokenizer = TextEmbedding::load_tokenizer(model_repo, max_length)?;
         Ok(Self::new(tokenizer, session))
     }
 
@@ -191,7 +191,7 @@ impl FlagEmbedding {
     fn new(tokenizer: Tokenizer, session: Session) -> Self {
         Self { tokenizer, session }
     }
-    /// Return the FlagEmbedding model's directory from cache or remote retrieval
+    /// Return the TextEmbedding model's directory from cache or remote retrieval
     fn retrieve_model(
         model: EmbeddingModel,
         cache_dir: PathBuf,
@@ -433,7 +433,7 @@ mod tests {
         ];
 
         for (model_name, expected) in models_and_expected_values {
-            let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
+            let model: TextEmbedding = TextEmbedding::try_new(InitOptions {
                 model_name: model_name.clone(),
                 ..Default::default()
             })

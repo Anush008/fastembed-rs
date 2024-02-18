@@ -47,13 +47,13 @@ fastembed = "3"
 ## 📖 Usage
 
 ```rust
-use fastembed::{FlagEmbedding, InitOptions, EmbeddingModel};
+use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
 
 // With default InitOptions
-let model: FlagEmbedding = FlagEmbedding::try_new(Default::default())?;
+let model = TextEmbedding::try_new(Default::default())?;
 
 // With custom InitOptions
-let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
+let model = TextEmbedding::try_new(InitOptions {
     model_name: EmbeddingModel::AllMiniLML6V2,
     show_download_message: true,
     ..Default::default()

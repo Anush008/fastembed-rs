@@ -1,26 +1,29 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use fastembed::{EmbeddingBase, EmbeddingModel, FlagEmbedding, InitOptions};
+use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use std::time::Duration;
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
-        model_name: EmbeddingModel::AllMiniLML6V2,
+    let model: TextEmbedding = TextEmbedding::try_new(InitOptions {
+        model_name: EmbeddingModel::BGEBaseENV15,
         show_download_message: false,
         ..Default::default()
     })
     .unwrap();
 
-    let short_texts = ["Hello, World!",
+    let short_texts = [
+        "Hello, World!",
         "This is an example passage.",
         "fastembed-rs is licensed under MIT",
-        "Some other short text here blah blah blah"]
+        "Some other short text here blah blah blah",
+    ]
     .iter()
     .cycle()
     .take(100)
     .map(|x| x.to_string())
     .collect::<Vec<_>>();
 
-    let long_texts = ["Contribution shall mean any work of authorship, including
+    let long_texts = [
+        "Contribution shall mean any work of authorship, including
       the original version of the Work and any modifications or additions
       to that Work or Derivative Works thereof, that is intentionally
       submitted to Licensor for inclusion in the Work by the copyright owner
@@ -44,42 +47,19 @@ fn criterion_benchmark(c: &mut Criterion) {
         as a whole, an original work of authorship. For the purposes of this
         License, Derivative Works shall not include works that remain
         separable from, or merely link (or bind by name) to the interfaces of,
-        the Work and Derivative Works thereof."]
+        the Work and Derivative Works thereof.",
+    ]
     .iter()
     .cycle()
     .take(20)
     .map(|x| x.to_string())
     .collect::<Vec<_>>();
 
-    let query_text = "Hello, World! What is the meaning of life?";
-
     c.bench_function("passage embed AllMiniLML6V2 short", |b| {
-        b.iter(|| model.passage_embed(short_texts.clone(), None).unwrap())
+        b.iter(|| model.embed(short_texts.clone(), None).unwrap())
     });
     c.bench_function("passage embed AllMiniLML6V2 long", |b| {
-        b.iter(|| model.passage_embed(long_texts.clone(), None).unwrap())
-    });
-    // This one doesn't use parallelisation and is therefore a different benchmark
-    c.bench_function("query embed AllMiniLML6V2", |b| {
-        b.iter(|| model.query_embed(query_text).unwrap())
-    });
-
-    let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
-        model_name: EmbeddingModel::BGEBaseENV15,
-        show_download_message: false,
-        ..Default::default()
-    })
-    .unwrap();
-
-    c.bench_function("passage embed BGEBaseEN short", |b| {
-        b.iter(|| model.passage_embed(short_texts.clone(), None).unwrap())
-    });
-    c.bench_function("passage embed BGEBaseEN long", |b| {
-        b.iter(|| model.passage_embed(long_texts.clone(), None).unwrap())
-    });
-
-    c.bench_function("query embed BGEBaseEN", |b| {
-        b.iter(|| model.query_embed(query_text).unwrap())
+        b.iter(|| model.embed(long_texts.clone(), None).unwrap())
     });
 }
 
