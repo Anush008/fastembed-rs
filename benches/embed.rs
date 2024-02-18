@@ -1,6 +1,6 @@
 use codspeed_criterion_compat::{criterion_group, criterion_main, Criterion};
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
-use std::time::Duration;
+
 
 fn criterion_benchmark(c: &mut Criterion) {
     let model: TextEmbedding = TextEmbedding::try_new(InitOptions {
@@ -63,9 +63,5 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 }
 
-criterion_group!(
-    name = benches;
-    config = Criterion::default().measurement_time(Duration::from_secs(60));
-    targets = criterion_benchmark,
-);
+criterion_group!(benches, criterion_benchmark,);
 criterion_main!(benches);

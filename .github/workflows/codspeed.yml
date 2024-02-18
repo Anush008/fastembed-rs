@@ -20,17 +20,6 @@ jobs:
           cache-target: release
           bins: cargo-codspeed
 
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            ~/.cache/ort.pyke.io
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
       - name: Build the benchmark target(s)
         run: cargo codspeed build
 
