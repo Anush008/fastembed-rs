@@ -26,7 +26,7 @@
 //!
 //! ### Embeddings generation
 //!```
-//!# use fastembed::{FlagEmbedding, InitOptions, EmbeddingModel, EmbeddingBase};
+//!# use fastembed::{FlagEmbedding, InitOptions, EmbeddingModel};
 //!# fn embedding_demo() -> anyhow::Result<()> {
 //!# let model: FlagEmbedding = FlagEmbedding::try_new(Default::default())?;
 //! let documents = vec![
@@ -44,36 +44,8 @@
 //! # Ok(())
 //! # }
 //! ```
-//!
-//! ### Generate query and passage embeddings
-//!```
-//!# use fastembed::{FlagEmbedding, InitOptions, EmbeddingModel, EmbeddingBase};
-//!# fn query_passage_demo() -> anyhow::Result<()> {
-//!# let model: FlagEmbedding = FlagEmbedding::try_new(Default::default())?;
-//! let passages = vec![
-//!     "This is the first passage. It contains provides more context for retrieval.",
-//!     "Here's the second passage, which is longer than the first one. It includes additional information.",
-//!     "And this is the third passage, the longest of all. It contains several sentences and is meant for more extensive testing."
-//!    ];
-//!
-//! // Generate embeddings for the passages
-//! // The texts are prefixed with "passage" for better results
-//! // The batch size is set to 1 for demonstration purposes
-//! let embeddings = model.passage_embed(passages, Some(1))?;
-//!
-//! println!("Passage embeddings length: {}", embeddings.len()); // -> Embeddings length: 3
-//!
-//! let query = "What is the answer to this generic question?";
-//!
-//! // Generate embeddings for the query
-//! // The text is prefixed with "query" for better retrieval
-//! let query_embedding = model.query_embed(query)?;
-//!
-//! println!("Query embedding dimension: {}", query_embedding.len()); // -> Query embedding dimension: 768
-//! # Ok(())
-//! # }
-//! ```
-//!
+//! 
+
 use std::{
     fmt::Display,
     fs::File,
