@@ -69,6 +69,8 @@ node_modules
 tests/rustdoc-gui/src/**.lock
 
 ## Model cache
-fastembed_cache
+.fastembed_cache
+
+## Rust files
 main.rs
 Cargo.lock
