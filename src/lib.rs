@@ -1,6 +1,6 @@
 //! [FastEmbed](https://github.com/Anush008/fastembed-rs) - Fast, light, accurate library built for retrieval embedding generation.
 //!
-//! The library provides the TextEmbedding struct to interface with the Flag embedding models.
+//! The library provides the TextEmbedding struct to interface with text embedding models.
 //!
 //! ### Instantiating [TextEmbedding](crate::TextEmbedding)
 //! ```
@@ -16,7 +16,7 @@
 //! // With custom InitOptions
 //! let model = TextEmbedding::try_new(InitOptions {
 //!     model_name: EmbeddingModel::BGEBaseENV15,
-//!     show_download_message: false,
+//!     show_download_progress: false,
 //!     ..Default::default()
 //! })?;
 //! # Ok(())
@@ -67,7 +67,7 @@ use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
-const DEFAULT_CACHE_DIR: &str = "local_cache";
+const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
 const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallENV15;
 
 /// Type alias for the embedding vector
@@ -115,7 +115,7 @@ pub struct InitOptions {
     pub execution_providers: Vec<ExecutionProviderDispatch>,
     pub max_length: usize,
     pub cache_dir: PathBuf,
-    pub show_download_message: bool,
+    pub show_download_progress: bool,
 }
 
 impl Default for InitOptions {
@@ -125,7 +125,7 @@ impl Default for InitOptions {
             execution_providers: Default::default(),
             max_length: DEFAULT_MAX_LENGTH,
             cache_dir: Path::new(DEFAULT_CACHE_DIR).to_path_buf(),
-            show_download_message: true,
+            show_download_progress: true,
         }
     }
 }
@@ -157,13 +157,13 @@ impl TextEmbedding {
             execution_providers,
             max_length,
             cache_dir,
-            show_download_message,
+            show_download_progress,
         } = options;
 
         let threads = available_parallelism()?.get() as i16;
 
         let model_repo =
-            TextEmbedding::retrieve_model(model_name.clone(), cache_dir, show_download_message)?;
+            TextEmbedding::retrieve_model(model_name.clone(), cache_dir, show_download_progress)?;
 
         // The model files could be placed in subdirectories
         let model_file = model_repo
@@ -195,11 +195,11 @@ impl TextEmbedding {
     fn retrieve_model(
         model: EmbeddingModel,
         cache_dir: PathBuf,
-        show_download_message: bool,
+        show_download_progress: bool,
     ) -> Result<ApiRepo> {
         let cache = Cache::new(cache_dir);
         let api = ApiBuilder::from_cache(cache)
-            .with_progress(show_download_message)
+            .with_progress(show_download_progress)
             .build()
             .unwrap();
 

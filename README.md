@@ -56,7 +56,7 @@ let model = TextEmbedding::try_new(Default::default())?;
 // With custom InitOptions
 let model = TextEmbedding::try_new(InitOptions {
     model_name: EmbeddingModel::AllMiniLML6V2,
-    show_download_message: true,
+    show_download_progress: true,
     ..Default::default()
 })?;
 

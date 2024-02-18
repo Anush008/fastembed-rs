@@ -5,7 +5,7 @@ use std::time::Duration;
 fn criterion_benchmark(c: &mut Criterion) {
     let model: TextEmbedding = TextEmbedding::try_new(InitOptions {
         model_name: EmbeddingModel::BGEBaseENV15,
-        show_download_message: false,
+        show_download_progress: false,
         ..Default::default()
     })
     .unwrap();

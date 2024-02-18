@@ -35,7 +35,7 @@
           },
           {
             "type": "docs",
-            "release": "minor"
+            "release": "patch"
           },
           {
             "type": "style",
