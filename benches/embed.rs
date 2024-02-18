@@ -1,10 +1,10 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use codspeed_criterion_compat::{criterion_group, criterion_main, Criterion};
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use std::time::Duration;
 
 fn criterion_benchmark(c: &mut Criterion) {
     let model: TextEmbedding = TextEmbedding::try_new(InitOptions {
-        model_name: EmbeddingModel::BGEBaseENV15,
+        model_name: EmbeddingModel::BGESmallENV15,
         show_download_progress: false,
         ..Default::default()
     })
@@ -13,7 +13,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let short_texts = [
         "Hello, World!",
         "This is an example passage.",
-        "fastembed-rs is licensed under MIT",
+        "fastembed-rs is licensed under Apache-2.0",
         "Some other short text here blah blah blah",
     ]
     .iter()
@@ -55,17 +55,17 @@ fn criterion_benchmark(c: &mut Criterion) {
     .map(|x| x.to_string())
     .collect::<Vec<_>>();
 
-    c.bench_function("passage embed AllMiniLML6V2 short", |b| {
+    c.bench_function("embed BGESmallENV15 short", |b| {
         b.iter(|| model.embed(short_texts.clone(), None).unwrap())
     });
-    c.bench_function("passage embed AllMiniLML6V2 long", |b| {
+    c.bench_function("embed BGESmallENV15 long", |b| {
         b.iter(|| model.embed(long_texts.clone(), None).unwrap())
     });
 }
 
 criterion_group!(
     name = benches;
-    config = Criterion::default().measurement_time(Duration::from_secs(10));
+    config = Criterion::default().measurement_time(Duration::from_secs(60));
     targets = criterion_benchmark,
 );
 criterion_main!(benches);

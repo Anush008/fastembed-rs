@@ -11,8 +11,6 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
-    needs:
-      - test
     steps:
       - name: "☁️ checkout repository"
         uses: actions/checkout@v4

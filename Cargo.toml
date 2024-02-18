@@ -23,6 +23,7 @@ tokenizers = { version = "0.14", default-features = false, features = ["onig"]}
 [dev-dependencies]
 ort = "2.0.0-rc.0"
 criterion = "0.5.1"
+codspeed-criterion-compat = "2.3.3"
 
 [features]
 default = ["ort-download-binaries"]
