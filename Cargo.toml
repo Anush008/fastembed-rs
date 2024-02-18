@@ -14,7 +14,6 @@ homepage = "https://crates.io/crates/fastembed"
 [dependencies]
 anyhow = { version = "1.0" }
 hf-hub = {version="0.3", default-features = false, features = ["online"]}
-minreq = { version = "2.10", default-features = false, features = ["https-rustls"] }
 ndarray = { version = "0.15", default-features = false }
 ort = { version = "2.0.0-rc.0", default-features = false, features = [ "ndarray" ] }
 rayon = { version = "1.7", default-features = false }

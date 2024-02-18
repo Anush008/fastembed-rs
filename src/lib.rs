@@ -4,7 +4,7 @@
 //!
 //! ### Instantiating [FlagEmbedding](crate::FlagEmbedding)
 //! ```
-//! use fastembed::{FlagEmbedding, InitOptions, EmbeddingModel, EmbeddingBase};
+//! use fastembed::{FlagEmbedding, InitOptions, EmbeddingModel};
 //!
 //!# fn model_demo() -> anyhow::Result<()> {
 //! // With default InitOptions
@@ -88,7 +88,7 @@ use ndarray::Array;
 pub use ort::{ExecutionProvider, ExecutionProviderDispatch};
 use ort::{GraphOptimizationLevel, Session, Value};
 use rayon::{
-    prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator},
+    prelude::{IntoParallelIterator, ParallelIterator},
     slice::ParallelSlice,
 };
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
@@ -124,7 +124,6 @@ pub enum EmbeddingModel {
     NomicEmbedTextV1,
     /// Multi-lingual model
     ParaphraseMLMiniLML12V2,
-
 }
 
 impl Display for EmbeddingModel {
@@ -166,18 +165,6 @@ pub struct ModelInfo {
     pub dim: usize,
     pub description: String,
     pub model_code: String,
-}
-
-/// Base for implementing an embedding model
-pub trait EmbeddingBase<S: AsRef<str>> {
-    /// The base embedding method for generating sentence embeddings
-    fn embed(&self, texts: Vec<S>, batch_size: Option<usize>) -> Result<Vec<Embedding>>;
-
-    /// Generate sentence embeddings for passages, pre-fixed with "passage"
-    fn passage_embed(&self, texts: Vec<S>, batch_size: Option<usize>) -> Result<Vec<Embedding>>;
-
-    /// Generate embeddings for user queries pre-fixed with "query"
-    fn query_embed(&self, query: S) -> Result<Embedding>;
 }
 
 /// Rust representation of the FlagEmbedding model
@@ -346,17 +333,17 @@ impl FlagEmbedding {
                 dim: 384,
                 description: String::from("Multi-lingual model"),
                 model_code: String::from("Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q"),
-            }
+            },
         ]
     }
-}
 
-/// EmbeddingBase implementation for FlagEmbedding
-///
-/// Generic type to accept String, &str, OsString, &OsStr
-impl<S: AsRef<str> + Send + Sync> EmbeddingBase<S> for FlagEmbedding {
-    // Method to generate sentence embeddings for a Vec of str refs
-    fn embed(&self, texts: Vec<S>, batch_size: Option<usize>) -> Result<Vec<Embedding>> {
+    /// Method to generate sentence embeddings for a Vec of texts
+    // Generic type to accept String, &str, OsString, &OsStr
+    pub fn embed<S: AsRef<str> + Send + Sync>(
+        &self,
+        texts: Vec<S>,
+        batch_size: Option<usize>,
+    ) -> Result<Vec<Embedding>> {
         // Determine the batch size, default if not specified
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
 
@@ -424,24 +411,6 @@ impl<S: AsRef<str> + Send + Sync> EmbeddingBase<S> for FlagEmbedding {
             .collect();
 
         Ok(output)
-    }
-
-    // Method implememtation to generate passage embeddings prefixed with "passage"
-    fn passage_embed(&self, texts: Vec<S>, batch_size: Option<usize>) -> Result<Vec<Embedding>> {
-        let passages: Vec<String> = texts
-            .par_iter()
-            .map(|text| format!("passage: {}", text.as_ref()))
-            .collect();
-        self.embed(passages, batch_size)
-    }
-
-    // Method implementation for query embeddings prefixed with "query".
-    fn query_embed(&self, query: S) -> Result<Embedding> {
-        let query = format!("query: {}", query.as_ref());
-
-        let embeddings = self.embed(vec![query], None)?[0].clone();
-
-        Ok(embeddings)
     }
 }
 
