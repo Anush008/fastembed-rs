@@ -9,10 +9,11 @@
 ## 🍕 Features
 
 - Supports synchronous usage. No dependency on Tokio.
+- Uses [@pykeio/ort](https://github.com/pykeio/ort) for performant ONNX inference.
 - Uses [@huggingface/tokenizers](https://github.com/huggingface/tokenizers) for fast encodings.
 - Supports batch embedddings generation with parallelism using [@rayon-rs/rayon](https://github.com/rayon-rs/rayon).
 
-The default embedding supports "query" and "passage" prefixes for the input text. The default model is Flag Embedding, which is top of the [MTEB](https://huggingface.co/spaces/mteb/leaderboard) leaderboard.
+The default model is Flag Embedding, which is top of the [MTEB](https://huggingface.co/spaces/mteb/leaderboard) leaderboard.
 
 ## 🔍 Not looking for Rust?
 
