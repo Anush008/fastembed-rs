@@ -147,6 +147,10 @@
             {
               "type": "ci",
               "section": "🔁 Continuous Integration"
+            },
+            {
+              "type": "chore",
+              "section": "🧹 Chores"
             }
           ]
         }

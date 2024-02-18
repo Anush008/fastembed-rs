@@ -47,7 +47,7 @@ fastembed = "3"
 ## 📖 Usage
 
 ```rust
-use fastembed::{FlagEmbedding, InitOptions, EmbeddingModel, EmbeddingBase};
+use fastembed::{FlagEmbedding, InitOptions, EmbeddingModel};
 
 // With default InitOptions
 let model: FlagEmbedding = FlagEmbedding::try_new(Default::default())?;
@@ -72,31 +72,6 @@ let documents = vec![
 
  println!("Embeddings length: {}", embeddings.len()); // -> Embeddings length: 4
  println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 384
-```
-
-### Supports passage and query embeddings for more accurate results
-
-```rust
- // Generate embeddings for the passages
- // The texts are prefixed with "passage" for better results
- let passages = vec![
-     "This is the first passage. It contains provides more context for retrieval.",
-     "Here's the second passage, which is longer than the first one. It includes additional information.",
-     "And this is the third passage, the longest of all. It contains several sentences and is meant for more extensive testing."
-    ];
-
- let embeddings = model.passage_embed(passages, Some(1))?;
-
- println!("Passage embeddings length: {}", embeddings.len()); // -> Embeddings length: 3
- println!("Passage embedding dimension: {}", embeddings[0].len()); // -> Passage embedding dimension: 768
-
- // Generate embeddings for the query
- // The text is prefixed with "query" for better retrieval
- let query = "What is the answer to this generic question?";
-
- let query_embedding = model.query_embed(query)?;
-
- println!("Query embedding dimension: {}", query_embedding.len()); // -> Query embedding dimension: 768
 ```
 
 ## 🚒 Under the hood
