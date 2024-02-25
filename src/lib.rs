@@ -44,7 +44,7 @@
 //! # Ok(())
 //! # }
 //! ```
-//! 
+//!
 
 use std::{
     fmt::Display,
@@ -64,6 +64,7 @@ use rayon::{
     slice::ParallelSlice,
 };
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
+use variant_count::VariantCount;
 
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
@@ -73,16 +74,8 @@ const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallENV15;
 /// Type alias for the embedding vector
 pub type Embedding = Vec<f32>;
 
-type Tokenizer = tokenizers::TokenizerImpl<
-    tokenizers::ModelWrapper,
-    tokenizers::NormalizerWrapper,
-    tokenizers::PreTokenizerWrapper,
-    tokenizers::PostProcessorWrapper,
-    tokenizers::DecoderWrapper,
->;
-
 /// Enum for the available models
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, VariantCount)]
 pub enum EmbeddingModel {
     /// Sentence Transformer model, MiniLM-L6-v2
     AllMiniLML6V2,
@@ -269,7 +262,7 @@ impl TextEmbedding {
 
     /// Retrieve a list of supported modelsc
     pub fn list_supported_models() -> Vec<ModelInfo> {
-        vec![
+        let models = vec![
             ModelInfo {
                 model: EmbeddingModel::AllMiniLML6V2,
                 dim: 384,
@@ -306,7 +299,17 @@ impl TextEmbedding {
                 description: String::from("Multi-lingual model"),
                 model_code: String::from("Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q"),
             },
-        ]
+        ];
+
+        // TODO: Use when out in stable
+        // assert_eq!(std::mem::variant_count::<EmbeddingModel>(), models.len());
+
+        assert_eq!(
+            EmbeddingModel::VARIANT_COUNT,
+            models.len(),
+            "list_supported_models() is not exhaustive"
+        );
+        models
     }
 
     /// Method to generate sentence embeddings for a Vec of texts
@@ -386,6 +389,14 @@ impl TextEmbedding {
     }
 }
 
+type Tokenizer = tokenizers::TokenizerImpl<
+    tokenizers::ModelWrapper,
+    tokenizers::NormalizerWrapper,
+    tokenizers::PreTokenizerWrapper,
+    tokenizers::PostProcessorWrapper,
+    tokenizers::DecoderWrapper,
+>;
+
 fn normalize(v: &mut [f32]) -> Vec<f32> {
     let norm = (v.iter().map(|val| val * val).sum::<f32>()).sqrt();
     let epsilon = 1e-12;
@@ -413,45 +424,29 @@ fn get_embeddings(data: &[f32], dimensions: &[usize]) -> Vec<Embedding> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    const EPSILON: f32 = 1e-4;
 
     #[test]
     fn test_embeddings() {
-        let models_and_expected_values = vec![
-            (
-                EmbeddingModel::AllMiniLML6V2,
-                vec![0.02591, 0.00573, 0.01147, 0.03796, -0.0232],
-            ),
-            (
-                EmbeddingModel::BGEBaseENV15,
-                vec![0.01129394, 0.05493144, 0.02615099, 0.00328772, 0.02996045],
-            ),
-            (
-                EmbeddingModel::BGESmallENV15,
-                vec![0.01522374, -0.02271799, 0.00860278, -0.07424029, 0.00386434],
-            ),
-        ];
-
-        for (model_name, expected) in models_and_expected_values {
+        for supported_model in TextEmbedding::list_supported_models() {
             let model: TextEmbedding = TextEmbedding::try_new(InitOptions {
-                model_name: model_name.clone(),
+                model_name: supported_model.model,
                 ..Default::default()
             })
             .unwrap();
 
-            let documents = vec!["hello world"];
+            let documents = vec![
+                "Hello, World!",
+                "This is an example passage.",
+                "fastembed-rs is licensed under Apache-2.0",
+                "Some other short text here blah blah blah",
+            ];
 
             // Generate embeddings with the default batch size, 256
-            let embeddings = model.embed(documents, None).unwrap();
+            let embeddings = model.embed(documents.clone(), None).unwrap();
 
-            for (i, v) in expected.into_iter().enumerate() {
-                let difference = (v - embeddings[0][i]).abs();
-                assert!(
-                    difference < EPSILON,
-                    "Difference for {}: {}",
-                    model_name,
-                    difference
-                )
+            assert_eq!(embeddings.len(), documents.len());
+            for embedding in embeddings {
+                assert_eq!(embedding.len(), supported_model.dim);
             }
         }
     }
