@@ -48,13 +48,14 @@
 
 use std::{
     fmt::Display,
+    fs,
     fs::File,
     path::{Path, PathBuf},
     thread::available_parallelism,
 };
 
 use anyhow::{Ok, Result};
-use hf_hub::api::sync::ApiRepo;
+use hf_hub::api::{sync::ApiRepo, RepoInfo};
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::Array;
 pub use ort::{ExecutionProvider, ExecutionProviderDispatch};
@@ -65,6 +66,7 @@ use rayon::{
 };
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 use variant_count::VariantCount;
+use walkdir::WalkDir;
 
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
@@ -155,26 +157,33 @@ impl TextEmbedding {
 
         let threads = available_parallelism()?.get() as i16;
 
-        let model_repo =
-            TextEmbedding::retrieve_model(model_name.clone(), cache_dir, show_download_progress)?;
+        let model_repo = TextEmbedding::retrieve_model(
+            model_name.clone(),
+            cache_dir.clone(),
+            show_download_progress,
+        )?;
 
-        // The model files could be placed in subdirectories
-        let model_file = model_repo
-            .info()?
-            .siblings
-            .into_iter()
-            .find(|f| {
-                f.rfilename.ends_with("model.onnx") || f.rfilename.ends_with("model_optimized.onnx")
-            })
-            .unwrap();
+        let model_file_info_result = model_repo.info();
 
-        let model_file = model_repo.get(&model_file.rfilename)?;
+        // If the attempt fails (likely no connection), fall back on cached onnx file
+        let model_file_reference = match model_file_info_result {
+            std::result::Result::Ok(info) => TextEmbedding::retrieve_remote_model_file(info)
+                .expect("Found repo on hf hub, but could not locate .onnx file."),
+            Err(ref e) => {
+                eprintln!("Error retrieving model info: {}", e);
+                eprintln!("Falling back on cached model info");
+                TextEmbedding::retrieve_cached_model_file(model_name).expect(
+                    "Could not find any locally cached .onnx file for this model. 
+                Please try again with a web connection.",
+                )
+            }
+        };
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(threads)?
-            .with_model_from_file(model_file)?;
+            .with_model_from_file(model_file_reference)?;
 
         let tokenizer = TextEmbedding::load_tokenizer(model_repo, max_length)?;
         Ok(Self::new(tokenizer, session))
@@ -198,6 +207,27 @@ impl TextEmbedding {
 
         let repo = api.model(model.to_string());
         Ok(repo)
+    }
+
+    /// Look for the model file path in the hf repote repository
+    fn retrieve_remote_model_file(model_file_info: RepoInfo) -> Option<String> {
+        let model_file = model_file_info.siblings.into_iter().find(|f| {
+            f.rfilename.ends_with("model.onnx") || f.rfilename.ends_with("model_optimized.onnx")
+        });
+        match model_file {
+            Some(file) => Some(file.rfilename),
+            None => None,
+        }
+    }
+
+    /// Look for the model file path in the local cache
+    fn retrieve_cached_model_file(embedding_model: EmbeddingModel) -> Option<String> {
+        let model_info = TextEmbedding::get_model_info(embedding_model);
+        let model_file_path = match model_info {
+            Some(model_info) => get_cached_onnx_file(model_info),
+            None => None,
+        };
+        model_file_path
     }
 
     fn load_tokenizer(model_repo: ApiRepo, max_length: usize) -> Result<Tokenizer> {
@@ -312,6 +342,13 @@ impl TextEmbedding {
         models
     }
 
+    /// Get ModelInfo from the EmbeddingModel
+    pub fn get_model_info(model: EmbeddingModel) -> Option<ModelInfo> {
+        TextEmbedding::list_supported_models()
+            .into_iter()
+            .find(|m| m.model == model)
+    }
+
     /// Method to generate sentence embeddings for a Vec of texts
     // Generic type to accept String, &str, OsString, &OsStr
     pub fn embed<S: AsRef<str> + Send + Sync>(
@@ -419,6 +456,33 @@ fn get_embeddings(data: &[f32], dimensions: &[usize]) -> Vec<Embedding> {
     }
 
     embeddings
+}
+
+/// Get the cached onnx file from the model directory
+fn get_cached_onnx_file(model: ModelInfo) -> Option<String> {
+    // Get relevant model directory
+    let conformed_model_name = format!("models--{}", model.model_code.replace("/", "--"));
+    let model_dir = Path::new(DEFAULT_CACHE_DIR).join(conformed_model_name);
+    // Walk the directory and find the onnx file
+    for entry in WalkDir::new(model_dir) {
+        if let std::result::Result::Ok(entry) = entry {
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(file_name) = path.file_name() {
+                    if let Some(name) = file_name.to_str() {
+                        if name.ends_with("model_optimized.onnx") || name.ends_with("model.onnx") {
+                            println!("Found: {:?}", path);
+                            return match path.to_str() {
+                                Some(p) => Some(p.to_string()),
+                                None => None,
+                            };
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 #[cfg(test)]
