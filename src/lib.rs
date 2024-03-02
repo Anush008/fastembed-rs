@@ -48,7 +48,6 @@
 
 use std::{
     fmt::Display,
-    fs,
     fs::File,
     path::{Path, PathBuf},
     thread::available_parallelism,
@@ -172,7 +171,7 @@ impl TextEmbedding {
             Err(ref e) => {
                 eprintln!("Error retrieving model info: {}", e);
                 eprintln!("Falling back on cached model info");
-                TextEmbedding::retrieve_cached_model_file(model_name).expect(
+                TextEmbedding::retrieve_cached_model_file(model_name, &cache_dir).expect(
                     "Could not find any locally cached .onnx file for this model. 
                 Please try again with a web connection.",
                 )
@@ -209,7 +208,7 @@ impl TextEmbedding {
         Ok(repo)
     }
 
-    /// Look for the model file path in the hf repote repository
+    /// Look for the model file path in the hf remote repository
     fn retrieve_remote_model_file(model_file_info: RepoInfo) -> Option<String> {
         let model_file = model_file_info.siblings.into_iter().find(|f| {
             f.rfilename.ends_with("model.onnx") || f.rfilename.ends_with("model_optimized.onnx")
@@ -221,13 +220,15 @@ impl TextEmbedding {
     }
 
     /// Look for the model file path in the local cache
-    fn retrieve_cached_model_file(embedding_model: EmbeddingModel) -> Option<String> {
+    fn retrieve_cached_model_file(
+        embedding_model: EmbeddingModel,
+        cache_dir: &PathBuf,
+    ) -> Option<String> {
         let model_info = TextEmbedding::get_model_info(embedding_model);
-        let model_file_path = match model_info {
-            Some(model_info) => get_cached_onnx_file(model_info),
+        match model_info {
+            Some(model_info) => get_cached_onnx_file(model_info, cache_dir),
             None => None,
-        };
-        model_file_path
+        }
     }
 
     fn load_tokenizer(model_repo: ApiRepo, max_length: usize) -> Result<Tokenizer> {
@@ -459,24 +460,20 @@ fn get_embeddings(data: &[f32], dimensions: &[usize]) -> Vec<Embedding> {
 }
 
 /// Get the cached onnx file from the model directory
-fn get_cached_onnx_file(model: ModelInfo) -> Option<String> {
+fn get_cached_onnx_file(model: ModelInfo, cache_dir: &PathBuf) -> Option<String> {
     // Get relevant model directory
-    let conformed_model_name = format!("models--{}", model.model_code.replace("/", "--"));
-    let model_dir = Path::new(DEFAULT_CACHE_DIR).join(conformed_model_name);
+    let conformed_model_name = format!("models--{}", model.model_code.replace('/', "--"));
+    let model_dir = Path::new(cache_dir).join(conformed_model_name);
     // Walk the directory and find the onnx file
-    for entry in WalkDir::new(model_dir) {
-        if let std::result::Result::Ok(entry) = entry {
-            let path = entry.path();
-            if path.is_file() {
-                if let Some(file_name) = path.file_name() {
-                    if let Some(name) = file_name.to_str() {
-                        if name.ends_with("model_optimized.onnx") || name.ends_with("model.onnx") {
-                            println!("Found: {:?}", path);
-                            return match path.to_str() {
-                                Some(p) => Some(p.to_string()),
-                                None => None,
-                            };
-                        }
+    let entry = WalkDir::new(model_dir).into_iter().flatten();
+    for entry in entry {
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(file_name) = path.file_name() {
+                if let Some(name) = file_name.to_str() {
+                    if name.ends_with("model_optimized.onnx") || name.ends_with("model.onnx") {
+                        println!("Found: {:?}", path);
+                        return path.to_str().map(|p| p.to_string());
                     }
                 }
             }
