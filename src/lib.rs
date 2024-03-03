@@ -170,7 +170,6 @@ impl TextEmbedding {
                 TextEmbedding::retrieve_remote_model_file(info, &model_repo)
             }
             Err(ref e) => {
-                eprintln!("Error retrieving model info (likely no connection): {}", e);
                 eprintln!("Falling back on cached model.");
                 TextEmbedding::retrieve_cached_model_file(&model_name, &cache_dir).expect(
                     "Could not find any locally cached .onnx file for this model. Please try again with a web connection.",
