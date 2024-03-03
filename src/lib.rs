@@ -166,14 +166,14 @@ impl TextEmbedding {
 
         // If the attempt fails (likely no connection), fall back on cached onnx file
         let model_file_reference = match model_file_info_result {
-            std::result::Result::Ok(info) => TextEmbedding::retrieve_remote_model_file(info)
-                .expect("Found repo on hf hub, but could not locate .onnx file."),
+            std::result::Result::Ok(info) => {
+                TextEmbedding::retrieve_remote_model_file(info, &model_repo)
+            }
             Err(ref e) => {
-                eprintln!("Error retrieving model info: {}", e);
-                eprintln!("Falling back on cached model info");
-                TextEmbedding::retrieve_cached_model_file(model_name, &cache_dir).expect(
-                    "Could not find any locally cached .onnx file for this model. 
-                Please try again with a web connection.",
+                eprintln!("Error retrieving model info (likely no connection): {}", e);
+                eprintln!("Falling back on cached model.");
+                TextEmbedding::retrieve_cached_model_file(&model_name, &cache_dir).expect(
+                    "Could not find any locally cached .onnx file for this model. Please try again with a web connection.",
                 )
             }
         };
@@ -208,27 +208,28 @@ impl TextEmbedding {
         Ok(repo)
     }
 
-    /// Look for the model file path in the hf remote repository
-    fn retrieve_remote_model_file(model_file_info: RepoInfo) -> Option<String> {
-        let model_file = model_file_info.siblings.into_iter().find(|f| {
-            f.rfilename.ends_with("model.onnx") || f.rfilename.ends_with("model_optimized.onnx")
-        });
-        match model_file {
-            Some(file) => Some(file.rfilename),
-            None => None,
-        }
+    /// Look for the model in the hf remote repository
+    /// This will download the .onnx if not already cached
+    fn retrieve_remote_model_file(model_file_info: RepoInfo, model_repo: &ApiRepo) -> PathBuf {
+        let model_file = model_file_info
+            .siblings
+            .into_iter()
+            .find(|f| {
+                f.rfilename.ends_with("model.onnx") || f.rfilename.ends_with("model_optimized.onnx")
+            })
+            .expect("Can't retrieve .onnx model from remote. Try again with a connection.");
+        model_repo
+            .get(&model_file.rfilename)
+            .expect(".onnx file is not available in cache. This shouldn't happen - try again.")
     }
 
-    /// Look for the model file path in the local cache
+    /// Look for the model file path in the local cache only - no call to hf remote
     fn retrieve_cached_model_file(
-        embedding_model: EmbeddingModel,
+        embedding_model: &EmbeddingModel,
         cache_dir: &PathBuf,
-    ) -> Option<String> {
+    ) -> Option<PathBuf> {
         let model_info = TextEmbedding::get_model_info(embedding_model);
-        match model_info {
-            Some(model_info) => get_cached_onnx_file(model_info, cache_dir),
-            None => None,
-        }
+        get_cached_onnx_file(model_info, cache_dir)
     }
 
     fn load_tokenizer(model_repo: ApiRepo, max_length: usize) -> Result<Tokenizer> {
@@ -291,7 +292,7 @@ impl TextEmbedding {
         Ok(tokenizer)
     }
 
-    /// Retrieve a list of supported modelsc
+    /// Retrieve a list of supported models
     pub fn list_supported_models() -> Vec<ModelInfo> {
         let models = vec![
             ModelInfo {
@@ -343,11 +344,12 @@ impl TextEmbedding {
         models
     }
 
-    /// Get ModelInfo from the EmbeddingModel
-    pub fn get_model_info(model: EmbeddingModel) -> Option<ModelInfo> {
+    /// Get ModelInfo from EmbeddingModel
+    pub fn get_model_info(model: &EmbeddingModel) -> ModelInfo {
         TextEmbedding::list_supported_models()
             .into_iter()
-            .find(|m| m.model == model)
+            .find(|m| &m.model == model)
+            .expect("Model not found.")
     }
 
     /// Method to generate sentence embeddings for a Vec of texts
@@ -460,7 +462,7 @@ fn get_embeddings(data: &[f32], dimensions: &[usize]) -> Vec<Embedding> {
 }
 
 /// Get the cached onnx file from the model directory
-fn get_cached_onnx_file(model: ModelInfo, cache_dir: &PathBuf) -> Option<String> {
+fn get_cached_onnx_file(model: ModelInfo, cache_dir: &PathBuf) -> Option<PathBuf> {
     // Get relevant model directory
     let conformed_model_name = format!("models--{}", model.model_code.replace('/', "--"));
     let model_dir = Path::new(cache_dir).join(conformed_model_name);
@@ -472,8 +474,7 @@ fn get_cached_onnx_file(model: ModelInfo, cache_dir: &PathBuf) -> Option<String>
             if let Some(file_name) = path.file_name() {
                 if let Some(name) = file_name.to_str() {
                     if name.ends_with("model_optimized.onnx") || name.ends_with("model.onnx") {
-                        println!("Found: {:?}", path);
-                        return path.to_str().map(|p| p.to_string());
+                        return Some(path.to_path_buf());
                     }
                 }
             }
