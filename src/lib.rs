@@ -48,12 +48,12 @@
 
 use std::{
     fmt::Display,
-    fs::File,
+    fs::{read_dir, File},
     path::{Path, PathBuf},
     thread::available_parallelism,
 };
 
-use anyhow::{Ok, Result};
+use anyhow::{Error, Ok, Result};
 use hf_hub::api::{sync::ApiRepo, RepoInfo};
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::Array;
@@ -65,7 +65,6 @@ use rayon::{
 };
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 use variant_count::VariantCount;
-use walkdir::WalkDir;
 
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
@@ -169,7 +168,7 @@ impl TextEmbedding {
             std::result::Result::Ok(info) => {
                 TextEmbedding::retrieve_remote_model_file(info, &model_repo)
             }
-            Err(ref e) => {
+            Err(ref _e) => {
                 eprintln!("Falling back on cached model.");
                 TextEmbedding::retrieve_cached_model_file(&model_name, &cache_dir).expect(
                     "Could not find any locally cached .onnx file for this model. Please try again with a web connection.",
@@ -466,20 +465,26 @@ fn get_cached_onnx_file(model: ModelInfo, cache_dir: &PathBuf) -> Option<PathBuf
     let conformed_model_name = format!("models--{}", model.model_code.replace('/', "--"));
     let model_dir = Path::new(cache_dir).join(conformed_model_name);
     // Walk the directory and find the onnx file
-    let entry = WalkDir::new(model_dir).into_iter().flatten();
-    for entry in entry {
-        let path = entry.path();
-        if path.is_file() {
-            if let Some(file_name) = path.file_name() {
-                if let Some(name) = file_name.to_str() {
-                    if name.ends_with("model_optimized.onnx") || name.ends_with("model.onnx") {
-                        return Some(path.to_path_buf());
-                    }
+    let onnx_file = visit_dirs(&model_dir);
+    onnx_file.ok()
+}
+
+fn visit_dirs(dir: &Path) -> Result<PathBuf> {
+    if dir.is_dir() {
+        for entry in read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                if let std::result::Result::Ok(path_buf) = visit_dirs(&path) {
+                    return Ok(path_buf);
                 }
+            }
+            if path.ends_with("model_optimized.onnx") || path.ends_with("model.onnx") {
+                return Ok(path.to_path_buf());
             }
         }
     }
-    None
+    Err(Error::msg("Can't locate .onnx file in local cache."))
 }
 
 #[cfg(test)]
