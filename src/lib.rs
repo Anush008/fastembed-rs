@@ -89,6 +89,8 @@ pub enum EmbeddingModel {
     NomicEmbedTextV1,
     /// Multi-lingual model
     ParaphraseMLMiniLML12V2,
+    /// v1.5 release of the small Chinese model
+    BGESmallZHV15,
 }
 
 impl Display for EmbeddingModel {
@@ -328,6 +330,12 @@ impl TextEmbedding {
                 dim: 384,
                 description: String::from("Multi-lingual model"),
                 model_code: String::from("Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q"),
+            },
+            ModelInfo {
+                model: EmbeddingModel::BGESmallZHV15,
+                dim: 512,
+                description: String::from("v1.5 release of the small Chinese model"),
+                model_code: String::from("Xenova/bge-small-zh-v1.5"),
             },
         ];
 
