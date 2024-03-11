@@ -93,6 +93,23 @@ pub enum EmbeddingModel {
     BGESmallZHV15,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UserDefinedEmbeddingModel {
+    pub dim: usize,
+    pub description: String,
+    pub model_code: String,
+    pub onnx_file: PathBuf,
+    pub tokenizer_files: TokenizerFiles,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TokenizerFiles {
+    pub tokenizer_file: PathBuf,
+    pub config_file: PathBuf,
+    pub special_tokens_map_file: PathBuf,
+    pub tokenizer_config_file: PathBuf,
+}
+
 impl Display for EmbeddingModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let model_info = TextEmbedding::list_supported_models()
@@ -184,7 +201,24 @@ impl TextEmbedding {
             .with_intra_threads(threads)?
             .with_model_from_file(model_file_reference)?;
 
-        let tokenizer = TextEmbedding::load_tokenizer(model_repo, max_length)?;
+        let tokenizer = TextEmbedding::load_tokenizer_hf_hub(model_repo, max_length)?;
+        Ok(Self::new(tokenizer, session))
+    }
+
+    pub fn try_new_from_user_defined(
+        model: UserDefinedEmbeddingModel,
+        execution_providers: Vec<ExecutionProviderDispatch>,
+        max_length: usize,
+    ) -> Result<Self> {
+        let threads = available_parallelism()?.get() as i16;
+
+        let session = Session::builder()?
+            .with_execution_providers(execution_providers)?
+            .with_optimization_level(GraphOptimizationLevel::Level3)?
+            .with_intra_threads(threads)?
+            .with_model_from_file(model.onnx_file)?;
+
+        let tokenizer = TextEmbedding::load_tokenizer(model.tokenizer_files, max_length)?;
         Ok(Self::new(tokenizer, session))
     }
 
@@ -232,20 +266,30 @@ impl TextEmbedding {
         get_cached_onnx_file(model_info, cache_dir)
     }
 
-    fn load_tokenizer(model_repo: ApiRepo, max_length: usize) -> Result<Tokenizer> {
-        let config_path = model_repo.get("config.json")?;
+    fn load_tokenizer_hf_hub(model_repo: ApiRepo, max_length: usize) -> Result<Tokenizer> {
+        let tokenizer_files: TokenizerFiles = TokenizerFiles {
+            tokenizer_file: model_repo.get("tokenizer.json")?,
+            config_file: model_repo.get("config.json")?,
+            special_tokens_map_file: model_repo.get("special_tokens_map.json")?,
+            tokenizer_config_file: model_repo.get("tokenizer_config.json")?,
+        };
+        TextEmbedding::load_tokenizer(tokenizer_files, max_length)
+    }
+
+    fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Result<Tokenizer> {
+        let config_path = tokenizer_files.config_file;
         let file = File::open(config_path)?;
         let config: serde_json::Value = serde_json::from_reader(file)?;
 
-        let tokenizer_config_path = model_repo.get("tokenizer_config.json")?;
+        let tokenizer_config_path = tokenizer_files.tokenizer_config_file;
         let file = File::open(tokenizer_config_path)?;
         let tokenizer_config: serde_json::Value = serde_json::from_reader(file)?;
 
-        let special_tokens_map_path = model_repo.get("special_tokens_map.json")?;
+        let special_tokens_map_path = tokenizer_files.special_tokens_map_file;
         let file = File::open(special_tokens_map_path)?;
         let special_tokens_map: serde_json::Value = serde_json::from_reader(file)?;
 
-        let tokenizer_path = model_repo.get("tokenizer.json")?;
+        let tokenizer_path = tokenizer_files.tokenizer_file;
         let mut tokenizer =
             tokenizers::Tokenizer::from_file(tokenizer_path).map_err(anyhow::Error::msg)?;
 
