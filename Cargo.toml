@@ -15,7 +15,7 @@ homepage = "https://crates.io/crates/fastembed"
 anyhow = { version = "1.0" }
 hf-hub = {version="0.3", default-features = false, features = ["online"]}
 ndarray = { version = "0.15", default-features = false }
-ort = { version = "2.0.0-rc.0", features = [ "ndarray" ] }
+ort = { git = "https://github.com/pykeio/ort.git", rev = "2abc210f3958c5b94528cc71c6c8781813a2cc2f", features = [ "ndarray" ] }
 rayon = { version = "1.7", default-features = false }
 serde_json = {version = "1"}
 tokenizers = { version = "0.14", default-features = false, features = ["onig"]}
