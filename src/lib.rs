@@ -136,7 +136,7 @@ pub struct ModelInfo {
 
 /// Rust representation of the TextEmbedding model
 pub struct TextEmbedding {
-    tokenizer: Tokenizer,
+    pub tokenizer: Tokenizer,
     session: Session,
 }
 
