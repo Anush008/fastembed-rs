@@ -22,7 +22,7 @@ tokenizers = { version = "0.14", default-features = false, features = ["onig"]}
 variant_count = "1.1.0"
 
 [dev-dependencies]
-ort = "2.0.0-rc.0"
+ort = {git = "https://github.com/pykeio/ort.git", rev = "2abc210f3958c5b94528cc71c6c8781813a2cc2f"}
 criterion = "0.5.1"
 
 [features]
