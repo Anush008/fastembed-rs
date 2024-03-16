@@ -93,11 +93,6 @@ pub enum EmbeddingModel {
     BGESmallZHV15,
 }
 
-pub enum HFEmbeddingModelOrUserDefinedModel {
-    HF(EmbeddingModel),
-    UserDefined(UserDefinedEmbeddingModel),
-}
-
 impl Display for EmbeddingModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let model_info = TextEmbedding::list_supported_models()
@@ -515,11 +510,10 @@ impl TextEmbedding {
     }
 
     /// Get ModelInfo from EmbeddingModel
-    pub fn get_model_info(model: &EmbeddingModel) -> ModelInfo {
+    pub fn get_model_info(model: &EmbeddingModel) -> Option<ModelInfo> {
         TextEmbedding::list_supported_models()
             .into_iter()
             .find(|m| &m.model == model)
-            .expect("Model not found.")
     }
 
     /// Method to generate sentence embeddings for a Vec of texts
