@@ -17,6 +17,7 @@ hf-hub = {version="0.3", default-features = false, features = ["online"]}
 ndarray = { version = "0.15", default-features = false }
 ort = { version = "2.0.0-rc.0", default-features = false, features = [ "ndarray" ] }
 rayon = { version = "1.7", default-features = false }
+reqwest = { version = "0.11.26", features = ["blocking"] }
 serde_json = {version = "1"}
 tokenizers = { version = "0.14", default-features = false, features = ["onig"]}
 variant_count = "1.1.0"

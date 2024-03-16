@@ -49,7 +49,7 @@
 use std::{
     fmt::Display,
     fs::{read_dir, File},
-    path::{Path, PathBuf},
+    path::{self, Path, PathBuf},
     thread::available_parallelism,
 };
 
@@ -65,6 +65,7 @@ use rayon::{
 };
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 use variant_count::VariantCount;
+pub mod user_defined;
 
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
@@ -91,23 +92,6 @@ pub enum EmbeddingModel {
     ParaphraseMLMiniLML12V2,
     /// v1.5 release of the small Chinese model
     BGESmallZHV15,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UserDefinedEmbeddingModel {
-    pub dim: usize,
-    pub description: String,
-    pub model_code: String,
-    pub onnx_file: PathBuf,
-    pub tokenizer_files: TokenizerFiles,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TokenizerFiles {
-    pub tokenizer_file: PathBuf,
-    pub config_file: PathBuf,
-    pub special_tokens_map_file: PathBuf,
-    pub tokenizer_config_file: PathBuf,
 }
 
 impl Display for EmbeddingModel {
@@ -141,6 +125,22 @@ impl Default for InitOptions {
         }
     }
 }
+/// Options for initializing UserDefinedEmbeddingModel
+/// Model files are held by the UserDefinedEmbeddingModel struct
+#[derive(Debug, Clone)]
+pub struct InitOptionsUserDefined {
+    pub execution_providers: Vec<ExecutionProviderDispatch>,
+    pub max_length: usize,
+}
+
+impl Default for InitOptionsUserDefined {
+    fn default() -> Self {
+        Self {
+            execution_providers: Default::default(),
+            max_length: DEFAULT_MAX_LENGTH,
+        }
+    }
+}
 
 /// Data struct about the available models
 #[derive(Debug, Clone)]
@@ -149,6 +149,33 @@ pub struct ModelInfo {
     pub dim: usize,
     pub description: String,
     pub model_code: String,
+}
+
+// Struct for "bring your own" embedding models
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UserDefinedEmbeddingModel {
+    pub dim: usize,
+    pub description: String,
+    pub model_code: String,
+    pub onnx_file: LocalOrRemoteFile,
+    pub tokenizer_files: TokenizerFiles,
+}
+
+// Tokenizer files for "bring your own" embedding models
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TokenizerFiles {
+    pub tokenizer_file: LocalOrRemoteFile,
+    pub config_file: LocalOrRemoteFile,
+    pub special_tokens_map_file: LocalOrRemoteFile,
+    pub tokenizer_config_file: LocalOrRemoteFile,
+}
+
+// This enum allows users to specify local or remote file paths (eg, cloud storage)
+// for the onnx file and tokenizer files for a UserDefinedEmbeddingModel
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LocalOrRemoteFile {
+    Local(PathBuf),
+    Remote(String),
 }
 
 /// Rust representation of the TextEmbedding model
@@ -205,18 +232,38 @@ impl TextEmbedding {
         Ok(Self::new(tokenizer, session))
     }
 
+    /// Create a TextEmbedding instance from model files provided by the user.
+    /// This can be used for 'bring your own' embedding models
+    /// It also facilitates remote hosting of the model files (eg, on cloud storage)
     pub fn try_new_from_user_defined(
         model: UserDefinedEmbeddingModel,
-        execution_providers: Vec<ExecutionProviderDispatch>,
-        max_length: usize,
+        options: InitOptionsUserDefined,
     ) -> Result<Self> {
-        let threads = available_parallelism()?.get() as i16;
+        let InitOptionsUserDefined {
+            execution_providers,
+            max_length,
+        } = options;
 
-        let session = Session::builder()?
-            .with_execution_providers(execution_providers)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
-            .with_model_from_file(model.onnx_file)?;
+        let threads = available_parallelism()?.get() as i16;
+        let session: Session;
+        match model.onnx_file {
+            LocalOrRemoteFile::Local(path) => {
+                session = Session::builder()?
+                    .with_execution_providers(execution_providers)?
+                    .with_optimization_level(GraphOptimizationLevel::Level3)?
+                    .with_intra_threads(threads)?
+                    .with_model_from_file(path)?;
+            }
+            LocalOrRemoteFile::Remote(url) => {
+                // Load the model from the remote file to memory
+                let model = reqwest::blocking::get(url)?.bytes()?;
+                session = Session::builder()?
+                    .with_execution_providers(execution_providers)?
+                    .with_optimization_level(GraphOptimizationLevel::Level3)?
+                    .with_intra_threads(threads)?
+                    .with_model_from_memory(&model)?;
+            }
+        }
 
         let tokenizer = TextEmbedding::load_tokenizer(model.tokenizer_files, max_length)?;
         Ok(Self::new(tokenizer, session))
@@ -268,30 +315,99 @@ impl TextEmbedding {
 
     fn load_tokenizer_hf_hub(model_repo: ApiRepo, max_length: usize) -> Result<Tokenizer> {
         let tokenizer_files: TokenizerFiles = TokenizerFiles {
-            tokenizer_file: model_repo.get("tokenizer.json")?,
-            config_file: model_repo.get("config.json")?,
-            special_tokens_map_file: model_repo.get("special_tokens_map.json")?,
-            tokenizer_config_file: model_repo.get("tokenizer_config.json")?,
+            tokenizer_file: LocalOrRemoteFile::Local(model_repo.get("tokenizer.json")?),
+            config_file: LocalOrRemoteFile::Local(model_repo.get("config.json")?),
+            special_tokens_map_file: LocalOrRemoteFile::Local(
+                model_repo.get("special_tokens_map.json")?,
+            ),
+            tokenizer_config_file: LocalOrRemoteFile::Local(
+                model_repo.get("tokenizer_config.json")?,
+            ),
         };
         TextEmbedding::load_tokenizer(tokenizer_files, max_length)
     }
 
     fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Result<Tokenizer> {
-        let config_path = tokenizer_files.config_file;
-        let file = File::open(config_path)?;
-        let config: serde_json::Value = serde_json::from_reader(file)?;
+        let config: serde_json::Value;
+        match tokenizer_files.tokenizer_file {
+            LocalOrRemoteFile::Local(ref path) => {
+                let config_path: PathBuf = path.to_path_buf();
+                let file = File::open(config_path)?;
+                config = serde_json::from_reader(file)?;
+            }
+            LocalOrRemoteFile::Remote(ref url) => {
+                let response = reqwest::blocking::get(url)?;
+                if response.status().is_success() {
+                    config = serde_json::from_str(&response.text()?)?;
+                } else {
+                    return Err(Error::msg(format!(
+                        "Failed to fetch URL: {}",
+                        response.status()
+                    )));
+                }
+            }
+        }
 
-        let tokenizer_config_path = tokenizer_files.tokenizer_config_file;
-        let file = File::open(tokenizer_config_path)?;
-        let tokenizer_config: serde_json::Value = serde_json::from_reader(file)?;
+        let special_tokens_map: serde_json::Value;
+        match tokenizer_files.special_tokens_map_file {
+            LocalOrRemoteFile::Local(ref path) => {
+                let config_path: PathBuf = path.to_path_buf();
+                let file = File::open(config_path)?;
+                special_tokens_map = serde_json::from_reader(file)?;
+            }
+            LocalOrRemoteFile::Remote(ref url) => {
+                let response = reqwest::blocking::get(url)?;
+                if response.status().is_success() {
+                    special_tokens_map = serde_json::from_str(&response.text()?)?;
+                } else {
+                    return Err(Error::msg(format!(
+                        "Failed to fetch URL: {}",
+                        response.status()
+                    )));
+                }
+            }
+        }
 
-        let special_tokens_map_path = tokenizer_files.special_tokens_map_file;
-        let file = File::open(special_tokens_map_path)?;
-        let special_tokens_map: serde_json::Value = serde_json::from_reader(file)?;
+        let tokenizer_config: serde_json::Value;
+        match tokenizer_files.tokenizer_config_file {
+            LocalOrRemoteFile::Local(ref path) => {
+                let config_path: PathBuf = path.to_path_buf();
+                let file = File::open(config_path)?;
+                tokenizer_config = serde_json::from_reader(file)?;
+            }
+            LocalOrRemoteFile::Remote(ref url) => {
+                let response = reqwest::blocking::get(url)?;
+                if response.status().is_success() {
+                    tokenizer_config = serde_json::from_str(&response.text()?)?;
+                } else {
+                    return Err(Error::msg(format!(
+                        "Failed to fetch URL: {}",
+                        response.status()
+                    )));
+                }
+            }
+        }
 
-        let tokenizer_path = tokenizer_files.tokenizer_file;
-        let mut tokenizer =
-            tokenizers::Tokenizer::from_file(tokenizer_path).map_err(anyhow::Error::msg)?;
+        let mut tokenizer: tokenizers::Tokenizer;
+
+        match tokenizer_files.tokenizer_file {
+            LocalOrRemoteFile::Local(path) => {
+                tokenizer = tokenizers::Tokenizer::from_file(path).map_err(anyhow::Error::msg)?;
+            }
+            LocalOrRemoteFile::Remote(url) => {
+                let response = reqwest::blocking::get(url)?;
+                if response.status().is_success() {
+                    let tokenizer_bytes = response.bytes()?;
+                    tokenizer = tokenizers::Tokenizer::from_bytes(tokenizer_bytes)
+                        .map_err(anyhow::Error::msg)?;
+                } else {
+                    return Err(Error::msg(format!(
+                        "Failed to fetch URL: {}",
+                        response.status()
+                    )));
+                }
+            }
+        }
 
         //For BGEBaseSmall, the model_max_length value is set to 1000000000000000019884624838656. Which fits in a f64
         let model_max_length = tokenizer_config["model_max_length"].as_f64().unwrap();
