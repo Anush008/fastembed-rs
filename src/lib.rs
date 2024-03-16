@@ -65,7 +65,6 @@ use rayon::{
 };
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 use variant_count::VariantCount;
-pub mod user_defined;
 
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
