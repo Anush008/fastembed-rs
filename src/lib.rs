@@ -53,6 +53,8 @@ use std::{
     thread::available_parallelism,
 };
 
+use std::io::Read;
+
 use anyhow::{Error, Ok, Result};
 use hf_hub::api::{sync::ApiRepo, RepoInfo};
 use hf_hub::{api::sync::ApiBuilder, Cache};
@@ -156,25 +158,17 @@ pub struct UserDefinedEmbeddingModel {
     pub dim: usize,
     pub description: String,
     pub model_code: String,
-    pub onnx_file: LocalOrRemoteFile,
+    pub onnx_file: Vec<u8>,
     pub tokenizer_files: TokenizerFiles,
 }
 
 // Tokenizer files for "bring your own" embedding models
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TokenizerFiles {
-    pub tokenizer_file: LocalOrRemoteFile,
-    pub config_file: LocalOrRemoteFile,
-    pub special_tokens_map_file: LocalOrRemoteFile,
-    pub tokenizer_config_file: LocalOrRemoteFile,
-}
-
-// This enum allows users to specify local or remote file paths (eg, cloud storage)
-// for the onnx file and tokenizer files for a UserDefinedEmbeddingModel
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LocalOrRemoteFile {
-    Local(PathBuf),
-    Remote(String),
+    pub tokenizer_file: Vec<u8>,
+    pub config_file: Vec<u8>,
+    pub special_tokens_map_file: Vec<u8>,
+    pub tokenizer_config_file: Vec<u8>,
 }
 
 /// Rust representation of the TextEmbedding model
@@ -245,24 +239,11 @@ impl TextEmbedding {
 
         let threads = available_parallelism()?.get() as i16;
         let session: Session;
-        match model.onnx_file {
-            LocalOrRemoteFile::Local(path) => {
-                session = Session::builder()?
-                    .with_execution_providers(execution_providers)?
-                    .with_optimization_level(GraphOptimizationLevel::Level3)?
-                    .with_intra_threads(threads)?
-                    .with_model_from_file(path)?;
-            }
-            LocalOrRemoteFile::Remote(url) => {
-                // Load the model from the remote file to memory
-                let model = reqwest::blocking::get(url)?.bytes()?;
-                session = Session::builder()?
-                    .with_execution_providers(execution_providers)?
-                    .with_optimization_level(GraphOptimizationLevel::Level3)?
-                    .with_intra_threads(threads)?
-                    .with_model_from_memory(&model)?;
-            }
-        }
+        session = Session::builder()?
+            .with_execution_providers(execution_providers)?
+            .with_optimization_level(GraphOptimizationLevel::Level3)?
+            .with_intra_threads(threads)?
+            .with_model_from_memory(&model.onnx_file)?;
 
         let tokenizer = TextEmbedding::load_tokenizer(model.tokenizer_files, max_length)?;
         Ok(Self::new(tokenizer, session))
@@ -312,101 +293,38 @@ impl TextEmbedding {
         get_cached_onnx_file(model_info?, cache_dir)
     }
 
+    fn read_file_to_bytes(file: &PathBuf) -> Result<Vec<u8>> {
+        let mut file = File::open(file)?;
+        let file_size = file.metadata()?.len() as usize;
+        let mut buffer = Vec::with_capacity(file_size);
+        file.read_to_end(&mut buffer)?;
+        Ok(buffer)
+    }
     fn load_tokenizer_hf_hub(model_repo: ApiRepo, max_length: usize) -> Result<Tokenizer> {
         let tokenizer_files: TokenizerFiles = TokenizerFiles {
-            tokenizer_file: LocalOrRemoteFile::Local(model_repo.get("tokenizer.json")?),
-            config_file: LocalOrRemoteFile::Local(model_repo.get("config.json")?),
-            special_tokens_map_file: LocalOrRemoteFile::Local(
-                model_repo.get("special_tokens_map.json")?,
-            ),
-            tokenizer_config_file: LocalOrRemoteFile::Local(
-                model_repo.get("tokenizer_config.json")?,
-            ),
+            tokenizer_file: TextEmbedding::read_file_to_bytes(&model_repo.get("tokenizer.json")?)?,
+            config_file: TextEmbedding::read_file_to_bytes(&model_repo.get("config.json")?)?,
+            special_tokens_map_file: TextEmbedding::read_file_to_bytes(
+                &model_repo.get("special_tokens_map.json")?,
+            )?,
+
+            tokenizer_config_file: TextEmbedding::read_file_to_bytes(
+                &model_repo.get("tokenizer_config.json")?,
+            )?,
         };
+
         TextEmbedding::load_tokenizer(tokenizer_files, max_length)
     }
 
     fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Result<Tokenizer> {
-        let config: serde_json::Value;
-        match tokenizer_files.tokenizer_file {
-            LocalOrRemoteFile::Local(ref path) => {
-                let config_path: PathBuf = path.to_path_buf();
-                let file = File::open(config_path)?;
-                config = serde_json::from_reader(file)?;
-            }
-            LocalOrRemoteFile::Remote(ref url) => {
-                let response = reqwest::blocking::get(url)?;
-                if response.status().is_success() {
-                    config = serde_json::from_str(&response.text()?)?;
-                } else {
-                    return Err(Error::msg(format!(
-                        "Failed to fetch URL: {}",
-                        response.status()
-                    )));
-                }
-            }
-        }
-
-        let special_tokens_map: serde_json::Value;
-        match tokenizer_files.special_tokens_map_file {
-            LocalOrRemoteFile::Local(ref path) => {
-                let config_path: PathBuf = path.to_path_buf();
-                let file = File::open(config_path)?;
-                special_tokens_map = serde_json::from_reader(file)?;
-            }
-            LocalOrRemoteFile::Remote(ref url) => {
-                let response = reqwest::blocking::get(url)?;
-                if response.status().is_success() {
-                    special_tokens_map = serde_json::from_str(&response.text()?)?;
-                } else {
-                    return Err(Error::msg(format!(
-                        "Failed to fetch URL: {}",
-                        response.status()
-                    )));
-                }
-            }
-        }
-
-        let tokenizer_config: serde_json::Value;
-        match tokenizer_files.tokenizer_config_file {
-            LocalOrRemoteFile::Local(ref path) => {
-                let config_path: PathBuf = path.to_path_buf();
-                let file = File::open(config_path)?;
-                tokenizer_config = serde_json::from_reader(file)?;
-            }
-            LocalOrRemoteFile::Remote(ref url) => {
-                let response = reqwest::blocking::get(url)?;
-                if response.status().is_success() {
-                    tokenizer_config = serde_json::from_str(&response.text()?)?;
-                } else {
-                    return Err(Error::msg(format!(
-                        "Failed to fetch URL: {}",
-                        response.status()
-                    )));
-                }
-            }
-        }
-
-        let mut tokenizer: tokenizers::Tokenizer;
-
-        match tokenizer_files.tokenizer_file {
-            LocalOrRemoteFile::Local(path) => {
-                tokenizer = tokenizers::Tokenizer::from_file(path).map_err(anyhow::Error::msg)?;
-            }
-            LocalOrRemoteFile::Remote(url) => {
-                let response = reqwest::blocking::get(url)?;
-                if response.status().is_success() {
-                    let tokenizer_bytes = response.bytes()?;
-                    tokenizer = tokenizers::Tokenizer::from_bytes(tokenizer_bytes)
-                        .map_err(anyhow::Error::msg)?;
-                } else {
-                    return Err(Error::msg(format!(
-                        "Failed to fetch URL: {}",
-                        response.status()
-                    )));
-                }
-            }
-        }
+        let config: serde_json::Value = serde_json::from_slice(&tokenizer_files.config_file)?;
+        let special_tokens_map: serde_json::Value =
+            serde_json::from_slice(&tokenizer_files.special_tokens_map_file)?;
+        let tokenizer_config: serde_json::Value =
+            serde_json::from_slice(&tokenizer_files.tokenizer_config_file)?;
+        let mut tokenizer: tokenizers::Tokenizer =
+            tokenizers::Tokenizer::from_bytes(tokenizer_files.tokenizer_file)
+                .map_err(anyhow::Error::msg)?;
 
         //For BGEBaseSmall, the model_max_length value is set to 1000000000000000019884624838656. Which fits in a f64
         let model_max_length = tokenizer_config["model_max_length"].as_f64().unwrap();
