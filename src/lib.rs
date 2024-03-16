@@ -309,7 +309,7 @@ impl TextEmbedding {
         cache_dir: &PathBuf,
     ) -> Option<PathBuf> {
         let model_info = TextEmbedding::get_model_info(embedding_model);
-        get_cached_onnx_file(model_info, cache_dir)
+        get_cached_onnx_file(model_info?, cache_dir)
     }
 
     fn load_tokenizer_hf_hub(model_repo: ApiRepo, max_length: usize) -> Result<Tokenizer> {
