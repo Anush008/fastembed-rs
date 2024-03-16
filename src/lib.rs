@@ -94,6 +94,11 @@ pub enum EmbeddingModel {
     BGESmallZHV15,
 }
 
+pub enum HFEmbeddingModelOrUserDefinedModel {
+    HF(EmbeddingModel),
+    UserDefined(UserDefinedEmbeddingModel),
+}
+
 impl Display for EmbeddingModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let model_info = TextEmbedding::list_supported_models()
