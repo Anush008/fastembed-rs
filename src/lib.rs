@@ -307,7 +307,7 @@ impl TextEmbedding {
     fn retrieve_cached_model_file(
         embedding_model: &EmbeddingModel,
         cache_dir: &PathBuf,
-    ) -> Option<PathBuf> {
+    ) -> Result<PathBuf> {
         let model_info = TextEmbedding::get_model_info(embedding_model);
         get_cached_onnx_file(model_info?, cache_dir)
     }
@@ -510,10 +510,14 @@ impl TextEmbedding {
     }
 
     /// Get ModelInfo from EmbeddingModel
-    pub fn get_model_info(model: &EmbeddingModel) -> Option<ModelInfo> {
-        TextEmbedding::list_supported_models()
+    pub fn get_model_info(model: &EmbeddingModel) -> Result<ModelInfo> {
+        let model_info_option = TextEmbedding::list_supported_models()
             .into_iter()
-            .find(|m| &m.model == model)
+            .find(|m| &m.model == model);
+        match model_info_option {
+            Some(model_info) => Ok(model_info),
+            None => Err(Error::msg("Model not found")),
+        }
     }
 
     /// Method to generate sentence embeddings for a Vec of texts
@@ -626,13 +630,13 @@ fn get_embeddings(data: &[f32], dimensions: &[usize]) -> Vec<Embedding> {
 }
 
 /// Get the cached onnx file from the model directory
-fn get_cached_onnx_file(model: ModelInfo, cache_dir: &PathBuf) -> Option<PathBuf> {
+fn get_cached_onnx_file(model: ModelInfo, cache_dir: &PathBuf) -> Result<PathBuf> {
     // Get relevant model directory
     let conformed_model_name = format!("models--{}", model.model_code.replace('/', "--"));
     let model_dir = Path::new(cache_dir).join(conformed_model_name);
     // Walk the directory and find the onnx file
     let onnx_file = visit_dirs(&model_dir);
-    onnx_file.ok()
+    onnx_file
 }
 
 fn visit_dirs(dir: &Path) -> Result<PathBuf> {
