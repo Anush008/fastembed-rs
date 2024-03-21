@@ -49,7 +49,7 @@
 use std::{
     fmt::Display,
     fs::{read_dir, File},
-    path::{self, Path, PathBuf},
+    path::{Path, PathBuf},
     thread::available_parallelism,
 };
 
@@ -126,7 +126,9 @@ impl Default for InitOptions {
         }
     }
 }
+
 /// Options for initializing UserDefinedEmbeddingModel
+///
 /// Model files are held by the UserDefinedEmbeddingModel struct
 #[derive(Debug, Clone)]
 pub struct InitOptionsUserDefined {
@@ -152,7 +154,9 @@ pub struct ModelInfo {
     pub model_code: String,
 }
 
-// Struct for "bring your own" embedding models
+/// Struct for "bring your own" embedding models
+///
+/// The onnx_file and tokenizer_files are expecting the files' bytes
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UserDefinedEmbeddingModel {
     pub dim: usize,
@@ -226,8 +230,8 @@ impl TextEmbedding {
     }
 
     /// Create a TextEmbedding instance from model files provided by the user.
+    ///
     /// This can be used for 'bring your own' embedding models
-    /// It also facilitates remote hosting of the model files (eg, on cloud storage)
     pub fn try_new_from_user_defined(
         model: UserDefinedEmbeddingModel,
         options: InitOptionsUserDefined,
@@ -270,6 +274,7 @@ impl TextEmbedding {
     }
 
     /// Look for the model in the hf remote repository
+    ///
     /// This will download the .onnx if not already cached
     fn retrieve_remote_model_file(model_file_info: RepoInfo, model_repo: &ApiRepo) -> PathBuf {
         let model_file = model_file_info
@@ -293,30 +298,27 @@ impl TextEmbedding {
         get_cached_onnx_file(model_info?, cache_dir)
     }
 
-    fn read_file_to_bytes(file: &PathBuf) -> Result<Vec<u8>> {
-        let mut file = File::open(file)?;
-        let file_size = file.metadata()?.len() as usize;
-        let mut buffer = Vec::with_capacity(file_size);
-        file.read_to_end(&mut buffer)?;
-        Ok(buffer)
-    }
+    /// The procedure for loading tokenizer files from the hugging face hub is separated 
+    /// from the main load_tokenizer function (which is expecting bytes, from any source). 
     fn load_tokenizer_hf_hub(model_repo: ApiRepo, max_length: usize) -> Result<Tokenizer> {
         let tokenizer_files: TokenizerFiles = TokenizerFiles {
-            tokenizer_file: TextEmbedding::read_file_to_bytes(&model_repo.get("tokenizer.json")?)?,
-            config_file: TextEmbedding::read_file_to_bytes(&model_repo.get("config.json")?)?,
-            special_tokens_map_file: TextEmbedding::read_file_to_bytes(
+            tokenizer_file: read_file_to_bytes(&model_repo.get("tokenizer.json")?)?,
+            config_file: read_file_to_bytes(&model_repo.get("config.json")?)?,
+            special_tokens_map_file: read_file_to_bytes(
                 &model_repo.get("special_tokens_map.json")?,
             )?,
 
-            tokenizer_config_file: TextEmbedding::read_file_to_bytes(
-                &model_repo.get("tokenizer_config.json")?,
-            )?,
+            tokenizer_config_file: read_file_to_bytes(&model_repo.get("tokenizer_config.json")?)?,
         };
 
         TextEmbedding::load_tokenizer(tokenizer_files, max_length)
     }
 
+    /// Function can be called directly from the try_new_from_user_defined function (providing file bytes)
+    /// 
+    /// Or indirectly from the try_new function via load_tokenizer_hf_hub (converting HF files to bytes)
     fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Result<Tokenizer> {
+        // Serialise each tokenizer file 
         let config: serde_json::Value = serde_json::from_slice(&tokenizer_files.config_file)?;
         let special_tokens_map: serde_json::Value =
             serde_json::from_slice(&tokenizer_files.special_tokens_map_file)?;
@@ -555,6 +557,14 @@ fn get_cached_onnx_file(model: ModelInfo, cache_dir: &PathBuf) -> Result<PathBuf
     // Walk the directory and find the onnx file
     let onnx_file = visit_dirs(&model_dir);
     onnx_file
+}
+
+fn read_file_to_bytes(file: &PathBuf) -> Result<Vec<u8>> {
+    let mut file = File::open(file)?;
+    let file_size = file.metadata()?.len() as usize;
+    let mut buffer = Vec::with_capacity(file_size);
+    file.read_to_end(&mut buffer)?;
+    Ok(buffer)
 }
 
 fn visit_dirs(dir: &Path) -> Result<PathBuf> {
