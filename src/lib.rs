@@ -242,8 +242,7 @@ impl TextEmbedding {
         } = options;
 
         let threads = available_parallelism()?.get() as i16;
-        let session: Session;
-        session = Session::builder()?
+        let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(threads)?
@@ -295,11 +294,11 @@ impl TextEmbedding {
         cache_dir: &PathBuf,
     ) -> Result<PathBuf> {
         let model_info = TextEmbedding::get_model_info(embedding_model);
-        get_cached_onnx_file(model_info?, cache_dir)
+        get_cached_onnx_file(model_info, cache_dir)
     }
 
-    /// The procedure for loading tokenizer files from the hugging face hub is separated 
-    /// from the main load_tokenizer function (which is expecting bytes, from any source). 
+    /// The procedure for loading tokenizer files from the hugging face hub is separated
+    /// from the main load_tokenizer function (which is expecting bytes, from any source).
     fn load_tokenizer_hf_hub(model_repo: ApiRepo, max_length: usize) -> Result<Tokenizer> {
         let tokenizer_files: TokenizerFiles = TokenizerFiles {
             tokenizer_file: read_file_to_bytes(&model_repo.get("tokenizer.json")?)?,
@@ -315,10 +314,10 @@ impl TextEmbedding {
     }
 
     /// Function can be called directly from the try_new_from_user_defined function (providing file bytes)
-    /// 
+    ///
     /// Or indirectly from the try_new function via load_tokenizer_hf_hub (converting HF files to bytes)
     fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Result<Tokenizer> {
-        // Serialise each tokenizer file 
+        // Serialise each tokenizer file
         let config: serde_json::Value = serde_json::from_slice(&tokenizer_files.config_file)?;
         let special_tokens_map: serde_json::Value =
             serde_json::from_slice(&tokenizer_files.special_tokens_map_file)?;
@@ -430,14 +429,11 @@ impl TextEmbedding {
     }
 
     /// Get ModelInfo from EmbeddingModel
-    pub fn get_model_info(model: &EmbeddingModel) -> Result<ModelInfo> {
-        let model_info_option = TextEmbedding::list_supported_models()
+    pub fn get_model_info(model: &EmbeddingModel) -> ModelInfo {
+        TextEmbedding::list_supported_models()
             .into_iter()
-            .find(|m| &m.model == model);
-        match model_info_option {
-            Some(model_info) => Ok(model_info),
-            None => Err(Error::msg("Model not found")),
-        }
+            .find(|m| &m.model == model)
+            .expect("Model not found")
     }
 
     /// Method to generate sentence embeddings for a Vec of texts
@@ -554,9 +550,8 @@ fn get_cached_onnx_file(model: ModelInfo, cache_dir: &PathBuf) -> Result<PathBuf
     // Get relevant model directory
     let conformed_model_name = format!("models--{}", model.model_code.replace('/', "--"));
     let model_dir = Path::new(cache_dir).join(conformed_model_name);
-    // Walk the directory and find the onnx file
-    let onnx_file = visit_dirs(&model_dir);
-    onnx_file
+    // Walk the directory and find (and return) the onnx file
+    visit_dirs(&model_dir)
 }
 
 fn read_file_to_bytes(file: &PathBuf) -> Result<Vec<u8>> {
