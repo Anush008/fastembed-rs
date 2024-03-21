@@ -433,7 +433,7 @@ impl TextEmbedding {
         TextEmbedding::list_supported_models()
             .into_iter()
             .find(|m| &m.model == model)
-            .expect("Model not found")
+            .expect("Model not found.")
     }
 
     /// Method to generate sentence embeddings for a Vec of texts
