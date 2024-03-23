@@ -436,7 +436,7 @@ impl TextEmbedding {
                 model: EmbeddingModel::BGESmallENV15,
                 dim: 384,
                 description: String::from("v1.5 release of the fast and default English model"),
-                model_code: String::fgit arom("Qdrant/bge-small-en-v1.5-onnx-Q"),
+                model_code: String::from("Qdrant/bge-small-en-v1.5-onnx-Q"),
             },
             ModelInfo {
                 model: EmbeddingModel::NomicEmbedTextV1,
