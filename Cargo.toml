@@ -22,7 +22,6 @@ tokenizers = { version = "0.14", default-features = false, features = ["onig"]}
 variant_count = "1.1.0"
 
 [dev-dependencies]
-ort = "2.0.0-rc.0"
 criterion = "0.5.1"
 
 [features]

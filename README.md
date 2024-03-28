@@ -30,6 +30,8 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 - [**sentence-transformers/paraphrase-MiniLM-L12-v2**](https://huggingface.co/sentence-transformers/paraphrase-MiniLM-L12-v2)
 - [**nomic-ai/nomic-embed-text-v1**](https://huggingface.co/nomic-ai/nomic-embed-text-v1)
 
+Alternatively, raw .onnx files can be loaded through the UserDefinedEmbeddingModel struct (for "bring your own" text embedding models).
+
 ## 🚀 Installation
 
 Run the following command in your project directory:
@@ -52,6 +54,11 @@ use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
 
 // With default InitOptions
 let model = TextEmbedding::try_new(Default::default())?;
+
+// Alternatively, here a "bring your own" model could be loaded
+// Users will need to manually pass in the bytes of the relevant model files
+// This includes  the .onnx file itself and json files to constitute the TokenizerFiles struct)
+let custom_model = TextEmbedding::try_new_from_user_defined(UserDefinedEmbeddingModel, options);
 
 // With custom InitOptions
 let model = TextEmbedding::try_new(InitOptions {
