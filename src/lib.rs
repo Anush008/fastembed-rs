@@ -563,18 +563,16 @@ impl TextEmbedding {
                 let token_type_ids_array =
                     Array::from_shape_vec((batch_size, encoding_length), typeids_array)?;
 
-                let outputs = if self.need_token_type_ids {
-                    self.session.run(ort::inputs![
-                        "input_ids" => Value::from_array(inputs_ids_array)?,
-                        "attention_mask" => Value::from_array(attention_mask_array)?,
-                        "token_type_ids" => Value::from_array(token_type_ids_array)?,
-                    ]?)?
-                } else {
-                    self.session.run(ort::inputs![
-                        "input_ids" => Value::from_array(inputs_ids_array)?,
-                        "attention_mask" => Value::from_array(attention_mask_array)?,
-                    ]?)?
-                };
+                let mut session_inputs = ort::inputs![
+                    "input_ids" => Value::from_array(inputs_ids_array)?,
+                    "attention_mask" => Value::from_array(attention_mask_array)?,
+                ]?;
+                if self.need_token_type_ids {
+                    session_inputs
+                        .insert("token_type_ids", Value::from_array(token_type_ids_array)?);
+                }
+
+                let outputs = self.session.run(session_inputs)?;
 
                 // Extract and normalize embeddings
                 let output_data = outputs["last_hidden_state"].extract_tensor::<f32>()?;
