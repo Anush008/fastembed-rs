@@ -28,9 +28,11 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 - [**BAAI/bge-large-en-v1.5**](https://huggingface.co/BAAI/bge-large-en-v1.5)
 - [**sentence-transformers/all-MiniLM-L6-v2**](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
 - [**sentence-transformers/paraphrase-MiniLM-L12-v2**](https://huggingface.co/sentence-transformers/paraphrase-MiniLM-L12-v2)
+- [**sentence-transformers/paraphrase-multilingual-mpnet-base-v2**](https://huggingface.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2)
 - [**nomic-ai/nomic-embed-text-v1**](https://huggingface.co/nomic-ai/nomic-embed-text-v1)
 - [**intfloat/multilingual-e5-small**](https://huggingface.co/intfloat/multilingual-e5-small)
 - [**intfloat/multilingual-e5-base**](https://huggingface.co/intfloat/multilingual-e5-base)
+- [**intfloat/multilingual-e5-large**](https://huggingface.co/intfloat/multilingual-e5-large)
 
 Alternatively, raw .onnx files can be loaded through the UserDefinedEmbeddingModel struct (for "bring your own" text embedding models).
 
