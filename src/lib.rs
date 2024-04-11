@@ -91,15 +91,16 @@ pub enum EmbeddingModel {
     NomicEmbedTextV1,
     /// Multi-lingual model
     ParaphraseMLMiniLML12V2,
+    /// Sentence-transformers model for tasks like clustering or semantic search
+    ParaphraseMLMpnetBaseV2,
     /// v1.5 release of the small Chinese model
     BGESmallZHV15,
     /// Small model of multilingual E5 Text Embeddings
     MultilingualE5Small,
     /// Base model of multilingual E5 Text Embeddings
     MultilingualE5Base,
-    // Large model is something wrong, model.onnx size is only 546kB
-    // /// Large model of multilingual E5 Text Embeddings
-    // MultilingualE5Large,
+    /// Large model of multilingual E5 Text Embeddings
+    MultilingualE5Large,
 }
 
 impl Display for EmbeddingModel {
@@ -302,15 +303,30 @@ impl TextEmbedding {
 
     /// Look for the model in the hf remote repository
     ///
-    /// This will download the .onnx if not already cached
+    /// This will download the .onnx and .onnx_data if not already cached
     fn retrieve_remote_model_file(model_file_info: RepoInfo, model_repo: &ApiRepo) -> PathBuf {
+        // Some models require the .onnx_data file
+        let model_data_file = model_file_info
+            .siblings
+            .iter()
+            .find(|f| f.rfilename.ends_with("model.onnx_data"));
+       match model_data_file {
+            Some(model_data_file) => {
+                model_repo.get(&model_data_file.rfilename).expect(
+                    ".onnx_data file is not available in cache. This shouldn't happen - try again.",
+                );
+            }
+            None => {}
+        }
+
         let model_file = model_file_info
             .siblings
-            .into_iter()
+            .iter()
             .find(|f| {
                 f.rfilename.ends_with("model.onnx") || f.rfilename.ends_with("model_optimized.onnx")
             })
-            .expect("Can't retrieve .onnx model from remote. Try again with a connection.");
+            .expect("Can't retrieve .onnx model from remote. Try again with a connection."); 
+
         model_repo
             .get(&model_file.rfilename)
             .expect(".onnx file is not available in cache. This shouldn't happen - try again.")
@@ -467,6 +483,14 @@ impl TextEmbedding {
                 model_code: String::from("Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q"),
             },
             ModelInfo {
+                model: EmbeddingModel::ParaphraseMLMpnetBaseV2,
+                dim: 768,
+                description: String::from(
+                    "Sentence-transformers model for tasks like clustering or semantic search",
+                ),
+                model_code: String::from("Xenova/paraphrase-multilingual-mpnet-base-v2"),
+            },
+            ModelInfo {
                 model: EmbeddingModel::BGESmallZHV15,
                 dim: 512,
                 description: String::from("v1.5 release of the small Chinese model"),
@@ -484,13 +508,12 @@ impl TextEmbedding {
                 description: String::from("Base model of multilingual E5 Text Embeddings"),
                 model_code: String::from("intfloat/multilingual-e5-base"),
             },
-            // something wrong in MultilingualE5Large, model.onnx size is only 546kB
-            // ModelInfo {
-            //     model: EmbeddingModel::MultilingualE5Large,
-            //     dim: 1024,
-            //     description: String::from("Large model of multilingual E5 Text Embeddings"),
-            //     model_code: String::from("intfloat/multilingual-e5-large"),
-            // },
+            ModelInfo {
+                model: EmbeddingModel::MultilingualE5Large,
+                dim: 1024,
+                description: String::from("Large model of multilingual E5 Text Embeddings"),
+                model_code: String::from("Qdrant/multilingual-e5-large-onnx"),
+            },
         ];
 
         // TODO: Use when out in stable
@@ -713,6 +736,8 @@ mod tests {
                 || supported_model.model_code == "Xenova/bge-small-zh-v1.5"
                 || supported_model.model_code == "intfloat/multilingual-e5-small"
                 || supported_model.model_code == "intfloat/multilingual-e5-base"
+                || supported_model.model_code == "Qdrant/multilingual-e5-large-onnx"
+                || supported_model.model_code == "Xenova/paraphrase-multilingual-mpnet-base-v2"
             {
                 continue;
             }
