@@ -431,7 +431,7 @@ impl TextEmbedding {
             },
             ModelInfo {
                 model: EmbeddingModel::BGEBaseENV15Q,
-                dim: 1024,
+                dim: 768,
                 description: String::from("Quantized v1.5 release of the large English model"),
                 model_code: String::from("Qdrant/bge-base-en-v1.5-onnx-Q"),
                 model_file: String::from("model_optimized.onnx"),
@@ -476,14 +476,14 @@ impl TextEmbedding {
             ModelInfo {
                 model: EmbeddingModel::NomicEmbedTextV15,
                 dim: 768,
-                description: String::from("8192 context length english model"),
+                description: String::from("v1.5 release of the 8192 context length english model"),
                 model_code: String::from("nomic-ai/nomic-embed-text-v1.5"),
                 model_file: String::from("onnx/model.onnx"),
             },
             ModelInfo {
                 model: EmbeddingModel::NomicEmbedTextV15Q,
                 dim: 768,
-                description: String::from("Quantized 8192 context length english model"),
+                description: String::from("Quantized v1.5 release of the 8192 context length english model"),
                 model_code: String::from("nomic-ai/nomic-embed-text-v1.5"),
                 model_file: String::from("onnx/model_quantized.onnx"),
             },
