@@ -180,9 +180,6 @@ pub struct ModelInfo {
 /// The onnx_file and tokenizer_files are expecting the files' bytes
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UserDefinedEmbeddingModel {
-    pub dim: usize,
-    pub description: String,
-    pub model_code: String,
     pub onnx_file: Vec<u8>,
     pub tokenizer_files: TokenizerFiles,
 }
@@ -662,119 +659,103 @@ mod tests {
     #[test]
 
     fn test_user_defined_embedding_model() {
-        //loop through all supported models
-        for supported_model in TextEmbedding::list_supported_models() {
-            // Constitute the model in order to ensure it's downloaded and cached
-            TextEmbedding::try_new(InitOptions {
-                model_name: supported_model.model,
-                ..Default::default()
-            })
-            .unwrap();
 
-            // Skip "nomic-ai/nomic-embed-text-v1" model for now as it has a different folder structure
-            // Also skip "Xenova/bge-small-zh-v1.5", "intfloat/multilingual-e5-small",
-            // and "intfloat/multilingual-e5-base" for the same reason
-            if supported_model.model_code == "nomic-ai/nomic-embed-text-v1"
-                || supported_model.model_code == "Xenova/bge-small-zh-v1.5"
-                || supported_model.model_code == "intfloat/multilingual-e5-small"
-                || supported_model.model_code == "intfloat/multilingual-e5-base"
-                || supported_model.model_code == "Qdrant/multilingual-e5-large-onnx"
-                || supported_model.model_code == "Xenova/paraphrase-multilingual-mpnet-base-v2"
-            {
-                continue;
-            }
+        // Constitute the model in order to ensure it's downloaded and cached
+        let test_model_info = TextEmbedding::get_model_info(&EmbeddingModel::AllMiniLML6V2);
 
-            // Get the directory of the model
-            let model_name = supported_model.model_code.replace('/', "--");
-            let model_dir = Path::new(DEFAULT_CACHE_DIR).join(format!("models--{}", model_name));
-            println!("Model files stub: {:?}", model_dir);
+        TextEmbedding::try_new(InitOptions {
+            model_name: test_model_info.model,
+            ..Default::default()
+        })
+        .unwrap();
 
-            // Find the "snapshots" sub-directory
-            let snapshots_dir = model_dir.join("snapshots");
+        // Get the directory of the model
+        let model_name = test_model_info.model_code.replace('/', "--");
+        let model_dir = Path::new(DEFAULT_CACHE_DIR).join(format!("models--{}", model_name));
+        println!("Model files stub: {:?}", model_dir);
 
-            // Get the first sub-directory in snapshots
-            let model_files_dir = snapshots_dir
+        // Find the "snapshots" sub-directory
+        let snapshots_dir = model_dir.join("snapshots");
+
+        // Get the first sub-directory in snapshots
+        let model_files_dir = snapshots_dir
+            .read_dir()
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
+
+        println!("Model files dir: {:?}", model_files_dir);
+        //list files in the model_files_dir
+        let files = read_dir(&model_files_dir).unwrap();
+        for file in files {
+            println!("{:?}", file.unwrap().path());
+        }
+        // FInd the onnx file - it will be any file ending with .onnx
+        let onnx_file = read_file_to_bytes(
+            &model_files_dir
                 .read_dir()
                 .unwrap()
-                .next()
+                .find(|entry| {
+                    entry
+                        .as_ref()
+                        .unwrap()
+                        .path()
+                        .extension()
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        == "onnx"
+                })
                 .unwrap()
                 .unwrap()
-                .path();
+                .path(),
+        )
+        .expect("Could not read onnx file");
 
-            println!("Model files dir: {:?}", model_files_dir);
-            //list files in the model_files_dir
-            let files = read_dir(&model_files_dir).unwrap();
-            for file in files {
-                println!("{:?}", file.unwrap().path());
-            }
-            // FInd the onnx file - it will be any file ending with .onnx
-            let onnx_file = read_file_to_bytes(
-                &model_files_dir
-                    .read_dir()
-                    .unwrap()
-                    .find(|entry| {
-                        entry
-                            .as_ref()
-                            .unwrap()
-                            .path()
-                            .extension()
-                            .unwrap()
-                            .to_str()
-                            .unwrap()
-                            == "onnx"
-                    })
-                    .unwrap()
-                    .unwrap()
-                    .path(),
+        // Load the tokenizer files
+        let tokenizer_files = TokenizerFiles {
+            tokenizer_file: read_file_to_bytes(&model_files_dir.join("tokenizer.json"))
+                .expect("Could not read tokenizer.json"),
+            config_file: read_file_to_bytes(&model_files_dir.join("config.json"))
+                .expect("Could not read config.json"),
+            special_tokens_map_file: read_file_to_bytes(
+                &model_files_dir.join("special_tokens_map.json"),
             )
-            .expect("Could not read onnx file");
-
-            // Load the tokenizer files
-            let tokenizer_files = TokenizerFiles {
-                tokenizer_file: read_file_to_bytes(&model_files_dir.join("tokenizer.json"))
-                    .expect("Could not read tokenizer.json"),
-                config_file: read_file_to_bytes(&model_files_dir.join("config.json"))
-                    .expect("Could not read config.json"),
-                special_tokens_map_file: read_file_to_bytes(
-                    &model_files_dir.join("special_tokens_map.json"),
-                )
-                .expect("Could not read special_tokens_map.json"),
-                tokenizer_config_file: read_file_to_bytes(
-                    &model_files_dir.join("tokenizer_config.json"),
-                )
-                .expect("Could not read tokenizer_config.json"),
-            };
-            // Create a UserDefinedEmbeddingModel
-            let user_defined_model = UserDefinedEmbeddingModel {
-                dim: supported_model.dim,
-                description: supported_model.description,
-                model_code: supported_model.model_code,
-                onnx_file,
-                tokenizer_files,
-            };
-
-            // Try creating a TextEmbedding instance from the user-defined model
-            let user_defined_text_embedding = TextEmbedding::try_new_from_user_defined(
-                user_defined_model,
-                InitOptionsUserDefined::default(),
+            .expect("Could not read special_tokens_map.json"),
+            tokenizer_config_file: read_file_to_bytes(
+                &model_files_dir.join("tokenizer_config.json"),
             )
+            .expect("Could not read tokenizer_config.json"),
+        };
+        // Create a UserDefinedEmbeddingModel
+        let user_defined_model = UserDefinedEmbeddingModel {
+            onnx_file,
+            tokenizer_files,
+        };
+
+        // Try creating a TextEmbedding instance from the user-defined model
+        let user_defined_text_embedding = TextEmbedding::try_new_from_user_defined(
+            user_defined_model,
+            InitOptionsUserDefined::default(),
+        )
+        .unwrap();
+
+        let documents = vec![
+            "Hello, World!",
+            "This is an example passage.",
+            "fastembed-rs is licensed under Apache-2.0",
+            "Some other short text here blah blah blah",
+        ];
+
+        // Generate embeddings over documents
+        let embeddings = user_defined_text_embedding
+            .embed(documents.clone(), None)
             .unwrap();
-
-            let documents = vec![
-                "Hello, World!",
-                "This is an example passage.",
-                "fastembed-rs is licensed under Apache-2.0",
-                "Some other short text here blah blah blah",
-            ];
-
-            // Generate embeddings over documents
-            let embeddings = user_defined_text_embedding
-                .embed(documents.clone(), None)
-                .unwrap();
-            assert_eq!(embeddings.len(), documents.len());
-            for embedding in embeddings {
-                assert_eq!(embedding.len(), supported_model.dim);
-            }
+        assert_eq!(embeddings.len(), documents.len());
+        for embedding in embeddings {
+            assert_eq!(embedding.len(), test_model_info.dim);
         }
     }
 }
