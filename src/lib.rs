@@ -465,6 +465,8 @@ impl TextEmbedding {
     }
 }
 
+// This type was inferred using IDE hints
+// Turned into a type alias for type hinting
 type Tokenizer = tokenizers::TokenizerImpl<
     tokenizers::ModelWrapper,
     tokenizers::NormalizerWrapper,
