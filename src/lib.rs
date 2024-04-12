@@ -86,14 +86,26 @@ pub enum EmbeddingModel {
     AllMiniLML6V2,
     /// v1.5 release of the base English model
     BGEBaseENV15,
+    /// Quantized v1.5 release of the base English model
+    BGEBaseENV15Q,
     /// v1.5 release of the large English model
     BGELargeENV15,
+    /// Quantized v1.5 release of the large English model
+    BGELargeENV15Q,
     /// Fast and Default English model
     BGESmallENV15,
+    /// Quantized Fast and Default English model
+    BGESmallENV15Q,
     /// 8192 context length english model
     NomicEmbedTextV1,
+    /// v1.5 release of the 8192 context length english model
+    NomicEmbedTextV15,
+    /// Quantized v1.5 release of the 8192 context length english model
+    NomicEmbedTextV15Q,
     /// Multi-lingual model
     ParaphraseMLMiniLML12V2,
+    /// Quantized Multi-lingual model
+    ParaphraseMLMiniLML12V2Q,
     /// Sentence-transformers model for tasks like clustering or semantic search
     ParaphraseMLMpnetBaseV2,
     /// v1.5 release of the small Chinese model
@@ -414,6 +426,13 @@ impl TextEmbedding {
                 model: EmbeddingModel::BGEBaseENV15,
                 dim: 768,
                 description: String::from("v1.5 release of the base English model"),
+                model_code: String::from("Xenova/bge-base-en-v1.5"),
+                model_file: String::from("onnx/model.onnx"),
+            },
+            ModelInfo {
+                model: EmbeddingModel::BGEBaseENV15Q,
+                dim: 768,
+                description: String::from("Quantized v1.5 release of the large English model"),
                 model_code: String::from("Qdrant/bge-base-en-v1.5-onnx-Q"),
                 model_file: String::from("model_optimized.onnx"),
             },
@@ -421,6 +440,13 @@ impl TextEmbedding {
                 model: EmbeddingModel::BGELargeENV15,
                 dim: 1024,
                 description: String::from("v1.5 release of the large English model"),
+                model_code: String::from("Xenova/bge-large-en-v1.5"),
+                model_file: String::from("onnx/model.onnx"),
+            },
+            ModelInfo {
+                model: EmbeddingModel::BGELargeENV15Q,
+                dim: 1024,
+                description: String::from("Quantized v1.5 release of the large English model"),
                 model_code: String::from("Qdrant/bge-large-en-v1.5-onnx-Q"),
                 model_file: String::from("model_optimized.onnx"),
             },
@@ -428,6 +454,15 @@ impl TextEmbedding {
                 model: EmbeddingModel::BGESmallENV15,
                 dim: 384,
                 description: String::from("v1.5 release of the fast and default English model"),
+                model_code: String::from("Xenova/bge-small-en-v1.5"),
+                model_file: String::from("onnx/model.onnx"),
+            },
+            ModelInfo {
+                model: EmbeddingModel::BGESmallENV15Q,
+                dim: 384,
+                description: String::from(
+                    "Quantized v1.5 release of the fast and default English model",
+                ),
                 model_code: String::from("Qdrant/bge-small-en-v1.5-onnx-Q"),
                 model_file: String::from("model_optimized.onnx"),
             },
@@ -439,11 +474,32 @@ impl TextEmbedding {
                 model_file: String::from("onnx/model.onnx"),
             },
             ModelInfo {
+                model: EmbeddingModel::NomicEmbedTextV15,
+                dim: 768,
+                description: String::from("v1.5 release of the 8192 context length english model"),
+                model_code: String::from("nomic-ai/nomic-embed-text-v1.5"),
+                model_file: String::from("onnx/model.onnx"),
+            },
+            ModelInfo {
+                model: EmbeddingModel::NomicEmbedTextV15Q,
+                dim: 768,
+                description: String::from("Quantized v1.5 release of the 8192 context length english model"),
+                model_code: String::from("nomic-ai/nomic-embed-text-v1.5"),
+                model_file: String::from("onnx/model_quantized.onnx"),
+            },
+            ModelInfo {
+                model: EmbeddingModel::ParaphraseMLMiniLML12V2Q,
+                dim: 384,
+                description: String::from("Quantized Multi-lingual model"),
+                model_code: String::from("Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q"),
+                model_file: String::from("model_optimized.onnx"),
+            },
+            ModelInfo {
                 model: EmbeddingModel::ParaphraseMLMiniLML12V2,
                 dim: 384,
                 description: String::from("Multi-lingual model"),
-                model_code: String::from("Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q"),
-                model_file: String::from("model_optimized.onnx"),
+                model_code: String::from("Xenova/paraphrase-multilingual-MiniLM-L12-v2"),
+                model_file: String::from("onnx/model.onnx"),
             },
             ModelInfo {
                 model: EmbeddingModel::ParaphraseMLMpnetBaseV2,
@@ -485,7 +541,11 @@ impl TextEmbedding {
         ];
 
         // TODO: Use when out in stable
-        // assert_eq!(std::mem::variant_count::<EmbeddingModel>(), models.len());
+        // assert_eq!(
+        //     std::mem::variant_count::<EmbeddingModel>(),
+        //     models.len(),
+        //     "list_supported_models() is not exhaustive"
+        // );
 
         assert_eq!(
             EmbeddingModel::VARIANT_COUNT,
