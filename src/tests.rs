@@ -1,5 +1,4 @@
 use super::*;
-use std::fs::read_dir;
 
 #[test]
 fn test_embeddings() {
