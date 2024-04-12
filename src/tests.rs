@@ -42,7 +42,6 @@ fn test_user_defined_embedding_model() {
     // Get the directory of the model
     let model_name = test_model_info.model_code.replace('/', "--");
     let model_dir = Path::new(DEFAULT_CACHE_DIR).join(format!("models--{}", model_name));
-    println!("Model files stub: {:?}", model_dir);
 
     // Find the "snapshots" sub-directory
     let snapshots_dir = model_dir.join("snapshots");
@@ -56,12 +55,6 @@ fn test_user_defined_embedding_model() {
         .unwrap()
         .path();
 
-    println!("Model files dir: {:?}", model_files_dir);
-    //list files in the model_files_dir
-    let files = read_dir(&model_files_dir).unwrap();
-    for file in files {
-        println!("{:?}", file.unwrap().path());
-    }
     // FInd the onnx file - it will be any file ending with .onnx
     let onnx_file = read_file_to_bytes(
         &model_files_dir
