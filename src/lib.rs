@@ -51,30 +51,18 @@ mod models;
 #[cfg(test)]
 mod tests;
 
-use models::models;
-use std::{
-    fmt::Display,
-    fs::File,
-    path::{Path, PathBuf},
-    thread::available_parallelism,
-};
-
-use std::io::Read;
-
+use std::{fmt::Display, fs::File, io::Read, path::{Path, PathBuf}, thread::available_parallelism};
 use anyhow::{Ok, Result};
-use hf_hub::api::sync::ApiRepo;
-use hf_hub::{api::sync::ApiBuilder, Cache};
+use hf_hub::{api::sync::{ApiBuilder, ApiRepo}, Cache};
 use ndarray::Array;
-pub use ort::ExecutionProviderDispatch;
 use ort::{GraphOptimizationLevel, Session, Value};
-use rayon::{
-    prelude::{IntoParallelIterator, ParallelIterator},
-    slice::ParallelSlice,
-};
+use rayon::{prelude::{IntoParallelIterator, ParallelIterator}, slice::ParallelSlice};
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
+use crate::models::models;
 
-pub use crate::models::EmbeddingModel;
-pub use crate::models::ModelInfo;
+pub use ort::ExecutionProviderDispatch;
+
+pub use crate::models::{EmbeddingModel, ModelInfo};
 
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
