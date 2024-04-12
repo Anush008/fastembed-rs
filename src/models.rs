@@ -36,6 +36,10 @@ pub enum EmbeddingModel {
     MultilingualE5Base,
     /// Large model of multilingual E5 Text Embeddings
     MultilingualE5Large,
+    /// Large English embedding model from MixedBreed.ai
+    MxbaiEmbedLargeV1,
+    /// Quantized Large English embedding model from MixedBreed.ai
+    MxbaiEmbedLargeV1Q,
 }
 
 pub(crate) fn models() -> Vec<ModelInfo> {
@@ -164,6 +168,20 @@ pub(crate) fn models() -> Vec<ModelInfo> {
             description: String::from("Large model of multilingual E5 Text Embeddings"),
             model_code: String::from("Qdrant/multilingual-e5-large-onnx"),
             model_file: String::from("model.onnx"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::MxbaiEmbedLargeV1,
+            dim: 1024,
+            description: String::from("Large English embedding model from MixedBreed.ai"),
+            model_code: String::from("mixedbread-ai/mxbai-embed-large-v1"),
+            model_file: String::from("onnx/model.onnx"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::MxbaiEmbedLargeV1Q,
+            dim: 1024,
+            description: String::from("Quantized Large English embedding model from MixedBreed.ai"),
+            model_code: String::from("mixedbread-ai/mxbai-embed-large-v1"),
+            model_file: String::from("onnx/model_quantized.onnx"),
         },
     ]
 }
