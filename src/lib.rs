@@ -46,20 +46,23 @@
 //! ```
 //!
 
+#[cfg(test)]
+mod tests;
+
 use std::{
     fmt::Display,
-    fs::{read_dir, File},
+    fs::File,
     path::{Path, PathBuf},
     thread::available_parallelism,
 };
 
 use std::io::Read;
 
-use anyhow::{Error, Ok, Result};
-use hf_hub::api::{sync::ApiRepo, RepoInfo};
+use anyhow::{Ok, Result};
+use hf_hub::api::sync::ApiRepo;
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::Array;
-pub use ort::{ExecutionProvider, ExecutionProviderDispatch};
+pub use ort::ExecutionProviderDispatch;
 use ort::{GraphOptimizationLevel, Session, Value};
 use rayon::{
     prelude::{IntoParallelIterator, ParallelIterator},
@@ -172,6 +175,7 @@ pub struct ModelInfo {
     pub dim: usize,
     pub description: String,
     pub model_code: String,
+    pub model_file: String,
 }
 
 /// Struct for "bring your own" embedding models
@@ -179,9 +183,6 @@ pub struct ModelInfo {
 /// The onnx_file and tokenizer_files are expecting the files' bytes
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UserDefinedEmbeddingModel {
-    pub dim: usize,
-    pub description: String,
-    pub model_code: String,
     pub onnx_file: Vec<u8>,
     pub tokenizer_files: TokenizerFiles,
 }
@@ -225,20 +226,16 @@ impl TextEmbedding {
             show_download_progress,
         )?;
 
-        let model_file_info_result = model_repo.info();
+        let model_file_name = TextEmbedding::get_model_info(&model_name).model_file;
+        let model_file_reference = model_repo
+            .get(&model_file_name)
+            .unwrap_or_else(|_| panic!("Failed to retrieve {} ", model_file_name));
 
-        // If the attempt fails (likely no connection), fall back on cached onnx file
-        let model_file_reference = match model_file_info_result {
-            std::result::Result::Ok(info) => {
-                TextEmbedding::retrieve_remote_model_file(info, &model_repo)
-            }
-            Err(ref _e) => {
-                eprintln!("Falling back on cached model.");
-                TextEmbedding::retrieve_cached_model_file(&model_name, &cache_dir).expect(
-                    "Could not find any locally cached .onnx file for this model. Please try again with a web connection.",
-                )
-            }
-        };
+        if model_name == EmbeddingModel::MultilingualE5Large {
+            model_repo
+                .get("model.onnx_data")
+                .expect("Failed to retrieve model.onnx_data.");
+        }
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
@@ -299,46 +296,6 @@ impl TextEmbedding {
 
         let repo = api.model(model.to_string());
         Ok(repo)
-    }
-
-    /// Look for the model in the hf remote repository
-    ///
-    /// This will download the .onnx and .onnx_data if not already cached
-    fn retrieve_remote_model_file(model_file_info: RepoInfo, model_repo: &ApiRepo) -> PathBuf {
-        // Some models require the .onnx_data file
-        let model_data_file = model_file_info
-            .siblings
-            .iter()
-            .find(|f| f.rfilename.ends_with("model.onnx_data"));
-       match model_data_file {
-            Some(model_data_file) => {
-                model_repo.get(&model_data_file.rfilename).expect(
-                    ".onnx_data file is not available in cache. This shouldn't happen - try again.",
-                );
-            }
-            None => {}
-        }
-
-        let model_file = model_file_info
-            .siblings
-            .iter()
-            .find(|f| {
-                f.rfilename.ends_with("model.onnx") || f.rfilename.ends_with("model_optimized.onnx")
-            })
-            .expect("Can't retrieve .onnx model from remote. Try again with a connection."); 
-
-        model_repo
-            .get(&model_file.rfilename)
-            .expect(".onnx file is not available in cache. This shouldn't happen - try again.")
-    }
-
-    /// Look for the model file path in the local cache only - no call to hf remote
-    fn retrieve_cached_model_file(
-        embedding_model: &EmbeddingModel,
-        cache_dir: &PathBuf,
-    ) -> Result<PathBuf> {
-        let model_info = TextEmbedding::get_model_info(embedding_model);
-        get_cached_onnx_file(model_info, cache_dir)
     }
 
     /// The procedure for loading tokenizer files from the hugging face hub is separated
@@ -451,36 +408,42 @@ impl TextEmbedding {
                 dim: 384,
                 description: String::from("Sentence Transformer model, MiniLM-L6-v2"),
                 model_code: String::from("Qdrant/all-MiniLM-L6-v2-onnx"),
+                model_file: String::from("model.onnx"),
             },
             ModelInfo {
                 model: EmbeddingModel::BGEBaseENV15,
                 dim: 768,
                 description: String::from("v1.5 release of the base English model"),
                 model_code: String::from("Qdrant/bge-base-en-v1.5-onnx-Q"),
+                model_file: String::from("model_optimized.onnx"),
             },
             ModelInfo {
                 model: EmbeddingModel::BGELargeENV15,
                 dim: 1024,
                 description: String::from("v1.5 release of the large English model"),
                 model_code: String::from("Qdrant/bge-large-en-v1.5-onnx-Q"),
+                model_file: String::from("model_optimized.onnx"),
             },
             ModelInfo {
                 model: EmbeddingModel::BGESmallENV15,
                 dim: 384,
                 description: String::from("v1.5 release of the fast and default English model"),
                 model_code: String::from("Qdrant/bge-small-en-v1.5-onnx-Q"),
+                model_file: String::from("model_optimized.onnx"),
             },
             ModelInfo {
                 model: EmbeddingModel::NomicEmbedTextV1,
                 dim: 768,
                 description: String::from("8192 context length english model"),
                 model_code: String::from("nomic-ai/nomic-embed-text-v1"),
+                model_file: String::from("onnx/model.onnx"),
             },
             ModelInfo {
                 model: EmbeddingModel::ParaphraseMLMiniLML12V2,
                 dim: 384,
                 description: String::from("Multi-lingual model"),
                 model_code: String::from("Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q"),
+                model_file: String::from("model_optimized.onnx"),
             },
             ModelInfo {
                 model: EmbeddingModel::ParaphraseMLMpnetBaseV2,
@@ -489,30 +452,35 @@ impl TextEmbedding {
                     "Sentence-transformers model for tasks like clustering or semantic search",
                 ),
                 model_code: String::from("Xenova/paraphrase-multilingual-mpnet-base-v2"),
+                model_file: String::from("onnx/model.onnx"),
             },
             ModelInfo {
                 model: EmbeddingModel::BGESmallZHV15,
                 dim: 512,
                 description: String::from("v1.5 release of the small Chinese model"),
                 model_code: String::from("Xenova/bge-small-zh-v1.5"),
+                model_file: String::from("onnx/model.onnx"),
             },
             ModelInfo {
                 model: EmbeddingModel::MultilingualE5Small,
                 dim: 384,
                 description: String::from("Small model of multilingual E5 Text Embeddings"),
                 model_code: String::from("intfloat/multilingual-e5-small"),
+                model_file: String::from("onnx/model.onnx"),
             },
             ModelInfo {
                 model: EmbeddingModel::MultilingualE5Base,
                 dim: 768,
                 description: String::from("Base model of multilingual E5 Text Embeddings"),
                 model_code: String::from("intfloat/multilingual-e5-base"),
+                model_file: String::from("onnx/model.onnx"),
             },
             ModelInfo {
                 model: EmbeddingModel::MultilingualE5Large,
                 dim: 1024,
                 description: String::from("Large model of multilingual E5 Text Embeddings"),
                 model_code: String::from("Qdrant/multilingual-e5-large-onnx"),
+                model_file: String::from("model.onnx"),
             },
         ];
 
@@ -649,15 +617,6 @@ fn get_embeddings(data: &[f32], dimensions: &[usize]) -> Vec<Embedding> {
     embeddings
 }
 
-/// Get the cached onnx file from the model directory
-fn get_cached_onnx_file(model: ModelInfo, cache_dir: &PathBuf) -> Result<PathBuf> {
-    // Get relevant model directory
-    let conformed_model_name = format!("models--{}", model.model_code.replace('/', "--"));
-    let model_dir = Path::new(cache_dir).join(conformed_model_name);
-    // Walk the directory and find (and return) the onnx file
-    visit_dirs(&model_dir)
-}
-
 /// Read a file to bytes.
 ///
 /// Could be used to read the onnx file from a local cache in order to constitute a UserDefinedEmbeddingModel.
@@ -667,172 +626,4 @@ pub fn read_file_to_bytes(file: &PathBuf) -> Result<Vec<u8>> {
     let mut buffer = Vec::with_capacity(file_size);
     file.read_to_end(&mut buffer)?;
     Ok(buffer)
-}
-
-fn visit_dirs(dir: &Path) -> Result<PathBuf> {
-    if dir.is_dir() {
-        for entry in read_dir(dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.is_dir() {
-                if let std::result::Result::Ok(path_buf) = visit_dirs(&path) {
-                    return Ok(path_buf);
-                }
-            }
-            if path.ends_with("model_optimized.onnx") || path.ends_with("model.onnx") {
-                return Ok(path.to_path_buf());
-            }
-        }
-    }
-    Err(Error::msg("Can't locate .onnx file in local cache."))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_embeddings() {
-        for supported_model in TextEmbedding::list_supported_models() {
-            let model: TextEmbedding = TextEmbedding::try_new(InitOptions {
-                model_name: supported_model.model,
-                ..Default::default()
-            })
-            .unwrap();
-
-            let documents = vec![
-                "Hello, World!",
-                "This is an example passage.",
-                "fastembed-rs is licensed under Apache-2.0",
-                "Some other short text here blah blah blah",
-            ];
-
-            // Generate embeddings with the default batch size, 256
-            let embeddings = model.embed(documents.clone(), None).unwrap();
-
-            assert_eq!(embeddings.len(), documents.len());
-            for embedding in embeddings {
-                assert_eq!(embedding.len(), supported_model.dim);
-            }
-        }
-    }
-
-    #[test]
-
-    fn test_user_defined_embedding_model() {
-        //loop through all supported models
-        for supported_model in TextEmbedding::list_supported_models() {
-            // Constitute the model in order to ensure it's downloaded and cached
-            TextEmbedding::try_new(InitOptions {
-                model_name: supported_model.model,
-                ..Default::default()
-            })
-            .unwrap();
-
-            // Skip "nomic-ai/nomic-embed-text-v1" model for now as it has a different folder structure
-            // Also skip "Xenova/bge-small-zh-v1.5", "intfloat/multilingual-e5-small",
-            // and "intfloat/multilingual-e5-base" for the same reason
-            if supported_model.model_code == "nomic-ai/nomic-embed-text-v1"
-                || supported_model.model_code == "Xenova/bge-small-zh-v1.5"
-                || supported_model.model_code == "intfloat/multilingual-e5-small"
-                || supported_model.model_code == "intfloat/multilingual-e5-base"
-                || supported_model.model_code == "Qdrant/multilingual-e5-large-onnx"
-                || supported_model.model_code == "Xenova/paraphrase-multilingual-mpnet-base-v2"
-            {
-                continue;
-            }
-
-            // Get the directory of the model
-            let model_name = supported_model.model_code.replace('/', "--");
-            let model_dir = Path::new(DEFAULT_CACHE_DIR).join(format!("models--{}", model_name));
-            println!("Model files stub: {:?}", model_dir);
-
-            // Find the "snapshots" sub-directory
-            let snapshots_dir = model_dir.join("snapshots");
-
-            // Get the first sub-directory in snapshots
-            let model_files_dir = snapshots_dir
-                .read_dir()
-                .unwrap()
-                .next()
-                .unwrap()
-                .unwrap()
-                .path();
-
-            println!("Model files dir: {:?}", model_files_dir);
-            //list files in the model_files_dir
-            let files = read_dir(&model_files_dir).unwrap();
-            for file in files {
-                println!("{:?}", file.unwrap().path());
-            }
-            // FInd the onnx file - it will be any file ending with .onnx
-            let onnx_file = read_file_to_bytes(
-                &model_files_dir
-                    .read_dir()
-                    .unwrap()
-                    .find(|entry| {
-                        entry
-                            .as_ref()
-                            .unwrap()
-                            .path()
-                            .extension()
-                            .unwrap()
-                            .to_str()
-                            .unwrap()
-                            == "onnx"
-                    })
-                    .unwrap()
-                    .unwrap()
-                    .path(),
-            )
-            .expect("Could not read onnx file");
-
-            // Load the tokenizer files
-            let tokenizer_files = TokenizerFiles {
-                tokenizer_file: read_file_to_bytes(&model_files_dir.join("tokenizer.json"))
-                    .expect("Could not read tokenizer.json"),
-                config_file: read_file_to_bytes(&model_files_dir.join("config.json"))
-                    .expect("Could not read config.json"),
-                special_tokens_map_file: read_file_to_bytes(
-                    &model_files_dir.join("special_tokens_map.json"),
-                )
-                .expect("Could not read special_tokens_map.json"),
-                tokenizer_config_file: read_file_to_bytes(
-                    &model_files_dir.join("tokenizer_config.json"),
-                )
-                .expect("Could not read tokenizer_config.json"),
-            };
-            // Create a UserDefinedEmbeddingModel
-            let user_defined_model = UserDefinedEmbeddingModel {
-                dim: supported_model.dim,
-                description: supported_model.description,
-                model_code: supported_model.model_code,
-                onnx_file,
-                tokenizer_files,
-            };
-
-            // Try creating a TextEmbedding instance from the user-defined model
-            let user_defined_text_embedding = TextEmbedding::try_new_from_user_defined(
-                user_defined_model,
-                InitOptionsUserDefined::default(),
-            )
-            .unwrap();
-
-            let documents = vec![
-                "Hello, World!",
-                "This is an example passage.",
-                "fastembed-rs is licensed under Apache-2.0",
-                "Some other short text here blah blah blah",
-            ];
-
-            // Generate embeddings over documents
-            let embeddings = user_defined_text_embedding
-                .embed(documents.clone(), None)
-                .unwrap();
-            assert_eq!(embeddings.len(), documents.len());
-            for embedding in embeddings {
-                assert_eq!(embedding.len(), supported_model.dim);
-            }
-        }
-    }
 }
