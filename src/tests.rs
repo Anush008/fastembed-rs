@@ -1,29 +1,38 @@
-use super::*;
+use std::path::Path;
+
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+
+use crate::{
+    read_file_to_bytes, EmbeddingModel, InitOptions, InitOptionsUserDefined, TextEmbedding,
+    TokenizerFiles, UserDefinedEmbeddingModel, DEFAULT_CACHE_DIR,
+};
 
 #[test]
 fn test_embeddings() {
-    for supported_model in TextEmbedding::list_supported_models() {
-        let model: TextEmbedding = TextEmbedding::try_new(InitOptions {
-            model_name: supported_model.model,
-            ..Default::default()
-        })
-        .unwrap();
+    TextEmbedding::list_supported_models()
+        .par_iter()
+        .for_each(|supported_model| {
+            let model: TextEmbedding = TextEmbedding::try_new(InitOptions {
+                model_name: supported_model.model.clone(),
+                ..Default::default()
+            })
+            .unwrap();
 
-        let documents = vec![
-            "Hello, World!",
-            "This is an example passage.",
-            "fastembed-rs is licensed under Apache-2.0",
-            "Some other short text here blah blah blah",
-        ];
+            let documents = vec![
+                "Hello, World!",
+                "This is an example passage.",
+                "fastembed-rs is licensed under Apache-2.0",
+                "Some other short text here blah blah blah",
+            ];
 
-        // Generate embeddings with the default batch size, 256
-        let embeddings = model.embed(documents.clone(), None).unwrap();
+            // Generate embeddings with the default batch size, 256
+            let embeddings = model.embed(documents.clone(), None).unwrap();
 
-        assert_eq!(embeddings.len(), documents.len());
-        for embedding in embeddings {
-            assert_eq!(embedding.len(), supported_model.dim);
-        }
-    }
+            assert_eq!(embeddings.len(), documents.len());
+            for embedding in embeddings {
+                assert_eq!(embedding.len(), supported_model.dim);
+            }
+        });
 }
 
 #[test]
