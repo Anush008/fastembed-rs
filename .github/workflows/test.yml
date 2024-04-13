@@ -25,9 +25,9 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             ~/.cache/ort.pyke.io
-            ~/.cache/huggingface
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+            .fastembed_cache/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
 
       - name: Run tests
         run: cargo test
