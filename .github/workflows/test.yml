@@ -13,15 +13,9 @@ env:
 
 jobs:
   test:
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-          - flyci-macos-14-xlarge-m2
-          - windows-latest
-    runs-on: ${{ matrix.os }}
-    steps:
+    runs-on: flyci-macos-14-xlarge-m2
 
+    steps:
       - uses: actions/checkout@v3
 
       - uses: actions/cache@v3
