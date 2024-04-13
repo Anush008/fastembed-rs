@@ -23,8 +23,15 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             ~/.cache/ort.pyke.io
+            ~/.cache/huggingface
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run FMT check
+        run: cargo fmt --check
+
+      - name: Run Cargo Clippy
+        run: cargo clippy
 
       - name: Run tests
         run: cargo test
