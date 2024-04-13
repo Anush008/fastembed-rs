@@ -37,8 +37,6 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 - [**intfloat/multilingual-e5-large**](https://huggingface.co/intfloat/multilingual-e5-large)
 - [**mixedbread-ai/mxbai-embed-large-v1**](https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1)
 
-Alternatively, raw .onnx files can be loaded through the UserDefinedEmbeddingModel struct (for "bring your own" text embedding models).
-
 ## 🚀 Installation
 
 Run the following command in your project directory:
@@ -62,11 +60,6 @@ use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
 // With default InitOptions
 let model = TextEmbedding::try_new(Default::default())?;
 
-// Alternatively, here a "bring your own" model could be loaded
-// Users will need to manually pass in the bytes of the relevant model files
-// This includes  the .onnx file itself and json files to constitute the TokenizerFiles struct)
-let custom_model = TextEmbedding::try_new_from_user_defined(UserDefinedEmbeddingModel, options);
-
 // With custom InitOptions
 let model = TextEmbedding::try_new(InitOptions {
     model_name: EmbeddingModel::AllMiniLML6V2,
@@ -88,6 +81,8 @@ let documents = vec![
  println!("Embeddings length: {}", embeddings.len()); // -> Embeddings length: 4
  println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 384
 ```
+
+Alternatively, raw `.onnx` files can be loaded through the `UserDefinedEmbeddingModel` struct (for "bring your own" text embedding models) using `TextEmbedding::try_new_from_user_defined(...)`.
 
 ## 🚒 Under the hood
 
