@@ -9,6 +9,8 @@ on:
   
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings"
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -24,7 +26,14 @@ jobs:
             ~/.cargo/git/db/
             ~/.cache/ort.pyke.io
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+            .fastembed_cache/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
 
       - name: Run tests
         run: cargo test
+
+      - name: Run Cargo Clippy
+        run: cargo clippy
+
+      - name: Run FMT check
+        run: cargo fmt --all -- --check

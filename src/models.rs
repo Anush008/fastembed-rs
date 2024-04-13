@@ -2,54 +2,63 @@ use variant_count::VariantCount;
 
 #[derive(Debug, Clone, PartialEq, Eq, VariantCount)]
 pub enum EmbeddingModel {
-    /// Sentence Transformer model, MiniLM-L6-v2
+    /// sentence-transformers/all-MiniLM-L6-v2
     AllMiniLML6V2,
-    /// v1.5 release of the base English model
+    /// Quantized sentence-transformers/all-MiniLM-L6-v2
+    AllMiniLML6V2Q,
+    /// BAAI/bge-base-en-v1.5
     BGEBaseENV15,
-    /// Quantized v1.5 release of the base English model
+    /// Quantized BAAI/bge-base-en-v1.5
     BGEBaseENV15Q,
-    /// v1.5 release of the large English model
+    /// BAAI/bge-large-en-v1.5
     BGELargeENV15,
-    /// Quantized v1.5 release of the large English model
+    /// Quantized BAAI/bge-large-en-v1.5
     BGELargeENV15Q,
-    /// Fast and Default English model
+    /// BAAI/bge-small-en-v1.5 - Default
     BGESmallENV15,
-    /// Quantized Fast and Default English model
+    /// Quantized BAAI/bge-small-en-v1.5
     BGESmallENV15Q,
-    /// 8192 context length english model
+    /// nomic-ai/nomic-embed-text-v1
     NomicEmbedTextV1,
-    /// v1.5 release of the 8192 context length english model
+    /// nomic-ai/nomic-embed-text-v1.5
     NomicEmbedTextV15,
-    /// Quantized v1.5 release of the 8192 context length english model
+    /// Quantized v1.5 nomic-ai/nomic-embed-text-v1.5
     NomicEmbedTextV15Q,
-    /// Multi-lingual model
+    /// sentence-transformers/paraphrase-MiniLM-L6-v2
     ParaphraseMLMiniLML12V2,
-    /// Quantized Multi-lingual model
+    /// Quantized sentence-transformers/paraphrase-MiniLM-L6-v2
     ParaphraseMLMiniLML12V2Q,
-    /// Sentence-transformers model for tasks like clustering or semantic search
+    /// sentence-transformers/paraphrase-mpnet-base-v2
     ParaphraseMLMpnetBaseV2,
-    /// v1.5 release of the small Chinese model
+    /// BAAI/bge-small-zh-v1.5
     BGESmallZHV15,
-    /// Small model of multilingual E5 Text Embeddings
+    /// intfloat/multilingual-e5-small
     MultilingualE5Small,
-    /// Base model of multilingual E5 Text Embeddings
+    /// intfloat/multilingual-e5-base
     MultilingualE5Base,
-    /// Large model of multilingual E5 Text Embeddings
+    /// intfloat/multilingual-e5-large
     MultilingualE5Large,
-    /// Large English embedding model from MixedBreed.ai
+    /// mixedbread-ai/mxbai-embed-large-v1
     MxbaiEmbedLargeV1,
-    /// Quantized Large English embedding model from MixedBreed.ai
+    /// Quantized mixedbread-ai/mxbai-embed-large-v1
     MxbaiEmbedLargeV1Q,
 }
 
-pub(crate) fn models() -> Vec<ModelInfo> {
-    vec![
+pub(crate) fn models_list() -> Vec<ModelInfo> {
+    let models_list = vec![
         ModelInfo {
             model: EmbeddingModel::AllMiniLML6V2,
             dim: 384,
             description: String::from("Sentence Transformer model, MiniLM-L6-v2"),
             model_code: String::from("Qdrant/all-MiniLM-L6-v2-onnx"),
             model_file: String::from("model.onnx"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::AllMiniLML6V2Q,
+            dim: 384,
+            description: String::from("Quantized Sentence Transformer model, MiniLM-L6-v2"),
+            model_code: String::from("Xenova/all-MiniLM-L6-v2"),
+            model_file: String::from("onnx/model_quantized.onnx"),
         },
         ModelInfo {
             model: EmbeddingModel::BGEBaseENV15,
@@ -183,7 +192,22 @@ pub(crate) fn models() -> Vec<ModelInfo> {
             model_code: String::from("mixedbread-ai/mxbai-embed-large-v1"),
             model_file: String::from("onnx/model_quantized.onnx"),
         },
-    ]
+    ];
+
+    // TODO: Use when out in stable
+    // assert_eq!(
+    //     std::mem::variant_count::<EmbeddingModel>(),
+    //     models_list.len(),
+    //     "list_supported_models() is not exhaustive"
+    // );
+
+    assert_eq!(
+        EmbeddingModel::VARIANT_COUNT,
+        models_list.len(),
+        "list_supported_models() is not exhaustive"
+    );
+
+    models_list
 }
 /// Data struct about the available models
 #[derive(Debug, Clone)]
