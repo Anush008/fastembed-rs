@@ -9,6 +9,8 @@ on:
   
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings"
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -27,11 +29,11 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Run FMT check
-        run: cargo fmt --check
+      - name: Run tests
+        run: cargo test
 
       - name: Run Cargo Clippy
         run: cargo clippy
 
-      - name: Run tests
-        run: cargo test
+      - name: Run FMT check
+        run: cargo fmt --all -- --check
