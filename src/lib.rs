@@ -51,14 +51,26 @@ mod models;
 #[cfg(test)]
 mod tests;
 
-use std::{fmt::Display, fs::File, io::Read, path::{Path, PathBuf}, thread::available_parallelism};
+use crate::models::models;
 use anyhow::{Ok, Result};
-use hf_hub::{api::sync::{ApiBuilder, ApiRepo}, Cache};
+use hf_hub::{
+    api::sync::{ApiBuilder, ApiRepo},
+    Cache,
+};
 use ndarray::Array;
 use ort::{GraphOptimizationLevel, Session, Value};
-use rayon::{prelude::{IntoParallelIterator, ParallelIterator}, slice::ParallelSlice};
+use rayon::{
+    prelude::{IntoParallelIterator, ParallelIterator},
+    slice::ParallelSlice,
+};
+use std::{
+    fmt::Display,
+    fs::File,
+    io::Read,
+    path::{Path, PathBuf},
+    thread::available_parallelism,
+};
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
-use crate::models::models;
 
 pub use ort::ExecutionProviderDispatch;
 
