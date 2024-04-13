@@ -44,8 +44,8 @@ pub enum EmbeddingModel {
     MxbaiEmbedLargeV1Q,
 }
 
-pub(crate) fn models() -> Vec<ModelInfo> {
-    vec![
+pub(crate) fn models_list() -> Vec<ModelInfo> {
+    let models_list = vec![
         ModelInfo {
             model: EmbeddingModel::AllMiniLML6V2,
             dim: 384,
@@ -192,7 +192,22 @@ pub(crate) fn models() -> Vec<ModelInfo> {
             model_code: String::from("mixedbread-ai/mxbai-embed-large-v1"),
             model_file: String::from("onnx/model_quantized.onnx"),
         },
-    ]
+    ];
+
+    // TODO: Use when out in stable
+    // assert_eq!(
+    //     std::mem::variant_count::<EmbeddingModel>(),
+    //     models_list.len(),
+    //     "list_supported_models() is not exhaustive"
+    // );
+
+    assert_eq!(
+        EmbeddingModel::VARIANT_COUNT,
+        models_list.len(),
+        "list_supported_models() is not exhaustive"
+    );
+
+    models_list
 }
 /// Data struct about the available models
 #[derive(Debug, Clone)]
