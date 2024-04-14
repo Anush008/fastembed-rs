@@ -197,6 +197,8 @@ impl TextEmbedding {
             .get(&model_file_name)
             .unwrap_or_else(|_| panic!("Failed to retrieve {} ", model_file_name));
 
+        // TODO: If more models need .onnx_data, implement a better way to handle this
+        // Probably by adding `additonal_files` field in the `ModelInfo` struct
         if model_name == EmbeddingModel::MultilingualE5Large {
             model_repo
                 .get("model.onnx_data")
