@@ -30,11 +30,11 @@ jobs:
             .fastembed_cache/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
 
-      - name: Run tests
+      - name: Cargo tests
         run: cargo test
 
-      - name: Run Cargo Clippy
+      - name: Cargo Clippy
         run: cargo clippy
 
-      - name: Run FMT check
+      - name: Cargo FMT
         run: cargo fmt --all -- --check
