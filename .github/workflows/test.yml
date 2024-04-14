@@ -27,10 +27,9 @@ jobs:
             ~/.cargo/git/db/
             ~/.cache/ort.pyke.io
             target/
-            .fastembed_cache/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
 
-      - name: Cargo tests
+      - name: Cargo Test
         run: cargo test
 
       - name: Cargo Clippy
