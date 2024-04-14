@@ -13,7 +13,8 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: flyci-macos-14-xlarge-m2
+
     steps:
       - uses: actions/checkout@v3
 
@@ -26,14 +27,13 @@ jobs:
             ~/.cargo/git/db/
             ~/.cache/ort.pyke.io
             target/
-            .fastembed_cache/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
 
-      - name: Run tests
+      - name: Cargo Test
         run: cargo test
 
-      - name: Run Cargo Clippy
+      - name: Cargo Clippy
         run: cargo clippy
 
-      - name: Run FMT check
+      - name: Cargo FMT
         run: cargo fmt --all -- --check
