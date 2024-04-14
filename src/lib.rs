@@ -57,12 +57,10 @@ use hf_hub::{
     Cache,
 };
 use models::models_list;
+use ndarray::s;
 use ndarray::Array;
 use ort::{GraphOptimizationLevel, Session, Value};
-use rayon::{
-    prelude::{IntoParallelIterator, ParallelIterator},
-    slice::ParallelSlice,
-};
+use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 use std::{
     fmt::Display,
     fs::File,
@@ -199,6 +197,8 @@ impl TextEmbedding {
             .get(&model_file_name)
             .unwrap_or_else(|_| panic!("Failed to retrieve {} ", model_file_name));
 
+        // TODO: If more models need .onnx_data, implement a better way to handle this
+        // Probably by adding `additonal_files` field in the `ModelInfo` struct
         if model_name == EmbeddingModel::MultilingualE5Large {
             model_repo
                 .get("model.onnx_data")
@@ -445,13 +445,13 @@ impl TextEmbedding {
 
                 // Extract and normalize embeddings
                 let output_data = outputs["last_hidden_state"].extract_tensor::<f32>()?;
-                let view = output_data.view();
-                let shape = view.shape();
-                let flattened = view.as_slice().unwrap();
-                let data = get_embeddings(flattened, shape);
-                let embeddings: Vec<Embedding> = data
-                    .into_par_iter()
-                    .map(|mut d| normalize(&mut d))
+
+                let embeddings: Vec<Vec<f32>> = output_data
+                    .view()
+                    .slice(s![.., 0, ..])
+                    .rows()
+                    .into_iter()
+                    .map(|row| normalize(row.as_slice().unwrap()))
                     .collect();
 
                 Ok(embeddings)
@@ -473,28 +473,12 @@ type Tokenizer = tokenizers::TokenizerImpl<
     tokenizers::DecoderWrapper,
 >;
 
-fn normalize(v: &mut [f32]) -> Vec<f32> {
+fn normalize(v: &[f32]) -> Vec<f32> {
     let norm = (v.iter().map(|val| val * val).sum::<f32>()).sqrt();
     let epsilon = 1e-12;
 
     // We add the super-small epsilon to avoid dividing by zero
     v.iter().map(|&val| val / (norm + epsilon)).collect()
-}
-
-fn get_embeddings(data: &[f32], dimensions: &[usize]) -> Vec<Embedding> {
-    let x = dimensions[0];
-    let y = dimensions[1];
-    let z = dimensions[2];
-    let mut embeddings: Vec<Embedding> = Vec::with_capacity(x);
-
-    for index in 0..x {
-        let start_index = index * y * z;
-        let end_index = start_index + z;
-        let embedding = data[start_index..end_index].to_vec();
-        embeddings.push(embedding);
-    }
-
-    embeddings
 }
 
 /// Read a file to bytes.
