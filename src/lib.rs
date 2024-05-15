@@ -73,6 +73,7 @@ use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 pub use ort::ExecutionProviderDispatch;
 
 pub use crate::models::{EmbeddingModel, ModelInfo};
+use crate::models::{reranker_model_list, RerankerModel, RerankerModelInfo};
 
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
@@ -85,6 +86,16 @@ pub type Embedding = Vec<f32>;
 impl Display for EmbeddingModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let model_info = TextEmbedding::list_supported_models()
+            .into_iter()
+            .find(|model| model.model == *self)
+            .unwrap();
+        write!(f, "{}", model_info.model_code)
+    }
+}
+
+impl Display for RerankerModel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let model_info = TextRerank::list_supported_models()
             .into_iter()
             .find(|model| model.model == *self)
             .unwrap();
@@ -460,6 +471,219 @@ impl TextEmbedding {
             .collect();
 
         Ok(output)
+    }
+}
+
+pub struct TextRerank {
+    tokenizer: Tokenizer,
+    session: Session,
+    need_token_type_ids: bool
+}
+
+
+impl TextRerank {
+    fn new(tokenizer: Tokenizer, session: Session) -> Self {
+        let need_token_type_ids = session
+            .inputs
+            .iter()
+            .any(|input| input.name == "token_type_ids");
+        Self {
+            tokenizer,
+            session,
+            need_token_type_ids,
+        }
+    }
+
+    pub fn get_model_info(model: &RerankerModel) -> RerankerModelInfo {
+        TextRerank::list_supported_models()
+            .into_iter()
+            .find(|m| &m.model == model)
+            .expect("Model not found.")
+    }
+
+    pub fn list_supported_models() -> Vec<RerankerModelInfo> {
+        reranker_model_list()
+    }
+
+    pub fn try_new(model: RerankerModel, options: InitOptions) -> Result<TextRerank> {
+        let InitOptions {
+            execution_providers,
+            max_length,
+            cache_dir,
+            show_download_progress,
+            ..
+        } = options;
+
+        let threads = available_parallelism()?.get() as i16;
+
+        let cache = Cache::new(cache_dir);
+        let api = ApiBuilder::from_cache(cache)
+            .with_progress(show_download_progress)
+            .build()
+            .unwrap();
+        let model_repo = api.model(model.to_string());
+
+        let model_file_name = TextRerank::get_model_info(&model).model_file;
+        let model_file_reference = model_repo
+            .get(&model_file_name)
+            .unwrap_or_else(|_| panic!("Failed to retrieve {} ", model_file_name));
+
+        let session = Session::builder()?
+            .with_execution_providers(execution_providers)?
+            .with_optimization_level(GraphOptimizationLevel::Level3)?
+            .with_intra_threads(threads)?
+            .with_model_from_file(model_file_reference)?;
+
+        let tokenizer = TextEmbedding::load_tokenizer_hf_hub(model_repo, max_length)?;
+        Ok(Self::new(tokenizer, session))
+    }
+
+    pub fn rerank_result<S: AsRef<str> + Send + Sync>(
+        &self,
+        texts: Vec<(S, S)>,
+        batch_size: Option<usize>,
+    )  -> Result<RerankResult> {
+        let x: Vec<(&str, &str)> = texts.iter().map(|(a, b)| (a.as_ref(), b.as_ref())).collect();
+
+        let scores = self.rerank(x, batch_size)?;
+        let mut idx: Vec<usize> = (0..scores.len()).collect();
+        idx.sort_by(|a, b| scores[*b].partial_cmp(&scores[*a]).unwrap());
+
+        let mut sorted_texts: Vec<(String, String)> = Vec::new();
+        let mut sorted_scores: Vec<f32> = Vec::new();
+
+        for i in idx {
+            let (a, b) = &texts[i];
+            let score = scores[i];
+
+            sorted_texts.push((a.as_ref().to_string(), b.as_ref().to_string()));
+            sorted_scores.push(score);
+        }
+
+        Ok(RerankResult {
+            sorted_texts,
+            sorted_scores
+        })
+    }
+
+    pub fn rerank<S: AsRef<str> + Send + Sync>(
+        &self,
+        texts: Vec<(S, S)>,
+        batch_size: Option<usize>,
+    ) -> Result<Vec<f32>> {
+        let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
+
+        let output = texts
+            .par_chunks(batch_size)
+            .map(|batch| {
+                let inputs = batch.iter().map(|(q, a)| (q.as_ref(), a.as_ref())).collect();
+                let encodings = self.tokenizer.encode_batch(inputs, true).unwrap();
+
+                let encoding_length = encodings[0].len();
+                let batch_size = batch.len();
+
+                let max_size = encoding_length * batch_size;
+
+                let mut ids_array = Vec::with_capacity(max_size);
+                let mut mask_array = Vec::with_capacity(max_size);
+                let mut typeids_array = Vec::with_capacity(max_size);
+
+                encodings.iter().for_each(|encoding| {
+                    let ids = encoding.get_ids();
+                    let mask = encoding.get_attention_mask();
+                    let typeids = encoding.get_type_ids();
+
+                    ids_array.extend(ids.iter().map(|x| *x as i64));
+                    mask_array.extend(mask.iter().map(|x| *x as i64));
+                    typeids_array.extend(typeids.iter().map(|x| *x as i64));
+                });
+
+                let inputs_ids_array =
+                    Array::from_shape_vec((batch_size, encoding_length), ids_array)?;
+
+                let attention_mask_array =
+                    Array::from_shape_vec((batch_size, encoding_length), mask_array)?;
+
+                let token_type_ids_array =
+                    Array::from_shape_vec((batch_size, encoding_length), typeids_array)?;
+
+                let mut session_inputs = ort::inputs![
+                    "input_ids" => Value::from_array(inputs_ids_array)?,
+                    "attention_mask" => Value::from_array(attention_mask_array)?,
+                ]?;
+                if self.need_token_type_ids {
+                    session_inputs
+                        .insert("token_type_ids", Value::from_array(token_type_ids_array)?);
+                }
+
+                let outputs = self.session.run(session_inputs)?;
+
+                let outputs = outputs["logits"].extract_tensor::<f32>().unwrap();
+
+                let scores: Vec<f32> = outputs
+                    .view()
+                    .slice(s![.., 0])
+                    .rows()
+                    .into_iter()
+                    .map(|row| row.to_vec())
+                    .flatten()
+                    .collect();
+
+                Ok(scores)
+            })
+            .flat_map(|result| result.unwrap())
+            .collect();
+
+        Ok(output)
+    }
+}
+
+/// sorted rerank result
+#[derive(Debug)]
+pub struct RerankResult {
+    sorted_texts: Vec<(String, String)>,
+    sorted_scores: Vec<f32>,
+}
+
+impl RerankResult {
+
+    /// returns a collection of text pairs where the scores are greater than the given threshold.
+    fn gt(&self, s: f32) -> Result<Vec<(&str, &str)>> {
+        let mut result = Vec::new();
+        for ((t1, t2), score) in self.sorted_texts.iter().zip(self.sorted_scores.iter()) {
+            if *score > s {
+                result.push((t1.as_str(), t2.as_str()));
+            } else {
+                break;
+            }
+        }
+        Ok(result)
+    }
+
+    /// return the texts which limit with size
+    fn limit(&self, size: usize) -> Result<Vec<(&str, &str)>> {
+        assert!(size <= self.sorted_texts.len(), "size exceeds the length of sorted_texts");
+
+        Ok(self.sorted_texts
+            .iter()
+            .take(size)
+            .map(|(s1, s2)| (s1.as_str(), s2.as_str()))
+            .collect())
+    }
+
+    /// return the texts which score larger than s and limit with size
+    fn gt_limit(&self, s: f32, size: usize) -> Result<Vec<(&str, &str)>>{
+        assert!(size <= self.sorted_texts.len(), "size exceeds the length of sorted_texts");
+
+        let mut result = Vec::new();
+        for ((t1, t2), score) in self.sorted_texts.iter().zip(self.sorted_scores.iter()) {
+            if *score > s && result.len() < size {
+                result.push((t1.as_str(), t2.as_str()));
+            } else {
+                break;
+            }
+        }
+        Ok(result)
     }
 }
 
