@@ -538,34 +538,6 @@ impl TextRerank {
         Ok(Self::new(tokenizer, session))
     }
 
-    pub fn rerank_result<S: AsRef<str> + Send + Sync>(
-        &self,
-        texts: Vec<(S, S)>,
-        batch_size: Option<usize>,
-    )  -> Result<RerankResult> {
-        let x: Vec<(&str, &str)> = texts.iter().map(|(a, b)| (a.as_ref(), b.as_ref())).collect();
-
-        let scores = self.rerank(x, batch_size)?;
-        let mut idx: Vec<usize> = (0..scores.len()).collect();
-        idx.sort_by(|a, b| scores[*b].partial_cmp(&scores[*a]).unwrap());
-
-        let mut sorted_texts: Vec<(String, String)> = Vec::new();
-        let mut sorted_scores: Vec<f32> = Vec::new();
-
-        for i in idx {
-            let (a, b) = &texts[i];
-            let score = scores[i];
-
-            sorted_texts.push((a.as_ref().to_string(), b.as_ref().to_string()));
-            sorted_scores.push(score);
-        }
-
-        Ok(RerankResult {
-            sorted_texts,
-            sorted_scores
-        })
-    }
-
     pub fn rerank<S: AsRef<str> + Send + Sync>(
         &self,
         texts: Vec<(S, S)>,
@@ -635,55 +607,6 @@ impl TextRerank {
             .collect();
 
         Ok(output)
-    }
-}
-
-/// sorted rerank result
-#[derive(Debug)]
-pub struct RerankResult {
-    sorted_texts: Vec<(String, String)>,
-    sorted_scores: Vec<f32>,
-}
-
-impl RerankResult {
-
-    /// returns a collection of text pairs where the scores are greater than the given threshold.
-    fn gt(&self, s: f32) -> Result<Vec<(&str, &str)>> {
-        let mut result = Vec::new();
-        for ((t1, t2), score) in self.sorted_texts.iter().zip(self.sorted_scores.iter()) {
-            if *score > s {
-                result.push((t1.as_str(), t2.as_str()));
-            } else {
-                break;
-            }
-        }
-        Ok(result)
-    }
-
-    /// return the texts which limit with size
-    fn limit(&self, size: usize) -> Result<Vec<(&str, &str)>> {
-        assert!(size <= self.sorted_texts.len(), "size exceeds the length of sorted_texts");
-
-        Ok(self.sorted_texts
-            .iter()
-            .take(size)
-            .map(|(s1, s2)| (s1.as_str(), s2.as_str()))
-            .collect())
-    }
-
-    /// return the texts which score larger than s and limit with size
-    fn gt_limit(&self, s: f32, size: usize) -> Result<Vec<(&str, &str)>>{
-        assert!(size <= self.sorted_texts.len(), "size exceeds the length of sorted_texts");
-
-        let mut result = Vec::new();
-        for ((t1, t2), score) in self.sorted_texts.iter().zip(self.sorted_scores.iter()) {
-            if *score > s && result.len() < size {
-                result.push((t1.as_str(), t2.as_str()));
-            } else {
-                break;
-            }
-        }
-        Ok(result)
     }
 }
 

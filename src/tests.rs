@@ -141,28 +141,3 @@ fn test_rerank() {
     let scores = result.rerank(texts, None);
     println!("{:?}", scores);
 }
-
-#[test]
-fn test_rerank_result() {
-    let rerank = TextRerank::try_new(RerankerModel::BGERerankerBase,
-                                     InitOptions { show_download_progress: true, ..Default::default() }).unwrap();
-    let texts = vec![
-        ("what is panda?", "hi"),
-        ("what is panda?", "The giant panda (Ailuropoda melanoleuca), sometimes called a panda bear or simply panda, is a bear species endemic to China."),
-        ("what is panda?", "panda is animal"),
-        ("what is panda?", "i dont know"),
-        ("what is panda?", "kind of mammal"),
-    ];
-    let result = rerank.rerank_result(texts, None).unwrap();
-    println!("{:?}", result);
-    // limit 3
-    let result1 = result.limit(3).unwrap();
-    println!("{:?}", result1);
-    // score larger than 1.0
-    let x = result.gt(1.0).unwrap();
-    println!("{:?}", x);
-    // score larger than 1.0 and limit 1
-    let vec1 = result.gt_limit(1.0, 1).unwrap();
-    println!("{:?}", vec1)
-
-}
