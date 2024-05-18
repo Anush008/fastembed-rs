@@ -82,20 +82,24 @@ let documents = vec![
  println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 384
 
 ```
+
 Usage for reranker model.
+
 ```rust
-// Simple compute reranker scores
 let result = TextRerank::try_new(RerankerModel::BGERerankerBase,
 InitOptions { show_download_progress: true, ..Default::default() }).unwrap();
 
-let texts = vec![
-    ("what is panda?", "hi"),
-    ("what is panda?", "The giant panda (Ailuropoda melanoleuca), sometimes called a panda bear or simply panda, is a bear species endemic to China."),
-    ("what is panda?", "panda is animal"),
-    ("what is panda?", "i dont know"),
-    ("what is panda?", "kind of mammal"),
+let ducuments = vec![
+    "hi",
+    "The giant panda (Ailuropoda melanoleuca), sometimes called a panda bear or simply panda, is a bear species endemic to China.",
+    "panda is animal",
+    "i dont know",
+    "kind of mammal",
 ];
-let scores = result.rerank(texts, None);
+
+// Return rerank results with the highest top2 score. Default return document and batch size is 256.
+let scores = result.rerank("what is panda?", ducuments, Some(2), None, None);
+println!("Rerank result: {:?}", scores);
 ```
 
 Alternatively, raw `.onnx` files can be loaded through the `UserDefinedEmbeddingModel` struct (for "bring your own" text embedding models) using `TextEmbedding::try_new_from_user_defined(...)`.

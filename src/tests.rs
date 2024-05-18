@@ -131,13 +131,13 @@ fn test_rerank() {
     let result = TextRerank::try_new(RerankerModel::BGERerankerBase,
                                      InitOptions { show_download_progress: true, ..Default::default() }).unwrap();
 
-    let texts = vec![
-        ("what is panda?", "hi"),
-        ("what is panda?", "The giant panda (Ailuropoda melanoleuca), sometimes called a panda bear or simply panda, is a bear species endemic to China."),
-        ("what is panda?", "panda is animal"),
-        ("what is panda?", "i dont know"),
-        ("what is panda?", "kind of mammal"),
+    let ducuments = vec![
+        "hi",
+        "The giant panda (Ailuropoda melanoleuca), sometimes called a panda bear or simply panda, is a bear species endemic to China.",
+        "panda is animal",
+        "i dont know",
+        "kind of mammal",
     ];
-    let scores = result.rerank(texts, None);
-    println!("{:?}", scores);
+    let scores = result.rerank("what is panda?", ducuments, Some(5), Some(false), None);
+    println!("Rerank result: {:?}", scores);
 }

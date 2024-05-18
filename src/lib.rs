@@ -68,6 +68,8 @@ use std::{
     path::{Path, PathBuf},
     thread::available_parallelism,
 };
+use std::cmp::Ordering;
+use std::collections::BinaryHeap;
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 
 pub use ort::ExecutionProviderDispatch;
@@ -79,6 +81,7 @@ const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
 const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
 const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallENV15;
+const DEFAULT_RETURN_DOCUMENTS: bool = true;
 
 /// Type alias for the embedding vector
 pub type Embedding = Vec<f32>;
@@ -538,17 +541,26 @@ impl TextRerank {
         Ok(Self::new(tokenizer, session))
     }
 
+    /// Reranks documents using the reranker model and returns the results sorted by score in descending order.
     pub fn rerank<S: AsRef<str> + Send + Sync>(
         &self,
-        texts: Vec<(S, S)>,
+        query: S,
+        documents: Vec<S>,
+        top_n: Option<usize>,
+        return_documents: Option<bool>,
         batch_size: Option<usize>,
-    ) -> Result<Vec<f32>> {
+    ) -> Result<Vec<RerankResult>> {
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
+        let return_documents = return_documents.unwrap_or(DEFAULT_RETURN_DOCUMENTS);
 
-        let output = texts
+        let q = query.as_ref();
+
+        let scores: Vec<f32> = documents
             .par_chunks(batch_size)
             .map(|batch| {
-                let inputs = batch.iter().map(|(q, a)| (q.as_ref(), a.as_ref())).collect();
+
+                let inputs = batch.iter().map(|d| (q, d.as_ref())).collect();
+
                 let encodings = self.tokenizer.encode_batch(inputs, true).unwrap();
 
                 let encoding_length = encodings[0].len();
@@ -585,12 +597,12 @@ impl TextRerank {
                 ]?;
                 if self.need_token_type_ids {
                     session_inputs
-                        .insert("token_type_ids", Value::from_array(token_type_ids_array)?);
+                    .insert("token_type_ids", Value::from_array(token_type_ids_array)?);
                 }
 
                 let outputs = self.session.run(session_inputs)?;
 
-                let outputs = outputs["logits"].extract_tensor::<f32>().unwrap();
+                let outputs = outputs["logits"].extract_tensor::<f32>().expect("Failed to extract logits tensor");
 
                 let scores: Vec<f32> = outputs
                     .view()
@@ -602,11 +614,61 @@ impl TextRerank {
                     .collect();
 
                 Ok(scores)
-            })
-            .flat_map(|result| result.unwrap())
-            .collect();
+        })
+        .flat_map(|result| result.unwrap())
+        .collect();
 
-        Ok(output)
+        let mut top_n_heap: BinaryHeap<RerankResult> = match top_n {
+            Some(capacity) => BinaryHeap::with_capacity(capacity + 1),
+            None => BinaryHeap::new(),
+        };
+
+        for (idx, d) in documents.into_iter().enumerate() {
+            if return_documents {
+                top_n_heap.push(RerankResult {
+                    document: Some(d.as_ref().to_string()),
+                    score: scores[idx],
+                    index: idx
+                });
+            } else {
+                top_n_heap.push(RerankResult {
+                    document: None,
+                    score: scores[idx],
+                    index: idx
+                });
+            }
+
+            if let Some(cap) = top_n {
+                if top_n_heap.len() > cap {
+                    top_n_heap.pop();
+                }
+            }
+        }
+
+        let top_n_result = top_n_heap.into_sorted_vec();
+        Ok(top_n_result)
+    }
+}
+
+/// Rerank result.
+#[derive(Debug, PartialEq)]
+pub struct RerankResult {
+    document: Option<String>,
+    score: f32,
+    index: usize,
+}
+
+impl Eq for RerankResult {}
+
+impl Ord for RerankResult {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.score.total_cmp(&self.score)
+    }
+}
+
+impl PartialOrd<Self> for RerankResult {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
