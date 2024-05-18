@@ -61,6 +61,7 @@ use ndarray::s;
 use ndarray::Array;
 use ort::{GraphOptimizationLevel, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
+
 use std::{
     fmt::Display,
     fs::File,
@@ -68,20 +69,18 @@ use std::{
     path::{Path, PathBuf},
     thread::available_parallelism,
 };
-use std::cmp::Ordering;
-use std::collections::BinaryHeap;
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 
 pub use ort::ExecutionProviderDispatch;
 
-pub use crate::models::{EmbeddingModel, ModelInfo};
-use crate::models::{reranker_model_list, RerankerModel, RerankerModelInfo};
+use crate::models::{reranker_model_list, RerankerModelInfo};
+pub use crate::models::{EmbeddingModel, RerankerModel, ModelInfo};
 
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
 const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
 const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallENV15;
-const DEFAULT_RETURN_DOCUMENTS: bool = true;
+const DEFAULT_RE_RANKER_MODEL: RerankerModel = RerankerModel::BGERerankerBase;
 
 /// Type alias for the embedding vector
 pub type Embedding = Vec<f32>;
@@ -480,9 +479,30 @@ impl TextEmbedding {
 pub struct TextRerank {
     tokenizer: Tokenizer,
     session: Session,
-    need_token_type_ids: bool
+    need_token_type_ids: bool,
 }
 
+/// Options for initializing the TextEmbedding model
+#[derive(Debug, Clone)]
+pub struct RerankInitOptions {
+    pub model_name: RerankerModel,
+    pub execution_providers: Vec<ExecutionProviderDispatch>,
+    pub max_length: usize,
+    pub cache_dir: PathBuf,
+    pub show_download_progress: bool,
+}
+
+impl Default for RerankInitOptions {
+    fn default() -> Self {
+        Self {
+            model_name: DEFAULT_RE_RANKER_MODEL,
+            execution_providers: Default::default(),
+            max_length: DEFAULT_MAX_LENGTH,
+            cache_dir: Path::new(DEFAULT_CACHE_DIR).to_path_buf(),
+            show_download_progress: true,
+        }
+    }
+}
 
 impl TextRerank {
     fn new(tokenizer: Tokenizer, session: Session) -> Self {
@@ -508,13 +528,13 @@ impl TextRerank {
         reranker_model_list()
     }
 
-    pub fn try_new(model: RerankerModel, options: InitOptions) -> Result<TextRerank> {
-        let InitOptions {
+    pub fn try_new(options: RerankInitOptions) -> Result<TextRerank> {
+        let RerankInitOptions {
+            model_name,
             execution_providers,
             max_length,
             cache_dir,
             show_download_progress,
-            ..
         } = options;
 
         let threads = available_parallelism()?.get() as i16;
@@ -524,9 +544,9 @@ impl TextRerank {
             .with_progress(show_download_progress)
             .build()
             .unwrap();
-        let model_repo = api.model(model.to_string());
+        let model_repo = api.model(model_name.to_string());
 
-        let model_file_name = TextRerank::get_model_info(&model).model_file;
+        let model_file_name = TextRerank::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo
             .get(&model_file_name)
             .unwrap_or_else(|_| panic!("Failed to retrieve {} ", model_file_name));
@@ -547,18 +567,16 @@ impl TextRerank {
         query: S,
         documents: Vec<S>,
         top_n: Option<usize>,
-        return_documents: Option<bool>,
         batch_size: Option<usize>,
     ) -> Result<Vec<RerankResult>> {
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
-        let return_documents = return_documents.unwrap_or(DEFAULT_RETURN_DOCUMENTS);
+        let top_n = top_n.unwrap_or(documents.len());
 
         let q = query.as_ref();
 
         let scores: Vec<f32> = documents
             .par_chunks(batch_size)
             .map(|batch| {
-
                 let inputs = batch.iter().map(|d| (q, d.as_ref())).collect();
 
                 let encodings = self.tokenizer.encode_batch(inputs, true).unwrap();
@@ -597,79 +615,51 @@ impl TextRerank {
                 ]?;
                 if self.need_token_type_ids {
                     session_inputs
-                    .insert("token_type_ids", Value::from_array(token_type_ids_array)?);
+                        .insert("token_type_ids", Value::from_array(token_type_ids_array)?);
                 }
 
                 let outputs = self.session.run(session_inputs)?;
 
-                let outputs = outputs["logits"].extract_tensor::<f32>().expect("Failed to extract logits tensor");
+                let outputs = outputs["logits"]
+                    .extract_tensor::<f32>()
+                    .expect("Failed to extract logits tensor");
 
                 let scores: Vec<f32> = outputs
                     .view()
                     .slice(s![.., 0])
                     .rows()
                     .into_iter()
-                    .map(|row| row.to_vec())
-                    .flatten()
+                    .flat_map(|row| row.to_vec())
                     .collect();
 
                 Ok(scores)
-        })
-        .flat_map(|result| result.unwrap())
-        .collect();
+            })
+            .flat_map(|result| result.unwrap())
+            .collect();
 
-        let mut top_n_heap: BinaryHeap<RerankResult> = match top_n {
-            Some(capacity) => BinaryHeap::with_capacity(capacity + 1),
-            None => BinaryHeap::new(),
-        };
+        // Return top_n_result of type Vec<RerankResult> ordered by score in descending order, don't use binary heap
+        let mut top_n_result = scores
+            .into_iter()
+            .enumerate()
+            .map(|(index, score)| RerankResult {
+                document: documents[index].as_ref().to_string(),
+                score,
+                index,
+            })
+            .collect::<Vec<RerankResult>>();
 
-        for (idx, d) in documents.into_iter().enumerate() {
-            if return_documents {
-                top_n_heap.push(RerankResult {
-                    document: Some(d.as_ref().to_string()),
-                    score: scores[idx],
-                    index: idx
-                });
-            } else {
-                top_n_heap.push(RerankResult {
-                    document: None,
-                    score: scores[idx],
-                    index: idx
-                });
-            }
+        top_n_result.sort_by(|a, b| a.score.total_cmp(&b.score).reverse());
 
-            if let Some(cap) = top_n {
-                if top_n_heap.len() > cap {
-                    top_n_heap.pop();
-                }
-            }
-        }
-
-        let top_n_result = top_n_heap.into_sorted_vec();
-        Ok(top_n_result)
+        Ok(top_n_result[0..top_n].to_vec())
     }
 }
 
 /// Rerank result.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct RerankResult {
-    document: Option<String>,
+    document: String,
     score: f32,
     index: usize,
-}
-
-impl Eq for RerankResult {}
-
-impl Ord for RerankResult {
-    fn cmp(&self, other: &Self) -> Ordering {
-        other.score.total_cmp(&self.score)
-    }
-}
-
-impl PartialOrd<Self> for RerankResult {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
 }
 
 // This type was inferred using IDE hints

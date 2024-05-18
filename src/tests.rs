@@ -2,8 +2,11 @@ use std::path::Path;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::{read_file_to_bytes, EmbeddingModel, InitOptions, InitOptionsUserDefined, TextEmbedding, TokenizerFiles, UserDefinedEmbeddingModel, DEFAULT_CACHE_DIR, TextRerank};
 use crate::models::RerankerModel;
+use crate::{
+    read_file_to_bytes, EmbeddingModel, InitOptions, InitOptionsUserDefined, RerankInitOptions,
+    TextEmbedding, TextRerank, TokenizerFiles, UserDefinedEmbeddingModel, DEFAULT_CACHE_DIR,
+};
 
 #[test]
 fn test_embeddings() {
@@ -128,16 +131,25 @@ fn test_user_defined_embedding_model() {
 
 #[test]
 fn test_rerank() {
-    let result = TextRerank::try_new(RerankerModel::BGERerankerBase,
-                                     InitOptions { show_download_progress: true, ..Default::default() }).unwrap();
+    let result = TextRerank::try_new(RerankInitOptions {
+        model_name: RerankerModel::BGERerankerBase,
+        show_download_progress: true,
+        ..Default::default()
+    })
+    .unwrap();
 
-    let ducuments = vec![
+    let documents = vec![
         "hi",
-        "The giant panda (Ailuropoda melanoleuca), sometimes called a panda bear or simply panda, is a bear species endemic to China.",
-        "panda is animal",
+        "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.",
+        "panda is an animal",
         "i dont know",
         "kind of mammal",
     ];
-    let scores = result.rerank("what is panda?", ducuments, Some(5), Some(false), None);
-    println!("Rerank result: {:?}", scores);
+    let results = result
+        .rerank("what is panda?", documents, Some(2), None)
+        .unwrap();
+
+    assert_eq!(results.len(), 2);
+    assert!(results[0].document == "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");
+    assert!(results[1].document == "panda is an animal");
 }

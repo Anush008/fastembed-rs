@@ -54,6 +54,8 @@ fastembed = "3"
 
 ## 📖 Usage
 
+### Generating Text Embeddings
+
 ```rust
 use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
 
@@ -83,23 +85,29 @@ let documents = vec![
 
 ```
 
-Usage for reranker model.
+### Candidates Reranking
 
 ```rust
-let result = TextRerank::try_new(RerankerModel::BGERerankerBase,
-InitOptions { show_download_progress: true, ..Default::default() }).unwrap();
+use fastembed::{TextRerank, RerankInitOptions, RerankerModel};
 
-let ducuments = vec![
+let model = TextRerank::try_new(RerankInitOptions {
+    model_name: RerankerModel::BGERerankerBase,
+    show_download_progress: true,
+    ..Default::default()
+})
+.unwrap();
+
+let documents = vec![
     "hi",
-    "The giant panda (Ailuropoda melanoleuca), sometimes called a panda bear or simply panda, is a bear species endemic to China.",
+    "The giant panda (Ailuropoda melanoleuca), sometimes called a panda bear, is a bear species endemic to China.",
     "panda is animal",
     "i dont know",
     "kind of mammal",
 ];
 
-// Return rerank results with the highest top2 score. Default return document and batch size is 256.
-let scores = result.rerank("what is panda?", ducuments, Some(2), None, None);
-println!("Rerank result: {:?}", scores);
+// Rerank and return the top 2 results
+let results = model.rerank("what is panda?", documents, Some(2), None);
+println!("Rerank result: {:?}", results);
 ```
 
 Alternatively, raw `.onnx` files can be loaded through the `UserDefinedEmbeddingModel` struct (for "bring your own" text embedding models) using `TextEmbedding::try_new_from_user_defined(...)`.

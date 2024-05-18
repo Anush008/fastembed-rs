@@ -226,14 +226,12 @@ pub enum RerankerModel {
 }
 
 pub(crate) fn reranker_model_list() -> Vec<RerankerModelInfo> {
-    let reranker_model_list = vec![
-        RerankerModelInfo {
-            model: RerankerModel::BGERerankerBase,
-            description: String::from("reranker model for english and chinese"),
-            model_code: String::from("BAAI/bge-reranker-base"),
-            model_file: String::from("onnx/model.onnx"),
-        }
-    ];
+    let reranker_model_list = vec![RerankerModelInfo {
+        model: RerankerModel::BGERerankerBase,
+        description: String::from("reranker model for english and chinese"),
+        model_code: String::from("BAAI/bge-reranker-base"),
+        model_file: String::from("onnx/model.onnx"),
+    }];
     assert_eq!(
         RerankerModel::VARIANT_COUNT,
         reranker_model_list.len(),
