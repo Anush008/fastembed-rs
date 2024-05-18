@@ -74,7 +74,7 @@ use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 pub use ort::ExecutionProviderDispatch;
 
 use crate::models::{reranker_model_list, RerankerModelInfo};
-pub use crate::models::{EmbeddingModel, RerankerModel, ModelInfo};
+pub use crate::models::{EmbeddingModel, ModelInfo, RerankerModel};
 
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
@@ -100,7 +100,7 @@ impl Display for RerankerModel {
         let model_info = TextRerank::list_supported_models()
             .into_iter()
             .find(|model| model.model == *self)
-            .unwrap();
+            .expect("Model not found in supported models list.");
         write!(f, "{}", model_info.model_code)
     }
 }
@@ -543,13 +543,13 @@ impl TextRerank {
         let api = ApiBuilder::from_cache(cache)
             .with_progress(show_download_progress)
             .build()
-            .unwrap();
+            .expect("Failed to build API from cache");
         let model_repo = api.model(model_name.to_string());
 
         let model_file_name = TextRerank::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo
             .get(&model_file_name)
-            .unwrap_or_else(|_| panic!("Failed to retrieve {} ", model_file_name));
+            .unwrap_or_else(|_| panic!("Failed to retrieve model file: {}", model_file_name));
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
@@ -579,7 +579,10 @@ impl TextRerank {
             .map(|batch| {
                 let inputs = batch.iter().map(|d| (q, d.as_ref())).collect();
 
-                let encodings = self.tokenizer.encode_batch(inputs, true).unwrap();
+                let encodings = self
+                    .tokenizer
+                    .encode_batch(inputs, true)
+                    .expect("Failed to encode batch");
 
                 let encoding_length = encodings[0].len();
                 let batch_size = batch.len();
