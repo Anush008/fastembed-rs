@@ -146,10 +146,10 @@ fn test_rerank() {
         "kind of mammal",
     ];
     let results = result
-        .rerank("what is panda?", documents, Some(2), None)
+        .rerank("what is panda?", documents.clone(), None)
         .unwrap();
 
-    assert_eq!(results.len(), 2);
+    assert_eq!(results.len(), documents.len());
     assert!(results[0].document == "panda is an animal");
     assert!(results[1].document == "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");
 }

@@ -566,11 +566,9 @@ impl TextRerank {
         &self,
         query: S,
         documents: Vec<S>,
-        top_n: Option<usize>,
         batch_size: Option<usize>,
     ) -> Result<Vec<RerankResult>> {
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
-        let top_n = top_n.unwrap_or(documents.len());
 
         let q = query.as_ref();
 
@@ -653,7 +651,7 @@ impl TextRerank {
 
         top_n_result.sort_by(|a, b| a.score.total_cmp(&b.score).reverse());
 
-        Ok(top_n_result[0..top_n].to_vec())
+        Ok(top_n_result.to_vec())
     }
 }
 

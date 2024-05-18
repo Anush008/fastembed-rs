@@ -105,8 +105,8 @@ let documents = vec![
     "kind of mammal",
 ];
 
-// Rerank and return the top 2 results
-let results = model.rerank("what is panda?", documents, Some(2), None);
+// Rerank with the default batch size
+let results = model.rerank("what is panda?", documents, None);
 println!("Rerank result: {:?}", results);
 ```
 
