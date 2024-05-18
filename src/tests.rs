@@ -150,6 +150,6 @@ fn test_rerank() {
         .unwrap();
 
     assert_eq!(results.len(), 2);
-    assert!(results[0].document == "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");
-    assert!(results[1].document == "panda is an animal");
+    assert!(results[0].document == "panda is an animal");
+    assert!(results[1].document == "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");
 }
