@@ -566,6 +566,7 @@ impl TextRerank {
         &self,
         query: S,
         documents: Vec<S>,
+        return_documents: bool,
         batch_size: Option<usize>,
     ) -> Result<Vec<RerankResult>> {
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
@@ -639,15 +640,15 @@ impl TextRerank {
             .collect();
 
         // Return top_n_result of type Vec<RerankResult> ordered by score in descending order, don't use binary heap
-        let mut top_n_result = scores
+        let mut top_n_result: Vec<RerankResult> = scores
             .into_iter()
             .enumerate()
             .map(|(index, score)| RerankResult {
-                document: documents[index].as_ref().to_string(),
+                document: return_documents.then(|| documents[index].as_ref().to_string()),
                 score,
                 index,
             })
-            .collect::<Vec<RerankResult>>();
+            .collect();
 
         top_n_result.sort_by(|a, b| a.score.total_cmp(&b.score).reverse());
 
@@ -658,7 +659,7 @@ impl TextRerank {
 /// Rerank result.
 #[derive(Debug, PartialEq, Clone)]
 pub struct RerankResult {
-    document: String,
+    document: Option<String>,
     score: f32,
     index: usize,
 }

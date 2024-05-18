@@ -106,7 +106,7 @@ let documents = vec![
 ];
 
 // Rerank with the default batch size
-let results = model.rerank("what is panda?", documents, None);
+let results = model.rerank("what is panda?", documents, true, None);
 println!("Rerank result: {:?}", results);
 ```
 
