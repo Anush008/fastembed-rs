@@ -54,6 +54,8 @@ fastembed = "3"
 
 ## 📖 Usage
 
+### Generating Text Embeddings
+
 ```rust
 use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
 
@@ -80,6 +82,32 @@ let documents = vec![
 
  println!("Embeddings length: {}", embeddings.len()); // -> Embeddings length: 4
  println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 384
+
+```
+
+### Candidates Reranking
+
+```rust
+use fastembed::{TextRerank, RerankInitOptions, RerankerModel};
+
+let model = TextRerank::try_new(RerankInitOptions {
+    model_name: RerankerModel::BGERerankerBase,
+    show_download_progress: true,
+    ..Default::default()
+})
+.unwrap();
+
+let documents = vec![
+    "hi",
+    "The giant panda (Ailuropoda melanoleuca), sometimes called a panda bear, is a bear species endemic to China.",
+    "panda is animal",
+    "i dont know",
+    "kind of mammal",
+];
+
+// Rerank with the default batch size
+let results = model.rerank("what is panda?", documents, true, None);
+println!("Rerank result: {:?}", results);
 ```
 
 Alternatively, raw `.onnx` files can be loaded through the `UserDefinedEmbeddingModel` struct (for "bring your own" text embedding models) using `TextEmbedding::try_new_from_user_defined(...)`.
