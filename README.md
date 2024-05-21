@@ -11,7 +11,7 @@
 - Supports synchronous usage. No dependency on Tokio.
 - Uses [@pykeio/ort](https://github.com/pykeio/ort) for performant ONNX inference.
 - Uses [@huggingface/tokenizers](https://github.com/huggingface/tokenizers) for fast encodings.
-- Supports batch embedddings generation with parallelism using [@rayon-rs/rayon](https://github.com/rayon-rs/rayon).
+- Supports batch embeddings generation with parallelism using [@rayon-rs/rayon](https://github.com/rayon-rs/rayon).
 
 The default model is Flag Embedding, which is top of the [MTEB](https://huggingface.co/spaces/mteb/leaderboard) leaderboard.
 
@@ -21,7 +21,9 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 - Go 🐳: [fastembed-go](https://github.com/Anush008/fastembed-go)
 - JavaScript 🌐: [fastembed-js](https://github.com/Anush008/fastembed-js)
 
-## 🤖 Text Embedding Models
+## 🤖 Models
+
+### Text Embedding
 
 - [**BAAI/bge-base-en-v1.5**](https://huggingface.co/BAAI/bge-base-en-v1.5)
 - [**BAAI/bge-small-en-v1.5**](https://huggingface.co/BAAI/bge-small-en-v1.5) - Default
@@ -37,7 +39,7 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 - [**intfloat/multilingual-e5-large**](https://huggingface.co/intfloat/multilingual-e5-large)
 - [**mixedbread-ai/mxbai-embed-large-v1**](https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1)
 
-## Reranker Models
+### Reranking
 
 - [**BAAI/bge-reranker-base**](https://huggingface.co/BAAI/bge-reranker-base)
 
