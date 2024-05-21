@@ -82,7 +82,7 @@ pub struct TokenizerFiles {
 
 /// Rust representation of the TextEmbedding model
 pub struct TextEmbedding {
-    tokenizer: Tokenizer,
+    pub tokenizer: Tokenizer,
     session: Session,
     need_token_type_ids: bool,
 }

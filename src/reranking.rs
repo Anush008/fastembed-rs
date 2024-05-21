@@ -18,7 +18,7 @@ const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
 
 pub struct TextRerank {
-    tokenizer: Tokenizer,
+    pub tokenizer: Tokenizer,
     session: Session,
     need_token_type_ids: bool,
 }
