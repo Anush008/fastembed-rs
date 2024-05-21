@@ -1,10 +1,21 @@
-use std::{fmt::Display, path::{Path, PathBuf}, thread::available_parallelism};
+use std::{
+    fmt::Display,
+    path::{Path, PathBuf},
+    thread::available_parallelism,
+};
 
-use hf_hub::{api::sync::{ApiBuilder, ApiRepo}, Cache};
+use crate::{
+    common::{load_tokenizer, load_tokenizer_hf_hub, normalize, Tokenizer, DEFAULT_CACHE_DIR},
+    models::text_embedding::models_list,
+    Embedding, EmbeddingModel, ModelInfo,
+};
+use anyhow::Result;
+use hf_hub::{
+    api::sync::{ApiBuilder, ApiRepo},
+    Cache,
+};
 use ndarray::{s, Array};
 use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
-use anyhow::Result;
-use crate::{common::{load_tokenizer, load_tokenizer_hf_hub, normalize, Tokenizer, DEFAULT_CACHE_DIR}, models::text_embedding::models_list, Embedding, EmbeddingModel, ModelInfo};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;

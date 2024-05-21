@@ -1,6 +1,8 @@
 use anyhow::Result;
 use std::{
-    fmt::Display, path::{Path, PathBuf}, thread::available_parallelism
+    fmt::Display,
+    path::{Path, PathBuf},
+    thread::available_parallelism,
 };
 
 use crate::common::{Tokenizer, DEFAULT_CACHE_DIR};
@@ -10,7 +12,8 @@ use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 
 use crate::{
-    common::load_tokenizer_hf_hub, models::reranking::reranker_model_list, RerankerModel, RerankerModelInfo,
+    common::load_tokenizer_hf_hub, models::reranking::reranker_model_list, RerankerModel,
+    RerankerModelInfo,
 };
 
 const DEFAULT_RE_RANKER_MODEL: RerankerModel = RerankerModel::BGERerankerBase;
