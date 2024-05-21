@@ -2,10 +2,11 @@ use std::path::Path;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::models::RerankerModel;
+use crate::common::DEFAULT_CACHE_DIR;
+use crate::RerankerModel;
 use crate::{
     read_file_to_bytes, EmbeddingModel, InitOptions, InitOptionsUserDefined, RerankInitOptions,
-    TextEmbedding, TextRerank, TokenizerFiles, UserDefinedEmbeddingModel, DEFAULT_CACHE_DIR,
+    TextEmbedding, TextRerank, TokenizerFiles, UserDefinedEmbeddingModel,
 };
 
 #[test]

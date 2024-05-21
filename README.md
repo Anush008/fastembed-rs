@@ -21,7 +21,7 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 - Go 🐳: [fastembed-go](https://github.com/Anush008/fastembed-go)
 - JavaScript 🌐: [fastembed-js](https://github.com/Anush008/fastembed-js)
 
-## 🤖 Models
+## 🤖 Text Embedding Models
 
 - [**BAAI/bge-base-en-v1.5**](https://huggingface.co/BAAI/bge-base-en-v1.5)
 - [**BAAI/bge-small-en-v1.5**](https://huggingface.co/BAAI/bge-small-en-v1.5) - Default
@@ -36,6 +36,10 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 - [**intfloat/multilingual-e5-base**](https://huggingface.co/intfloat/multilingual-e5-base)
 - [**intfloat/multilingual-e5-large**](https://huggingface.co/intfloat/multilingual-e5-large)
 - [**mixedbread-ai/mxbai-embed-large-v1**](https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1)
+
+## Reranker Models
+
+- [**BAAI/bge-reranker-base**](https://huggingface.co/BAAI/bge-reranker-base)
 
 ## 🚀 Installation
 
