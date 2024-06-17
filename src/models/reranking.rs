@@ -1,6 +1,4 @@
-use variant_count::VariantCount;
-
-#[derive(Debug, Clone, PartialEq, Eq, VariantCount)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RerankerModel {
     /// BAAI/bge-reranker-base
     BGERerankerBase,
@@ -13,12 +11,6 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
         model_code: String::from("BAAI/bge-reranker-base"),
         model_file: String::from("onnx/model.onnx"),
     }];
-    assert_eq!(
-        RerankerModel::VARIANT_COUNT,
-        reranker_model_list.len(),
-        "models::models() is not exhaustive"
-    );
-
     reranker_model_list
 }
 

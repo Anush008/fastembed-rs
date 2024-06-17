@@ -21,7 +21,7 @@ jobs:
         uses: oven-sh/setup-bun@v1
 
       - name: "📦 install dependencies"
-        run: bun install -D @semantic-release/git conventional-changelog-conventionalcommits@7.0.2 semantic-release-cargo 
+        run: bun install -D @semantic-release/git conventional-changelog-conventionalcommits semantic-release-cargo 
 
       - name: Get Author Name and Email
         run: |
