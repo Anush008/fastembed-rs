@@ -1,6 +1,6 @@
 [package]
 name = "fastembed"
-version = "3.6.0"
+version = "3.6.1"
 edition = "2021"
 description = "Rust implementation of https://github.com/qdrant/fastembed"
 license = "Apache-2.0"
