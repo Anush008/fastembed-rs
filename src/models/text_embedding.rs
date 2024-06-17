@@ -1,6 +1,4 @@
-use variant_count::VariantCount;
-
-#[derive(Debug, Clone, PartialEq, Eq, VariantCount)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EmbeddingModel {
     /// sentence-transformers/all-MiniLM-L6-v2
     AllMiniLML6V2,
@@ -200,12 +198,6 @@ pub fn models_list() -> Vec<ModelInfo> {
     //     models_list.len(),
     //     "models::models() is not exhaustive"
     // );
-
-    assert_eq!(
-        EmbeddingModel::VARIANT_COUNT,
-        models_list.len(),
-        "models::models() is not exhaustive"
-    );
 
     models_list
 }

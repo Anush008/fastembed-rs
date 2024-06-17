@@ -12,14 +12,13 @@ homepage = "https://crates.io/crates/fastembed"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = { version = "=1.0.82" }
-hf-hub = {version="=0.3.2", default-features = false, features = ["online"]}
-ndarray = { version = "=0.15.6", default-features = false }
+anyhow = { version = "1" }
+hf-hub = {version="0.3", default-features = false, features = ["online"]}
+ndarray = { version = "0.15", default-features = false }
 ort = { version = "=2.0.0-rc.0", default-features = false, features = [ "ndarray" ] }
-rayon = { version = "=1.10.0", default-features = false }
-serde_json = {version = "=1.0.115"}
-tokenizers = { version = "=0.15.2", default-features = false, features = ["onig"]}
-variant_count = "=1.1.0"
+rayon = { version = "1.10", default-features = false }
+serde_json = {version = "1"}
+tokenizers = { version = "0.19", default-features = false, features = ["onig"]}
 
 [dev-dependencies]
 criterion = "0.5.1"
