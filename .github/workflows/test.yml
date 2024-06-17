@@ -6,6 +6,8 @@ on:
         - edited
         - synchronize
         - reopened
+    schedule:
+      - cron: 0 0 * * *
   
 env:
   CARGO_TERM_COLOR: always
