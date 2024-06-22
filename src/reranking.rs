@@ -91,7 +91,7 @@ impl TextRerank {
             show_download_progress,
         } = options;
 
-        let threads = available_parallelism()?.get() as i16;
+        let threads = available_parallelism()?.get();
 
         let cache = Cache::new(cache_dir);
         let api = ApiBuilder::from_cache(cache)
@@ -109,7 +109,7 @@ impl TextRerank {
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(threads)?
-            .with_model_from_file(model_file_reference)?;
+            .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
         Ok(Self::new(tokenizer, session))
@@ -169,15 +169,18 @@ impl TextRerank {
                     "input_ids" => Value::from_array(inputs_ids_array)?,
                     "attention_mask" => Value::from_array(attention_mask_array)?,
                 ]?;
+
                 if self.need_token_type_ids {
-                    session_inputs
-                        .insert("token_type_ids", Value::from_array(token_type_ids_array)?);
+                    session_inputs.push((
+                        "token_type_ids".into(),
+                        Value::from_array(token_type_ids_array)?.into(),
+                    ));
                 }
 
                 let outputs = self.session.run(session_inputs)?;
 
                 let outputs = outputs["logits"]
-                    .extract_tensor::<f32>()
+                    .try_extract_tensor::<f32>()
                     .expect("Failed to extract logits tensor");
 
                 let scores: Vec<f32> = outputs
