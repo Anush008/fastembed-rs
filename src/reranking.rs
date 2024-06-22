@@ -184,7 +184,6 @@ impl TextRerank {
                     .expect("Failed to extract logits tensor");
 
                 let scores: Vec<f32> = outputs
-                    .view()
                     .slice(s![.., 0])
                     .rows()
                     .into_iter()

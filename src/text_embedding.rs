@@ -288,7 +288,6 @@ impl TextEmbedding {
                 let output_data = outputs["last_hidden_state"].try_extract_tensor::<f32>()?;
 
                 let embeddings: Vec<Vec<f32>> = output_data
-                    .view()
                     .slice(s![.., 0, ..])
                     .rows()
                     .into_iter()
