@@ -123,7 +123,7 @@ impl TextEmbedding {
             show_download_progress,
         } = options;
 
-        let thrads = available_parallelism()?.get() as i16;
+        let threads = available_parallelism()?.get();
 
         let model_repo = TextEmbedding::retrieve_model(
             model_name.clone(),
@@ -147,8 +147,8 @@ impl TextEmbedding {
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(thrads)?
-            .with_model_from_file(model_file_reference)?;
+            .with_intra_threads(threads)?
+            .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
         Ok(Self::new(tokenizer, session))
@@ -166,12 +166,13 @@ impl TextEmbedding {
             max_length,
         } = options;
 
-        let threads = available_parallelism()?.get() as i16;
+        let threads = available_parallelism()?.get();
+
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(threads)?
-            .with_model_from_memory(&model.onnx_file)?;
+            .commit_from_memory(&model.onnx_file)?;
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
         Ok(Self::new(tokenizer, session))
@@ -273,18 +274,20 @@ impl TextEmbedding {
                     "input_ids" => Value::from_array(inputs_ids_array)?,
                     "attention_mask" => Value::from_array(attention_mask_array)?,
                 ]?;
+
                 if self.need_token_type_ids {
-                    session_inputs
-                        .insert("token_type_ids", Value::from_array(token_type_ids_array)?);
+                    session_inputs.push((
+                        "token_type_ids".into(),
+                        Value::from_array(token_type_ids_array)?.into(),
+                    ));
                 }
 
                 let outputs = self.session.run(session_inputs)?;
 
                 // Extract and normalize embeddings
-                let output_data = outputs["last_hidden_state"].extract_tensor::<f32>()?;
+                let output_data = outputs["last_hidden_state"].try_extract_tensor::<f32>()?;
 
                 let embeddings: Vec<Vec<f32>> = output_data
-                    .view()
                     .slice(s![.., 0, ..])
                     .rows()
                     .into_iter()
