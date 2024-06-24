@@ -4,6 +4,10 @@ pub enum EmbeddingModel {
     AllMiniLML6V2,
     /// Quantized sentence-transformers/all-MiniLM-L6-v2
     AllMiniLML6V2Q,
+    /// sentence-transformers/all-MiniLM-L12-v2
+    AllMiniLML12V2,
+    /// Quantized sentence-transformers/all-MiniLM-L12-v2
+    AllMiniLML12V2Q,
     /// BAAI/bge-base-en-v1.5
     BGEBaseENV15,
     /// Quantized BAAI/bge-base-en-v1.5
@@ -56,6 +60,20 @@ pub fn models_list() -> Vec<ModelInfo> {
             dim: 384,
             description: String::from("Quantized Sentence Transformer model, MiniLM-L6-v2"),
             model_code: String::from("Xenova/all-MiniLM-L6-v2"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::AllMiniLML12V2,
+            dim: 384,
+            description: String::from("Sentence Transformer model, MiniLM-L12-v2"),
+            model_code: String::from("Xenova/all-MiniLM-L12-v2"),
+            model_file: String::from("onnx/model.onnx"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::AllMiniLML12V2Q,
+            dim: 384,
+            description: String::from("Quantized Sentence Transformer model, MiniLM-L12-v2"),
+            model_code: String::from("Xenova/all-MiniLM-L12-v2"),
             model_file: String::from("onnx/model_quantized.onnx"),
         },
         ModelInfo {
