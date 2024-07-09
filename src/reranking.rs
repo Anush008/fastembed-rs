@@ -66,18 +66,6 @@ impl Default for RerankInitOptionsUserDefined {
     }
 }
 
-/// Convert RerankInitOptions to RerankInitOptionsUserDefined
-///
-/// This is useful for when the user wants to use the same options for both the default and user-defined models
-impl From<RerankInitOptions> for RerankInitOptionsUserDefined {
-    fn from(options: RerankInitOptions) -> Self {
-        RerankInitOptionsUserDefined {
-            execution_providers: options.execution_providers,
-            max_length: options.max_length,
-        }
-    }
-}
-
 impl Display for RerankerModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let model_info = TextRerank::list_supported_models()
