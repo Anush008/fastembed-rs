@@ -60,6 +60,4 @@ pub use crate::common::{read_file_to_bytes, Embedding, TokenizerFiles, UserDefin
 pub use crate::models::reranking::{RerankerModel, RerankerModelInfo};
 pub use crate::models::text_embedding::{EmbeddingModel, ModelInfo};
 pub use crate::reranking::{RerankInitOptions, RerankResult, TextRerank};
-pub use crate::text_embedding::{
-    InitOptions, InitOptionsUserDefined, TextEmbedding
-};
+pub use crate::text_embedding::{InitOptions, InitOptionsUserDefined, TextEmbedding};

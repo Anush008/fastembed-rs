@@ -3,10 +3,9 @@ use std::path::Path;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::common::{TokenizerFiles, UserDefinedModel, DEFAULT_CACHE_DIR};
-use crate::RerankerModel;
 use crate::{
     read_file_to_bytes, EmbeddingModel, InitOptions, InitOptionsUserDefined, RerankInitOptions,
-    TextEmbedding, TextRerank
+    TextEmbedding, TextRerank,
 };
 
 #[test]
@@ -132,25 +131,31 @@ fn test_user_defined_embedding_model() {
 
 #[test]
 fn test_rerank() {
-    let result = TextRerank::try_new(RerankInitOptions {
-        model_name: RerankerModel::BGERerankerBase,
-        show_download_progress: true,
-        ..Default::default()
-    })
-    .unwrap();
+    TextRerank::list_supported_models()
+        .par_iter()
+        .for_each(|supported_model| {
 
-    let documents = vec![
-        "hi",
-        "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.",
-        "panda is an animal",
-        "i dont know",
-        "kind of mammal",
-    ];
-    let results = result
-        .rerank("what is panda?", documents.clone(), true, None)
+        let bge_result = TextRerank::try_new(RerankInitOptions {
+            model_name: supported_model.model.clone(),
+            show_download_progress: true,
+            ..Default::default()
+        })
         .unwrap();
 
-    assert_eq!(results.len(), documents.len());
-    assert!(results[0].document.as_ref().unwrap() == "panda is an animal");
-    assert!(results[1].document.as_ref().unwrap() == "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");
+        let documents = vec![
+            "hi",
+            "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.",
+            "panda is an animal",
+            "i dont know",
+            "kind of mammal",
+        ];
+
+        let bge_results = bge_result
+            .rerank("what is panda?", documents.clone(), true, None)
+            .unwrap();
+
+        assert_eq!(bge_results.len(), documents.len());
+        assert!(bge_results[0].document.as_ref().unwrap() == "panda is an animal");
+        assert!(bge_results[1].document.as_ref().unwrap() == "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");    
+    });
 }

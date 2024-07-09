@@ -5,16 +5,15 @@ use std::{
     thread::available_parallelism,
 };
 
-use crate::common::{load_tokenizer_hf_hub, load_tokenizer, Tokenizer, UserDefinedModel, DEFAULT_CACHE_DIR};
+use crate::common::{
+    load_tokenizer, load_tokenizer_hf_hub, Tokenizer, UserDefinedModel, DEFAULT_CACHE_DIR,
+};
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::{s, Array};
 use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 
-use crate::{
-    models::reranking::reranker_model_list, RerankerModel,
-    RerankerModelInfo,
-};
+use crate::{models::reranking::reranker_model_list, RerankerModel, RerankerModelInfo};
 
 const DEFAULT_RE_RANKER_MODEL: RerankerModel = RerankerModel::BGERerankerBase;
 const DEFAULT_BATCH_SIZE: usize = 256;

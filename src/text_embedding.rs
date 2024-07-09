@@ -1,11 +1,6 @@
-use std::{
-    fmt::Display,
-    path::{Path, PathBuf},
-    thread::available_parallelism,
-};
-
+pub use crate::UserDefinedModel as UserDefinedEmbeddingModel;
 use crate::{
-    common::{load_tokenizer, load_tokenizer_hf_hub, normalize, Tokenizer, UserDefinedModel, DEFAULT_CACHE_DIR},
+    common::{load_tokenizer, load_tokenizer_hf_hub, normalize, Tokenizer, DEFAULT_CACHE_DIR},
     models::text_embedding::models_list,
     Embedding, EmbeddingModel, ModelInfo,
 };
@@ -17,6 +12,11 @@ use hf_hub::{
 use ndarray::{s, Array};
 use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
+use std::{
+    fmt::Display,
+    path::{Path, PathBuf},
+    thread::available_parallelism,
+};
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
 const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallENV15;
@@ -140,7 +140,7 @@ impl TextEmbedding {
     ///
     /// This can be used for 'bring your own' embedding models
     pub fn try_new_from_user_defined(
-        model: UserDefinedModel,
+        model: UserDefinedEmbeddingModel,
         options: InitOptionsUserDefined,
     ) -> Result<Self> {
         let InitOptionsUserDefined {
