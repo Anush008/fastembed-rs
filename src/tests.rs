@@ -135,7 +135,7 @@ fn test_rerank() {
         .par_iter()
         .for_each(|supported_model| {
 
-        let bge_result = TextRerank::try_new(RerankInitOptions {
+        let result = TextRerank::try_new(RerankInitOptions {
             model_name: supported_model.model.clone(),
             show_download_progress: true,
             ..Default::default()
@@ -150,12 +150,12 @@ fn test_rerank() {
             "kind of mammal",
         ];
 
-        let bge_results = bge_result
+        let results = result
             .rerank("what is panda?", documents.clone(), true, None)
             .unwrap();
 
-        assert_eq!(bge_results.len(), documents.len());
-        assert!(bge_results[0].document.as_ref().unwrap() == "panda is an animal");
-        assert!(bge_results[1].document.as_ref().unwrap() == "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");    
+        assert_eq!(results.len(), documents.len());
+        assert!(results[0].document.as_ref().unwrap() == "panda is an animal");
+        assert!(results[1].document.as_ref().unwrap() == "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");    
     });
 }
