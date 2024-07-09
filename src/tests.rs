@@ -2,11 +2,11 @@ use std::path::Path;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::common::{TokenizerFiles, UserDefinedModel, DEFAULT_CACHE_DIR};
+use crate::common::DEFAULT_CACHE_DIR;
 use crate::RerankerModel;
 use crate::{
     read_file_to_bytes, EmbeddingModel, InitOptions, InitOptionsUserDefined, RerankInitOptions,
-    TextEmbedding, TextRerank
+    TextEmbedding, TextRerank, TokenizerFiles, UserDefinedEmbeddingModel,
 };
 
 #[test]
@@ -101,7 +101,7 @@ fn test_user_defined_embedding_model() {
             .expect("Could not read tokenizer_config.json"),
     };
     // Create a UserDefinedEmbeddingModel
-    let user_defined_model = UserDefinedModel {
+    let user_defined_model = UserDefinedEmbeddingModel {
         onnx_file,
         tokenizer_files,
     };

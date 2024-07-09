@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    common::{load_tokenizer, load_tokenizer_hf_hub, normalize, Tokenizer, UserDefinedModel, DEFAULT_CACHE_DIR},
+    common::{load_tokenizer, load_tokenizer_hf_hub, normalize, Tokenizer, DEFAULT_CACHE_DIR},
     models::text_embedding::models_list,
     Embedding, EmbeddingModel, ModelInfo,
 };
@@ -71,6 +71,24 @@ impl From<InitOptions> for InitOptionsUserDefined {
             max_length: options.max_length,
         }
     }
+}
+
+/// Struct for "bring your own" embedding models
+///
+/// The onnx_file and tokenizer_files are expecting the files' bytes
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UserDefinedEmbeddingModel {
+    pub onnx_file: Vec<u8>,
+    pub tokenizer_files: TokenizerFiles,
+}
+
+// Tokenizer files for "bring your own" embedding models
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TokenizerFiles {
+    pub tokenizer_file: Vec<u8>,
+    pub config_file: Vec<u8>,
+    pub special_tokens_map_file: Vec<u8>,
+    pub tokenizer_config_file: Vec<u8>,
 }
 
 /// Rust representation of the TextEmbedding model
@@ -140,7 +158,7 @@ impl TextEmbedding {
     ///
     /// This can be used for 'bring your own' embedding models
     pub fn try_new_from_user_defined(
-        model: UserDefinedModel,
+        model: UserDefinedEmbeddingModel,
         options: InitOptionsUserDefined,
     ) -> Result<Self> {
         let InitOptionsUserDefined {
