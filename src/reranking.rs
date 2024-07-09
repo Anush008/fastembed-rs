@@ -5,14 +5,14 @@ use std::{
     thread::available_parallelism,
 };
 
-use crate::common::{Tokenizer, DEFAULT_CACHE_DIR};
+use crate::common::{load_tokenizer_hf_hub, load_tokenizer, Tokenizer, UserDefinedModel, DEFAULT_CACHE_DIR};
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::{s, Array};
 use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 
 use crate::{
-    common::load_tokenizer_hf_hub, models::reranking::reranker_model_list, RerankerModel,
+    models::reranking::reranker_model_list, RerankerModel,
     RerankerModelInfo,
 };
 
@@ -44,6 +44,24 @@ impl Default for RerankInitOptions {
             max_length: DEFAULT_MAX_LENGTH,
             cache_dir: Path::new(DEFAULT_CACHE_DIR).to_path_buf(),
             show_download_progress: true,
+        }
+    }
+}
+
+/// Options for initializing UserDefinedRerankerModel
+///
+/// Model files are held by the UserDefinedRerankerModel struct
+/// #[derive(Debug, Clone)]
+pub struct RerankInitOptionsUserDefined {
+    pub execution_providers: Vec<ExecutionProviderDispatch>,
+    pub max_length: usize,
+}
+
+impl Default for RerankInitOptionsUserDefined {
+    fn default() -> Self {
+        Self {
+            execution_providers: Default::default(),
+            max_length: DEFAULT_MAX_LENGTH,
         }
     }
 }
@@ -112,6 +130,30 @@ impl TextRerank {
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
+        Ok(Self::new(tokenizer, session))
+    }
+
+    /// Create a TextRerank instance from model files provided by the user.
+    ///
+    /// This can be used for 'bring your own' reranking models
+    pub fn try_new_from_user_defined(
+        model: UserDefinedModel,
+        options: RerankInitOptionsUserDefined,
+    ) -> Result<Self> {
+        let RerankInitOptionsUserDefined {
+            execution_providers,
+            max_length,
+        } = options;
+
+        let threads = available_parallelism()?.get();
+
+        let session = Session::builder()?
+            .with_execution_providers(execution_providers)?
+            .with_optimization_level(GraphOptimizationLevel::Level3)?
+            .with_intra_threads(threads)?
+            .commit_from_memory(&model.onnx_file)?;
+
+        let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
         Ok(Self::new(tokenizer, session))
     }
 
