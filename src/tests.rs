@@ -190,8 +190,8 @@ fn test_user_defined_reranking_model() {
 
     // FInd the onnx file - it will be any file in ./onnx ending with .onnx
     let onnx_file = read_file_to_bytes(
-        &dbg!(model_files_dir
-            .join("onnx"))
+        &model_files_dir
+            .join("onnx")
             .read_dir()
             .unwrap()
             .find(|entry| {
@@ -248,7 +248,7 @@ fn test_user_defined_reranking_model() {
     let results = user_defined_reranker
         .rerank("Ciao, Earth!", documents.clone(), false, None)
         .unwrap();
-    
+
     assert_eq!(results.len(), documents.len());
     assert_eq!(results.first().unwrap().index, 0);
 }
