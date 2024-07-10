@@ -1,4 +1,4 @@
-pub use crate::UserDefinedModel as UserDefinedEmbeddingModel;
+use crate::UserDefinedModel as UserDefinedEmbeddingModel;
 use crate::{
     common::{load_tokenizer, load_tokenizer_hf_hub, normalize, Tokenizer, DEFAULT_CACHE_DIR},
     models::text_embedding::models_list,
