@@ -51,15 +51,15 @@ mod models;
 mod reranking;
 mod text_embedding;
 
-
 #[cfg(test)]
 mod tests;
 
 pub use ort::ExecutionProviderDispatch;
 
-pub use crate::common::{read_file_to_bytes, Embedding, TokenizerFiles, UserDefinedModel};
+pub use crate::common::{read_file_to_bytes, Embedding, TokenizerFiles};
 pub use crate::models::reranking::{RerankerModel, RerankerModelInfo};
 pub use crate::models::text_embedding::{EmbeddingModel, ModelInfo};
 pub use crate::reranking::{RerankInitOptions, RerankResult, TextRerank};
-pub use crate::text_embedding::{InitOptions, InitOptionsUserDefined, TextEmbedding};
-pub use crate::UserDefinedModel as UserDefinedEmbeddingModel;  // for backwards-compatibility
+pub use crate::text_embedding::{
+    InitOptions, InitOptionsUserDefined, TextEmbedding, UserDefinedEmbeddingModel,
+};

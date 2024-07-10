@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::common::{
-    load_tokenizer, load_tokenizer_hf_hub, Tokenizer, UserDefinedModel, DEFAULT_CACHE_DIR,
+    load_tokenizer, load_tokenizer_hf_hub, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR,
 };
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::{s, Array};
@@ -25,7 +25,7 @@ pub struct TextRerank {
     need_token_type_ids: bool,
 }
 
-/// Options for initializing the TextEmbedding model
+/// Options for initializing the reranking model
 #[derive(Debug, Clone)]
 pub struct RerankInitOptions {
     pub model_name: RerankerModel,
@@ -75,6 +75,15 @@ impl From<RerankInitOptions> for RerankInitOptionsUserDefined {
             max_length: options.max_length,
         }
     }
+}
+
+/// Struct for "bring your own" reranking models
+///
+/// The onnx_file and tokenizer_files are expecting the files' bytes
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UserDefinedRerankingModel {
+    pub onnx_file: Vec<u8>,
+    pub tokenizer_files: TokenizerFiles,
 }
 
 impl Display for RerankerModel {
@@ -148,7 +157,7 @@ impl TextRerank {
     ///
     /// This can be used for 'bring your own' reranking models
     pub fn try_new_from_user_defined(
-        model: UserDefinedModel,
+        model: UserDefinedRerankingModel,
         options: RerankInitOptionsUserDefined,
     ) -> Result<Self> {
         let RerankInitOptionsUserDefined {

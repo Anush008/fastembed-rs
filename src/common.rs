@@ -10,15 +10,6 @@ pub const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
 /// Type alias for the embedding vector
 pub type Embedding = Vec<f32>;
 
-/// Struct for "bring your own" models
-///
-/// The onnx_file and tokenizer_files are expecting the files' bytes
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UserDefinedModel {
-    pub onnx_file: Vec<u8>,
-    pub tokenizer_files: TokenizerFiles,
-}
-
 // Tokenizer files for "bring your own" models
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TokenizerFiles {
