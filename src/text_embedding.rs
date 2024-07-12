@@ -277,6 +277,13 @@ impl TextEmbedding {
 
                 let outputs = self.session.run(session_inputs)?;
 
+                // Try to get the only output key
+                // If multiple, then default to `last_hidden_state`
+                let last_hidden_state_key = match outputs.len() {
+                    1 => outputs.keys().next().unwrap(),
+                    _ => "last_hidden_state",
+                };
+
                 // Extract and normalize embeddings
                 let output_data = outputs["last_hidden_state"].try_extract_tensor::<f32>()?;
 
