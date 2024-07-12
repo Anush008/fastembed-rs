@@ -285,7 +285,7 @@ impl TextEmbedding {
                 };
 
                 // Extract and normalize embeddings
-                let output_data = outputs["last_hidden_state"].try_extract_tensor::<f32>()?;
+                let output_data = outputs[last_hidden_state_key].try_extract_tensor::<f32>()?;
 
                 let embeddings: Vec<Vec<f32>> = output_data
                     .slice(s![.., 0, ..])
