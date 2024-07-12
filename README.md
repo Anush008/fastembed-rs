@@ -118,7 +118,26 @@ let results = model.rerank("what is panda?", documents, true, None);
 println!("Rerank result: {:?}", results);
 ```
 
-Alternatively, raw `.onnx` files can be loaded through the `UserDefinedEmbeddingModel` struct (for "bring your own" text embedding models) using `TextEmbedding::try_new_from_user_defined(...)`.
+Alternatively, raw `.onnx` files can be loaded through the `UserDefinedEmbeddingModel` struct (for "bring your own" text embedding models) using `TextEmbedding::try_new_from_user_defined(...)`. Similarly, "bring your own" reranking models can be loaded using the `UserDefinedRerankingModel` struct and `TextRerank::try_new_from_user_defined(...)`. For example:
+
+```rust
+macro_rules! local_model {
+    ($folder:literal) => {
+        UserDefinedEmbeddingModel {
+            onnx_file: include_bytes!(concat!($folder, "/model.onnx")).to_vec(),
+            tokenizer_files: TokenizerFiles {
+                tokenizer_file: include_bytes!(concat!($folder, "/tokenizer.json")).to_vec(),
+                config_file: include_bytes!(concat!($folder, "/config.json")).to_vec(),
+                special_tokens_map_file: include_bytes!(concat!($folder, "/special_tokens_map.json")).to_vec(),
+                tokenizer_config_file: include_bytes!(concat!($folder, "/tokenizer_config.json")).to_vec(),
+            },
+        }
+    };
+}
+
+let user_def_model_data = local_model!("path/to/model");
+let user_def_model = TextEmbedding::try_new_from_user_defined(user_def_model, Default::default()).unwrap();
+```
 
 ## 🚒 Under the hood
 

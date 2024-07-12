@@ -5,12 +5,19 @@ use anyhow::Result;
 use hf_hub::api::sync::ApiRepo;
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 
-use crate::TokenizerFiles;
-
 pub const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
 
 /// Type alias for the embedding vector
 pub type Embedding = Vec<f32>;
+
+// Tokenizer files for "bring your own" models
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TokenizerFiles {
+    pub tokenizer_file: Vec<u8>,
+    pub config_file: Vec<u8>,
+    pub special_tokens_map_file: Vec<u8>,
+    pub tokenizer_config_file: Vec<u8>,
+}
 
 /// The procedure for loading tokenizer files from the hugging face hub is separated
 /// from the main load_tokenizer function (which is expecting bytes, from any source).

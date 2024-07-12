@@ -1,11 +1,8 @@
-use std::{
-    fmt::Display,
-    path::{Path, PathBuf},
-    thread::available_parallelism,
-};
-
 use crate::{
-    common::{load_tokenizer, load_tokenizer_hf_hub, normalize, Tokenizer, DEFAULT_CACHE_DIR},
+    common::{
+        load_tokenizer, load_tokenizer_hf_hub, normalize, Tokenizer, TokenizerFiles,
+        DEFAULT_CACHE_DIR,
+    },
     models::text_embedding::models_list,
     Embedding, EmbeddingModel, ModelInfo,
 };
@@ -17,6 +14,11 @@ use hf_hub::{
 use ndarray::{s, Array};
 use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
+use std::{
+    fmt::Display,
+    path::{Path, PathBuf},
+    thread::available_parallelism,
+};
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
 const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallENV15;
@@ -80,15 +82,6 @@ impl From<InitOptions> for InitOptionsUserDefined {
 pub struct UserDefinedEmbeddingModel {
     pub onnx_file: Vec<u8>,
     pub tokenizer_files: TokenizerFiles,
-}
-
-// Tokenizer files for "bring your own" embedding models
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TokenizerFiles {
-    pub tokenizer_file: Vec<u8>,
-    pub config_file: Vec<u8>,
-    pub special_tokens_map_file: Vec<u8>,
-    pub tokenizer_config_file: Vec<u8>,
 }
 
 /// Rust representation of the TextEmbedding model
