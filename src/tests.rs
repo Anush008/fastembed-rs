@@ -9,6 +9,7 @@ use crate::{
     UserDefinedEmbeddingModel, UserDefinedRerankingModel,
 };
 
+#[cfg(feature = "online")]
 #[test]
 fn test_embeddings() {
     TextEmbedding::list_supported_models()
@@ -37,6 +38,7 @@ fn test_embeddings() {
         });
 }
 
+#[cfg(feature = "online")]
 #[test]
 fn test_user_defined_embedding_model() {
     // Constitute the model in order to ensure it's downloaded and cached
@@ -129,6 +131,7 @@ fn test_user_defined_embedding_model() {
     }
 }
 
+#[cfg(feature = "online")]
 #[test]
 fn test_rerank() {
     TextRerank::list_supported_models()
@@ -160,6 +163,7 @@ fn test_rerank() {
     });
 }
 
+#[cfg(feature = "online")]
 #[test]
 fn test_user_defined_reranking_model() {
     // Constitute the model in order to ensure it's downloaded and cached
