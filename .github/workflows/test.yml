@@ -20,7 +20,7 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - macos-latest
+          - flyci-macos-14-m2
           - windows-latest
 
     runs-on: ${{ matrix.os }}
