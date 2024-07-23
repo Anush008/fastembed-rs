@@ -44,6 +44,7 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 
 - [**BAAI/bge-reranker-base**](https://huggingface.co/BAAI/bge-reranker-base)
 - [**jinaai/jina-reranker-v1-turbo-en**](https://huggingface.co/jinaai/jina-reranker-v1-turbo-en)
+- [**jinaai/jina-reranker-v2-base-multiligual**](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual)
 
 ## 🚀 Installation
 
