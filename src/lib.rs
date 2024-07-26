@@ -2,7 +2,9 @@
 //!
 //! The library provides the TextEmbedding struct to interface with text embedding models.
 //!
-#![cfg_attr(feature = "online", doc = r#"
+#![cfg_attr(
+    feature = "online",
+    doc = r#"
  ### Instantiating [TextEmbedding](crate::TextEmbedding)
  ```
  use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
@@ -23,10 +25,13 @@
  # Ok(())
  # }
  ```
-"#)]
+"#
+)]
 //! Find more info about the available options in the [InitOptions](crate::InitOptions) documentation.
 //!
-#![cfg_attr(feature = "online", doc = r#"
+#![cfg_attr(
+    feature = "online",
+    doc = r#"
  ### Embeddings generation
 ```
 # use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
@@ -47,7 +52,8 @@
  # Ok(())
  # }
  ```
-"#)]
+"#
+)]
 
 mod common;
 mod models;

@@ -1,14 +1,11 @@
+#[cfg(feature = "online")]
+use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::{
-        load_tokenizer, normalize, Tokenizer, TokenizerFiles,
-        DEFAULT_CACHE_DIR,
-    },
+    common::{load_tokenizer, normalize, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR},
     models::text_embedding::models_list,
     Embedding, EmbeddingModel, ModelInfo,
 };
 use anyhow::Result;
-#[cfg(feature = "online")]
-use crate::common::load_tokenizer_hf_hub;
 #[cfg(feature = "online")]
 use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},

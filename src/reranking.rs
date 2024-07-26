@@ -5,11 +5,9 @@ use std::{
     thread::available_parallelism,
 };
 
-use crate::common::{
-    load_tokenizer, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR,
-};
 #[cfg(feature = "online")]
 use crate::common::load_tokenizer_hf_hub;
+use crate::common::{load_tokenizer, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR};
 #[cfg(feature = "online")]
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::{s, Array};
