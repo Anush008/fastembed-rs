@@ -27,6 +27,7 @@ criterion = "0.5.1"
 default = ["ort-download-binaries", "online"]
 ort-download-binaries = ["ort/download-binaries"]
 online = ["hf-hub/online"]
+ort-load-dynamic = ["ort/load-dynamic"]
 
 [[bench]]
 name="embed"
