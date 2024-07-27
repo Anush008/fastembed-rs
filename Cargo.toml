@@ -26,6 +26,7 @@ criterion = "0.5.1"
 [features]
 default = ["ort-download-binaries"]
 ort-download-binaries = ["ort/download-binaries"]
+ort-load-dynamic = ["ort/load-dynamic"]
 
 [[bench]]
 name="embed"
