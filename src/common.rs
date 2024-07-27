@@ -2,6 +2,7 @@ use std::io::Read;
 use std::{fs::File, path::PathBuf};
 
 use anyhow::Result;
+#[cfg(feature = "online")]
 use hf_hub::api::sync::ApiRepo;
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 
@@ -21,6 +22,7 @@ pub struct TokenizerFiles {
 
 /// The procedure for loading tokenizer files from the hugging face hub is separated
 /// from the main load_tokenizer function (which is expecting bytes, from any source).
+#[cfg(feature = "online")]
 pub fn load_tokenizer_hf_hub(model_repo: ApiRepo, max_length: usize) -> Result<Tokenizer> {
     let tokenizer_files: TokenizerFiles = TokenizerFiles {
         tokenizer_file: read_file_to_bytes(&model_repo.get("tokenizer.json")?)?,

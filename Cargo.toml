@@ -13,7 +13,7 @@ homepage = "https://crates.io/crates/fastembed"
 
 [dependencies]
 anyhow = { version = "1" }
-hf-hub = {version="0.3", default-features = false, features = ["online"]}
+hf-hub = {version="0.3", default-features = false }
 ndarray = { version = "0.15", default-features = false }
 ort = { version = "=2.0.0-rc.4", default-features = false, features = [ "ndarray" ] }
 rayon = { version = "1.10", default-features = false }
@@ -24,7 +24,8 @@ tokenizers = { version = "0.19", default-features = false, features = ["onig"]}
 criterion = "0.5.1"
 
 [features]
-default = ["ort-download-binaries"]
+default = ["ort-download-binaries", "online"]
+online = ["hf-hub/online"]
 ort-download-binaries = ["ort/download-binaries"]
 ort-load-dynamic = ["ort/load-dynamic"]
 

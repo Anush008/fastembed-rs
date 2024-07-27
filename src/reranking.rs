@@ -5,9 +5,10 @@ use std::{
     thread::available_parallelism,
 };
 
-use crate::common::{
-    load_tokenizer, load_tokenizer_hf_hub, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR,
-};
+#[cfg(feature = "online")]
+use crate::common::load_tokenizer_hf_hub;
+use crate::common::{load_tokenizer, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR};
+#[cfg(feature = "online")]
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::{s, Array};
 use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
@@ -120,6 +121,7 @@ impl TextRerank {
         reranker_model_list()
     }
 
+    #[cfg(feature = "online")]
     pub fn try_new(options: RerankInitOptions) -> Result<TextRerank> {
         let RerankInitOptions {
             model_name,

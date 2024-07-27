@@ -35,6 +35,9 @@ jobs:
       - name: Cargo Test
         run: cargo test
 
+      - name: Cargo Test Offline
+        run: cargo test --no-default-features --features ort-download-binaries
+
       - name: Cargo Clippy
         run: cargo clippy
 
