@@ -9,7 +9,6 @@ use crate::{
     UserDefinedEmbeddingModel, UserDefinedRerankingModel,
 };
 
-#[cfg(feature = "online")]
 #[test]
 fn test_embeddings() {
     TextEmbedding::list_supported_models()

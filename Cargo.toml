@@ -25,8 +25,8 @@ criterion = "0.5.1"
 
 [features]
 default = ["ort-download-binaries", "online"]
-ort-download-binaries = ["ort/download-binaries"]
 online = ["hf-hub/online"]
+ort-download-binaries = ["ort/download-binaries"]
 ort-load-dynamic = ["ort/load-dynamic"]
 
 [[bench]]
