@@ -11,6 +11,9 @@ pub const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
 /// Type alias for the embedding vector
 pub type Embedding = Vec<f32>;
 
+/// Type alias for the error type
+pub type Error = anyhow::Error;
+
 // Tokenizer files for "bring your own" models
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TokenizerFiles {
