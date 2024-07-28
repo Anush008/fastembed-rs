@@ -2,9 +2,9 @@
 pub enum RerankerModel {
     /// BAAI/bge-reranker-base
     BGERerankerBase,
-    // jinaai/jina-reranker-v1-turbo-en
+    /// jinaai/jina-reranker-v1-turbo-en
     JINARerankerV1TurboEn,
-    // jinaai/jina-reranker-v2-base-multilingual
+    /// jinaai/jina-reranker-v2-base-multilingual
     JINARerankerV2BaseMultiligual,
 }
 
