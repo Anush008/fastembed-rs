@@ -12,6 +12,7 @@ pub const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
 pub type Embedding = Vec<f32>;
 
 /// Type alias for the error type
+#[allow(dead_code)]
 pub type Error = anyhow::Error;
 
 // Tokenizer files for "bring your own" models
