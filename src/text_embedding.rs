@@ -1,12 +1,12 @@
+#[cfg(feature = "online")]
+use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::{
-        load_tokenizer, load_tokenizer_hf_hub, normalize, Tokenizer, TokenizerFiles,
-        DEFAULT_CACHE_DIR,
-    },
+    common::{load_tokenizer, normalize, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR},
     models::text_embedding::models_list,
     Embedding, EmbeddingModel, ModelInfo,
 };
 use anyhow::Result;
+#[cfg(feature = "online")]
 use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},
     Cache,
@@ -107,6 +107,7 @@ impl TextEmbedding {
     /// Uses the highest level of Graph optimization
     ///
     /// Uses the total number of CPUs available as the number of intra-threads
+    #[cfg(feature = "online")]
     pub fn try_new(options: InitOptions) -> Result<Self> {
         let InitOptions {
             model_name,
@@ -184,6 +185,7 @@ impl TextEmbedding {
         }
     }
     /// Return the TextEmbedding model's directory from cache or remote retrieval
+    #[cfg(feature = "online")]
     fn retrieve_model(
         model: EmbeddingModel,
         cache_dir: PathBuf,

@@ -1,3 +1,5 @@
+#![cfg(feature = "online")]
+
 use fastembed::{RerankInitOptions, RerankerModel, TextRerank};
 
 #[test]
