@@ -13,10 +13,13 @@ homepage = "https://crates.io/crates/fastembed"
 
 [dependencies]
 anyhow = { version = "1" }
+erased-serde = "0.4.5"
 hf-hub = {version="0.3", default-features = false, features = ["online"]}
+image = { version = "0.25.2", features = ["jpeg", "png"] }
 ndarray = { version = "0.15", default-features = false }
 ort = { version = "=2.0.0-rc.4", default-features = false, features = [ "ndarray" ] }
 rayon = { version = "1.10", default-features = false }
+serde = { version = "1.0.204", features = ["derive"] }
 serde_json = {version = "1"}
 tokenizers = { version = "0.19", default-features = false, features = ["onig"]}
 

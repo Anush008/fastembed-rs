@@ -47,6 +47,7 @@
 //!
 
 mod common;
+// mod image_embedding;
 mod models;
 mod reranking;
 mod text_embedding;
