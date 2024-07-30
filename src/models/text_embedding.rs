@@ -47,7 +47,7 @@ pub enum EmbeddingModel {
     /// Alibaba-NLP/gte-base-en-v1.5
     GTEBaseENV15,
     /// Quantized Alibaba-NLP/gte-base-en-v1.5
-    GTEBaseENV15Q
+    GTEBaseENV15Q,
 }
 
 pub fn models_list() -> Vec<ModelInfo> {
@@ -225,7 +225,7 @@ pub fn models_list() -> Vec<ModelInfo> {
             description: String::from("Quantized Large multilingual embedding model from Alibaba"),
             model_code: String::from("Alibaba-NLP/gte-base-en-v1.5"),
             model_file: String::from("onnx/model_quantized.onnx"),
-        }
+        },
     ];
 
     // TODO: Use when out in stable
