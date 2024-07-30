@@ -44,6 +44,10 @@ pub enum EmbeddingModel {
     MxbaiEmbedLargeV1,
     /// Quantized mixedbread-ai/mxbai-embed-large-v1
     MxbaiEmbedLargeV1Q,
+    /// Alibaba-NLP/gte-base-en-v1.5
+    GTEBaseENV15,
+    /// Quantized Alibaba-NLP/gte-base-en-v1.5
+    GTEBaseENV15Q,
 }
 
 pub fn models_list() -> Vec<ModelInfo> {
@@ -206,6 +210,20 @@ pub fn models_list() -> Vec<ModelInfo> {
             dim: 1024,
             description: String::from("Quantized Large English embedding model from MixedBreed.ai"),
             model_code: String::from("mixedbread-ai/mxbai-embed-large-v1"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::GTEBaseENV15,
+            dim: 768,
+            description: String::from("Large multilingual embedding model from Alibaba"),
+            model_code: String::from("Alibaba-NLP/gte-base-en-v1.5"),
+            model_file: String::from("onnx/model.onnx"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::GTEBaseENV15Q,
+            dim: 768,
+            description: String::from("Quantized Large multilingual embedding model from Alibaba"),
+            model_code: String::from("Alibaba-NLP/gte-base-en-v1.5"),
             model_file: String::from("onnx/model_quantized.onnx"),
         },
     ];
