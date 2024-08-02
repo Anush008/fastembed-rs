@@ -48,6 +48,8 @@ pub enum EmbeddingModel {
     GTEBaseENV15,
     /// Quantized Alibaba-NLP/gte-base-en-v1.5
     GTEBaseENV15Q,
+    /// Splade PP Sparse vector model Qdrant/Splade_PP_en_v1
+    SPLADEPPV1,
 }
 
 pub fn models_list() -> Vec<ModelInfo> {
@@ -225,6 +227,13 @@ pub fn models_list() -> Vec<ModelInfo> {
             description: String::from("Quantized Large multilingual embedding model from Alibaba"),
             model_code: String::from("Alibaba-NLP/gte-base-en-v1.5"),
             model_file: String::from("onnx/model_quantized.onnx"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::SPLADEPPV1,
+            dim: 30522,
+            description: String::from("Splade sparse vector model for commercial use, v1"),
+            model_code: String::from("Qdrant/Splade_PP_en_v1"),
+            model_file: String::from("model.onnx"),
         },
     ];
 
