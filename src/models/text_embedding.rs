@@ -48,6 +48,10 @@ pub enum EmbeddingModel {
     GTEBaseENV15,
     /// Quantized Alibaba-NLP/gte-base-en-v1.5
     GTEBaseENV15Q,
+    /// Alibaba-NLP/gte-large-en-v1.5
+    GTELargeENV15,
+    /// Quantized Alibaba-NLP/gte-large-en-v1.5
+    GTELargeENV15Q,
 }
 
 pub fn models_list() -> Vec<ModelInfo> {
@@ -224,6 +228,20 @@ pub fn models_list() -> Vec<ModelInfo> {
             dim: 768,
             description: String::from("Quantized Large multilingual embedding model from Alibaba"),
             model_code: String::from("Alibaba-NLP/gte-base-en-v1.5"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::GTELargeENV15,
+            dim: 1024,
+            description: String::from("Large multilingual embedding model from Alibaba"),
+            model_code: String::from("Alibaba-NLP/gte-large-en-v1.5"),
+            model_file: String::from("onnx/model.onnx"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::GTELargeENV15Q,
+            dim: 1024,
+            description: String::from("Quantized Large multilingual embedding model from Alibaba"),
+            model_code: String::from("Alibaba-NLP/gte-large-en-v1.5"),
             model_file: String::from("onnx/model_quantized.onnx"),
         },
     ];
