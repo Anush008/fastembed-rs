@@ -12,13 +12,17 @@ use hf_hub::{
     Cache,
 };
 use ndarray::{Array, CowArray};
-use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
+#[cfg_attr(not(feature = "online"), allow(unused_imports))]
+use ort::GraphOptimizationLevel;
+use ort::{ExecutionProviderDispatch, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 use std::{
     fmt::Display,
     path::{Path, PathBuf},
-    thread::available_parallelism,
 };
+
+#[cfg_attr(not(feature = "online"), allow(unused_imports))]
+use std::thread::available_parallelism;
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
 const DEFAULT_EMBEDDING_MODEL: SparseModel = SparseModel::SPLADEPPV1;
@@ -112,6 +116,7 @@ impl SparseTextEmbedding {
     }
 
     /// Private method to return an instance
+    #[cfg_attr(not(feature = "online"), allow(dead_code))]
     fn new(tokenizer: Tokenizer, session: Session, model: SparseModel) -> Self {
         let need_token_type_ids = session
             .inputs
