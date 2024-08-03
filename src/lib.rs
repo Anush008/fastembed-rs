@@ -58,6 +58,7 @@
 mod common;
 mod models;
 mod reranking;
+mod sparse_text_embedding;
 mod text_embedding;
 
 #[cfg(feature = "online")]
@@ -66,13 +67,14 @@ mod tests;
 
 pub use ort::ExecutionProviderDispatch;
 
-pub use crate::common::{read_file_to_bytes, Embedding, Error, TokenizerFiles};
+pub use crate::common::{read_file_to_bytes, Embedding, Error, SparseEmbedding, TokenizerFiles};
 pub use crate::models::reranking::{RerankerModel, RerankerModelInfo};
 pub use crate::models::{model_info::ModelInfo, text_embedding::EmbeddingModel};
 pub use crate::reranking::{
     RerankInitOptions, RerankInitOptionsUserDefined, RerankResult, TextRerank,
     UserDefinedRerankingModel,
 };
+pub use crate::sparse_text_embedding::{SparseInitOptions, SparseTextEmbedding};
 pub use crate::text_embedding::{
     InitOptions, InitOptionsUserDefined, TextEmbedding, UserDefinedEmbeddingModel,
 };
