@@ -131,7 +131,7 @@ impl TextEmbedding {
             .unwrap_or_else(|_| panic!("Failed to retrieve {} ", model_file_name));
 
         // TODO: If more models need .onnx_data, implement a better way to handle this
-        // Probably by adding `additonal_files` field in the `ModelInfo` struct
+        // Probably by adding `additional_files` field in the `ModelInfo` struct
         if model_name == EmbeddingModel::MultilingualE5Large {
             model_repo
                 .get("model.onnx_data")
@@ -202,12 +202,12 @@ impl TextEmbedding {
     }
 
     /// Retrieve a list of supported models
-    pub fn list_supported_models() -> Vec<ModelInfo> {
+    pub fn list_supported_models() -> Vec<ModelInfo<EmbeddingModel>> {
         models_list()
     }
 
     /// Get ModelInfo from EmbeddingModel
-    pub fn get_model_info(model: &EmbeddingModel) -> ModelInfo {
+    pub fn get_model_info(model: &EmbeddingModel) -> ModelInfo<EmbeddingModel> {
         TextEmbedding::list_supported_models()
             .into_iter()
             .find(|m| &m.model == model)

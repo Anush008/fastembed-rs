@@ -68,7 +68,7 @@ pub use ort::ExecutionProviderDispatch;
 
 pub use crate::common::{read_file_to_bytes, Embedding, Error, TokenizerFiles};
 pub use crate::models::reranking::{RerankerModel, RerankerModelInfo};
-pub use crate::models::text_embedding::{EmbeddingModel, ModelInfo};
+pub use crate::models::{model_info::ModelInfo, text_embedding::EmbeddingModel};
 pub use crate::reranking::{
     RerankInitOptions, RerankInitOptionsUserDefined, RerankResult, TextRerank,
     UserDefinedRerankingModel,
