@@ -42,6 +42,10 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 - [**Alibaba-NLP/gte-base-en-v1.5**](https://huggingface.co/Alibaba-NLP/gte-base-en-v1.5)
 - [**Alibaba-NLP/gte-large-en-v1.5**](https://huggingface.co/Alibaba-NLP/gte-large-en-v1.5)
 
+## Sparse vectors
+
+- [**prithivida/Splade_PP_en_v1**](https://huggingface.co/prithivida/Splade_PP_en_v1) - Default
+
 ### Reranking
 
 - [**BAAI/bge-reranker-base**](https://huggingface.co/BAAI/bge-reranker-base)

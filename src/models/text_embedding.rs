@@ -1,3 +1,5 @@
+use super::model_info::ModelInfo;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EmbeddingModel {
     /// sentence-transformers/all-MiniLM-L6-v2
@@ -54,7 +56,7 @@ pub enum EmbeddingModel {
     GTELargeENV15Q,
 }
 
-pub fn models_list() -> Vec<ModelInfo> {
+pub fn models_list() -> Vec<ModelInfo<EmbeddingModel>> {
     let models_list = vec![
         ModelInfo {
             model: EmbeddingModel::AllMiniLML6V2,
@@ -254,13 +256,4 @@ pub fn models_list() -> Vec<ModelInfo> {
     // );
 
     models_list
-}
-/// Data struct about the available models
-#[derive(Debug, Clone)]
-pub struct ModelInfo {
-    pub model: EmbeddingModel,
-    pub dim: usize,
-    pub description: String,
-    pub model_code: String,
-    pub model_file: String,
 }

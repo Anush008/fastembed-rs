@@ -8,6 +8,11 @@ use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 
 pub const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
 
+pub struct SparseEmbedding {
+    pub indices: Vec<usize>,
+    pub values: Vec<f32>,
+}
+
 /// Type alias for the embedding vector
 pub type Embedding = Vec<f32>;
 
