@@ -43,7 +43,7 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 
 ## Sparse vectors
 
-- [**Qdrant/Splade_PP_en_v1**](https://huggingface.co/Qdrant/Splade_PP_en_v1) - Default
+- [**prithivida/Splade_PP_en_v1**](https://huggingface.co/prithivida/Splade_PP_en_v1) - Default
 
 ### Reranking
 
