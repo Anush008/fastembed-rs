@@ -3,7 +3,7 @@ use ndarray::{ArrayViewD, Axis, CowArray, Dim};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SparseModel {
-    /// Splade PP Sparse vector model Qdrant/Splade_PP_en_v1
+    /// prithivida/Splade_PP_en_v1
     SPLADEPPV1,
 }
 
@@ -41,12 +41,11 @@ impl SparseModel {
                     .rows()
                     .into_iter()
                     .map(|row_scores| {
-                        let mut values: Vec<f32> = Vec::new();
-                        // Is a usize big enough?
-                        let mut indices: Vec<usize> = Vec::new();
+                        let mut values: Vec<f32> = Vec::with_capacity(scores.len());
+                        let mut indices: Vec<usize> = Vec::with_capacity(scores.len());
 
                         row_scores.into_iter().enumerate().for_each(|(idx, f)| {
-                            if f.is_sign_positive() {
+                            if *f > 0.0 {
                                 values.push(*f);
                                 indices.push(idx);
                             }
