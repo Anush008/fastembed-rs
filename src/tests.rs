@@ -60,7 +60,7 @@ fn test_sparse_embeddings() {
             let embeddings = model.embed(documents.clone(), None).unwrap();
 
             assert_eq!(embeddings.len(), documents.len());
-            embeddings.into_iter().for_each(|(embedding, tokens)| {
+            embeddings.into_iter().for_each(|embedding| {
                 assert_eq!(embedding.indices.len(), 20);
                 assert_eq!(embedding.indices.len(), embedding.values.len());
             });
@@ -185,8 +185,8 @@ fn test_rerank() {
             .unwrap();
 
         assert_eq!(results.len(), documents.len());
-        assert!(results[0].document.as_ref().unwrap() == "panda is an animal");
-        assert!(results[1].document.as_ref().unwrap() == "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");
+        assert_eq!(results[0].document.as_ref().unwrap(), "panda is an animal");
+        assert_eq!(results[1].document.as_ref().unwrap(), "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");
     });
 }
 
