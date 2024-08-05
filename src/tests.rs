@@ -60,9 +60,10 @@ fn test_sparse_embeddings() {
             let embeddings = model.embed(documents.clone(), None).unwrap();
 
             assert_eq!(embeddings.len(), documents.len());
-            for embedding in embeddings {
+            embeddings.into_iter().for_each(|(embedding, tokens)| {
+                assert_eq!(embedding.indices.len(), 20);
                 assert_eq!(embedding.indices.len(), embedding.values.len());
-            }
+            });
         });
 }
 
