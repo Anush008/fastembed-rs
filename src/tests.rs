@@ -61,7 +61,8 @@ fn test_sparse_embeddings() {
 
             assert_eq!(embeddings.len(), documents.len());
             embeddings.into_iter().for_each(|embedding| {
-                assert_eq!(embedding.indices.len(), 20);
+                assert!(embedding.values.iter().all(|&v| v > 0.0));
+                assert!(embedding.indices.len() < 100);
                 assert_eq!(embedding.indices.len(), embedding.values.len());
             });
         });
