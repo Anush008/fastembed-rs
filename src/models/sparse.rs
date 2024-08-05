@@ -41,12 +41,11 @@ impl SparseModel {
                     .rows()
                     .into_iter()
                     .map(|row_scores| {
-                        let mut values: Vec<f32> = Vec::new();
-                        // Is a usize big enough?
-                        let mut indices: Vec<usize> = Vec::new();
+                        let mut values: Vec<f32> = Vec::with_capacity(scores.len());
+                        let mut indices: Vec<usize> = Vec::with_capacity(scores.len());
 
                         row_scores.into_iter().enumerate().for_each(|(idx, f)| {
-                            if f > 0.0 {
+                            if *f > 0.0 {
                                 values.push(*f);
                                 indices.push(idx);
                             }
