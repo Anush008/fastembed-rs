@@ -46,7 +46,7 @@ impl SparseModel {
                         let mut indices: Vec<usize> = Vec::new();
 
                         row_scores.into_iter().enumerate().for_each(|(idx, f)| {
-                            if f >= &f32::MIN_POSITIVE {
+                            if f > 0.0 {
                                 values.push(*f);
                                 indices.push(idx);
                             }
