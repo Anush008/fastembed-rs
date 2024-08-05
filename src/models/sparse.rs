@@ -3,7 +3,7 @@ use ndarray::{ArrayViewD, Axis, CowArray, Dim};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SparseModel {
-    /// Splade PP Sparse vector model Qdrant/Splade_PP_en_v1
+    /// prithivida/Splade_PP_en_v1
     SPLADEPPV1,
 }
 
