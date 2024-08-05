@@ -1,9 +1,9 @@
 #[cfg(feature = "online")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::{load_tokenizer, normalize, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR},
-    models::text_embedding::models_list,
-    Embedding, EmbeddingModel, ModelInfo,
+    common::{Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR},
+    models::sparse::{models_list, SparseModel},
+    ModelInfo, SparseEmbedding,
 };
 use anyhow::Result;
 #[cfg(feature = "online")]
@@ -11,29 +11,33 @@ use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},
     Cache,
 };
-use ndarray::{s, Array};
-use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
+use ndarray::{Array, CowArray};
+#[cfg_attr(not(feature = "online"), allow(unused_imports))]
+use ort::GraphOptimizationLevel;
+use ort::{ExecutionProviderDispatch, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 use std::{
     fmt::Display,
     path::{Path, PathBuf},
-    thread::available_parallelism,
 };
+
+#[cfg_attr(not(feature = "online"), allow(unused_imports))]
+use std::thread::available_parallelism;
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
-const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallENV15;
+const DEFAULT_EMBEDDING_MODEL: SparseModel = SparseModel::SPLADEPPV1;
 
-/// Options for initializing the TextEmbedding model
+/// Options for initializing the SparseTextEmbedding model
 #[derive(Debug, Clone)]
-pub struct InitOptions {
-    pub model_name: EmbeddingModel,
+pub struct SparseInitOptions {
+    pub model_name: SparseModel,
     pub execution_providers: Vec<ExecutionProviderDispatch>,
     pub max_length: usize,
     pub cache_dir: PathBuf,
     pub show_download_progress: bool,
 }
 
-impl Default for InitOptions {
+impl Default for SparseInitOptions {
     fn default() -> Self {
         Self {
             model_name: DEFAULT_EMBEDDING_MODEL,
@@ -45,55 +49,26 @@ impl Default for InitOptions {
     }
 }
 
-/// Options for initializing UserDefinedEmbeddingModel
-///
-/// Model files are held by the UserDefinedEmbeddingModel struct
-#[derive(Debug, Clone)]
-pub struct InitOptionsUserDefined {
-    pub execution_providers: Vec<ExecutionProviderDispatch>,
-    pub max_length: usize,
-}
-
-impl Default for InitOptionsUserDefined {
-    fn default() -> Self {
-        Self {
-            execution_providers: Default::default(),
-            max_length: DEFAULT_MAX_LENGTH,
-        }
-    }
-}
-
-/// Convert InitOptions to InitOptionsUserDefined
-///
-/// This is useful for when the user wants to use the same options for both the default and user-defined models
-impl From<InitOptions> for InitOptionsUserDefined {
-    fn from(options: InitOptions) -> Self {
-        InitOptionsUserDefined {
-            execution_providers: options.execution_providers,
-            max_length: options.max_length,
-        }
-    }
-}
-
 /// Struct for "bring your own" embedding models
 ///
 /// The onnx_file and tokenizer_files are expecting the files' bytes
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UserDefinedEmbeddingModel {
+pub struct UserDefinedSparseModel {
     pub onnx_file: Vec<u8>,
     pub tokenizer_files: TokenizerFiles,
 }
 
-/// Rust representation of the TextEmbedding model
-pub struct TextEmbedding {
+/// Rust representation of the SparseTextEmbedding model
+pub struct SparseTextEmbedding {
     pub tokenizer: Tokenizer,
     session: Session,
     need_token_type_ids: bool,
+    model: SparseModel,
 }
 
-impl Display for EmbeddingModel {
+impl Display for SparseModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let model_info = TextEmbedding::list_supported_models()
+        let model_info = SparseTextEmbedding::list_supported_models()
             .into_iter()
             .find(|model| model.model == *self)
             .unwrap();
@@ -101,15 +76,15 @@ impl Display for EmbeddingModel {
     }
 }
 
-impl TextEmbedding {
-    /// Try to generate a new TextEmbedding Instance
+impl SparseTextEmbedding {
+    /// Try to generate a new SparseTextEmbedding Instance
     ///
     /// Uses the highest level of Graph optimization
     ///
     /// Uses the total number of CPUs available as the number of intra-threads
     #[cfg(feature = "online")]
-    pub fn try_new(options: InitOptions) -> Result<Self> {
-        let InitOptions {
+    pub fn try_new(options: SparseInitOptions) -> Result<Self> {
+        let SparseInitOptions {
             model_name,
             execution_providers,
             max_length,
@@ -119,24 +94,16 @@ impl TextEmbedding {
 
         let threads = available_parallelism()?.get();
 
-        let model_repo = TextEmbedding::retrieve_model(
+        let model_repo = SparseTextEmbedding::retrieve_model(
             model_name.clone(),
             cache_dir.clone(),
             show_download_progress,
         )?;
 
-        let model_file_name = TextEmbedding::get_model_info(&model_name).model_file;
+        let model_file_name = SparseTextEmbedding::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo
             .get(&model_file_name)
             .unwrap_or_else(|_| panic!("Failed to retrieve {} ", model_file_name));
-
-        // TODO: If more models need .onnx_data, implement a better way to handle this
-        // Probably by adding `additional_files` field in the `ModelInfo` struct
-        if model_name == EmbeddingModel::MultilingualE5Large {
-            model_repo
-                .get("model.onnx_data")
-                .expect("Failed to retrieve model.onnx_data.");
-        }
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
@@ -145,35 +112,12 @@ impl TextEmbedding {
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
-        Ok(Self::new(tokenizer, session))
-    }
-
-    /// Create a TextEmbedding instance from model files provided by the user.
-    ///
-    /// This can be used for 'bring your own' embedding models
-    pub fn try_new_from_user_defined(
-        model: UserDefinedEmbeddingModel,
-        options: InitOptionsUserDefined,
-    ) -> Result<Self> {
-        let InitOptionsUserDefined {
-            execution_providers,
-            max_length,
-        } = options;
-
-        let threads = available_parallelism()?.get();
-
-        let session = Session::builder()?
-            .with_execution_providers(execution_providers)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
-            .commit_from_memory(&model.onnx_file)?;
-
-        let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
-        Ok(Self::new(tokenizer, session))
+        Ok(Self::new(tokenizer, session, model_name))
     }
 
     /// Private method to return an instance
-    fn new(tokenizer: Tokenizer, session: Session) -> Self {
+    #[cfg_attr(not(feature = "online"), allow(dead_code))]
+    fn new(tokenizer: Tokenizer, session: Session, model: SparseModel) -> Self {
         let need_token_type_ids = session
             .inputs
             .iter()
@@ -182,12 +126,13 @@ impl TextEmbedding {
             tokenizer,
             session,
             need_token_type_ids,
+            model,
         }
     }
-    /// Return the TextEmbedding model's directory from cache or remote retrieval
+    /// Return the SparseTextEmbedding model's directory from cache or remote retrieval
     #[cfg(feature = "online")]
     fn retrieve_model(
-        model: EmbeddingModel,
+        model: SparseModel,
         cache_dir: PathBuf,
         show_download_progress: bool,
     ) -> Result<ApiRepo> {
@@ -202,13 +147,13 @@ impl TextEmbedding {
     }
 
     /// Retrieve a list of supported models
-    pub fn list_supported_models() -> Vec<ModelInfo<EmbeddingModel>> {
+    pub fn list_supported_models() -> Vec<ModelInfo<SparseModel>> {
         models_list()
     }
 
-    /// Get ModelInfo from EmbeddingModel
-    pub fn get_model_info(model: &EmbeddingModel) -> ModelInfo<EmbeddingModel> {
-        TextEmbedding::list_supported_models()
+    /// Get ModelInfo from SparseModel
+    pub fn get_model_info(model: &SparseModel) -> ModelInfo<SparseModel> {
+        SparseTextEmbedding::list_supported_models()
             .into_iter()
             .find(|m| &m.model == model)
             .expect("Model not found.")
@@ -220,7 +165,7 @@ impl TextEmbedding {
         &self,
         texts: Vec<S>,
         batch_size: Option<usize>,
-    ) -> Result<Vec<Embedding>> {
+    ) -> Result<Vec<SparseEmbedding>> {
         // Determine the batch size, default if not specified
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
 
@@ -258,16 +203,16 @@ impl TextEmbedding {
                 // Create CowArrays from vectors
                 let inputs_ids_array =
                     Array::from_shape_vec((batch_size, encoding_length), ids_array)?;
-
-                let attention_mask_array =
+                let owned_attention_mask =
                     Array::from_shape_vec((batch_size, encoding_length), mask_array)?;
+                let attention_mask_array = CowArray::from(&owned_attention_mask);
 
                 let token_type_ids_array =
                     Array::from_shape_vec((batch_size, encoding_length), typeids_array)?;
 
                 let mut session_inputs = ort::inputs![
                     "input_ids" => Value::from_array(inputs_ids_array)?,
-                    "attention_mask" => Value::from_array(attention_mask_array)?,
+                    "attention_mask" => Value::from_array(&attention_mask_array)?,
                 ]?;
 
                 if self.need_token_type_ids {
@@ -286,19 +231,13 @@ impl TextEmbedding {
                     _ => "last_hidden_state",
                 };
 
-                // Extract and normalize embeddings
                 let output_data = outputs[last_hidden_state_key].try_extract_tensor::<f32>()?;
 
-                let embeddings: Vec<Vec<f32>> = output_data
-                    .slice(s![.., 0, ..])
-                    .rows()
-                    .into_iter()
-                    .map(|row| normalize(row.as_slice().unwrap()))
-                    .collect();
+                let embeddings = self.model.post_process(&output_data, &attention_mask_array);
 
                 Ok(embeddings)
             })
-            .flat_map(|result: Result<Vec<Vec<f32>>, anyhow::Error>| result.unwrap())
+            .flat_map(|result: Result<Vec<SparseEmbedding>, anyhow::Error>| result.unwrap())
             .collect();
 
         Ok(output)
