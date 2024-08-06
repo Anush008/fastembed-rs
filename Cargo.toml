@@ -1,10 +1,16 @@
 [package]
 name = "fastembed"
-version = "3.9.1"
+version = "3.14.1"
 edition = "2021"
 description = "Rust implementation of https://github.com/qdrant/fastembed"
 license = "Apache-2.0"
-authors = ["Anush008 <anushshetty90@gmail.com>", "Josh Niemelä <josh@jniemela.dk>", "GrisiaEvy <a115020115@gmail.com>", "George MacKerron <georgemackerron@neon.tech>"]
+authors = [
+    "Anush008 <anushshetty90@gmail.com>",
+    "Josh Niemelä <josh@jniemela.dk>",
+    "GrisiaEvy <a115020115@gmail.com>",
+    "George MacKerron <georgemackerron@neon.tech>",
+    "Timon Vonk <mail@timonv.nl>",
+]
 documentation = "https://docs.rs/fastembed"
 repository = "https://github.com/Anush008/fastembed-rs"
 homepage = "https://crates.io/crates/fastembed"
@@ -13,23 +19,24 @@ homepage = "https://crates.io/crates/fastembed"
 
 [dependencies]
 anyhow = { version = "1" }
-erased-serde = "0.4.5"
-hf-hub = {version="0.3", default-features = false, features = ["online"]}
-image = { version = "0.25.2", features = ["jpeg", "png"] }
+hf-hub = { version = "0.3", default-features = false }
 ndarray = { version = "0.15", default-features = false }
-ort = { version = "=2.0.0-rc.4", default-features = false, features = [ "ndarray" ] }
+ort = { version = "=2.0.0-rc.4", default-features = false, features = [
+    "ndarray",
+] }
 rayon = { version = "1.10", default-features = false }
-serde = { version = "1.0.204", features = ["derive"] }
-serde_json = {version = "1"}
-tokenizers = { version = "0.19", default-features = false, features = ["onig"]}
+serde_json = { version = "1" }
+tokenizers = { version = "0.19", default-features = false, features = ["onig"] }
 
 [dev-dependencies]
 criterion = "0.5.1"
 
 [features]
-default = ["ort-download-binaries"]
+default = ["ort-download-binaries", "online"]
+online = ["hf-hub/online"]
 ort-download-binaries = ["ort/download-binaries"]
+ort-load-dynamic = ["ort/load-dynamic"]
 
 [[bench]]
-name="embed"
+name = "embed"
 harness = false

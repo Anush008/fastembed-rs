@@ -1,3 +1,5 @@
+use super::model_info::ModelInfo;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EmbeddingModel {
     /// sentence-transformers/all-MiniLM-L6-v2
@@ -44,9 +46,17 @@ pub enum EmbeddingModel {
     MxbaiEmbedLargeV1,
     /// Quantized mixedbread-ai/mxbai-embed-large-v1
     MxbaiEmbedLargeV1Q,
+    /// Alibaba-NLP/gte-base-en-v1.5
+    GTEBaseENV15,
+    /// Quantized Alibaba-NLP/gte-base-en-v1.5
+    GTEBaseENV15Q,
+    /// Alibaba-NLP/gte-large-en-v1.5
+    GTELargeENV15,
+    /// Quantized Alibaba-NLP/gte-large-en-v1.5
+    GTELargeENV15Q,
 }
 
-pub fn models_list() -> Vec<ModelInfo> {
+pub fn models_list() -> Vec<ModelInfo<EmbeddingModel>> {
     let models_list = vec![
         ModelInfo {
             model: EmbeddingModel::AllMiniLML6V2,
@@ -208,6 +218,34 @@ pub fn models_list() -> Vec<ModelInfo> {
             model_code: String::from("mixedbread-ai/mxbai-embed-large-v1"),
             model_file: String::from("onnx/model_quantized.onnx"),
         },
+        ModelInfo {
+            model: EmbeddingModel::GTEBaseENV15,
+            dim: 768,
+            description: String::from("Large multilingual embedding model from Alibaba"),
+            model_code: String::from("Alibaba-NLP/gte-base-en-v1.5"),
+            model_file: String::from("onnx/model.onnx"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::GTEBaseENV15Q,
+            dim: 768,
+            description: String::from("Quantized Large multilingual embedding model from Alibaba"),
+            model_code: String::from("Alibaba-NLP/gte-base-en-v1.5"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::GTELargeENV15,
+            dim: 1024,
+            description: String::from("Large multilingual embedding model from Alibaba"),
+            model_code: String::from("Alibaba-NLP/gte-large-en-v1.5"),
+            model_file: String::from("onnx/model.onnx"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::GTELargeENV15Q,
+            dim: 1024,
+            description: String::from("Quantized Large multilingual embedding model from Alibaba"),
+            model_code: String::from("Alibaba-NLP/gte-large-en-v1.5"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+        },
     ];
 
     // TODO: Use when out in stable
@@ -218,13 +256,4 @@ pub fn models_list() -> Vec<ModelInfo> {
     // );
 
     models_list
-}
-/// Data struct about the available models
-#[derive(Debug, Clone)]
-pub struct ModelInfo {
-    pub model: EmbeddingModel,
-    pub dim: usize,
-    pub description: String,
-    pub model_code: String,
-    pub model_file: String,
 }

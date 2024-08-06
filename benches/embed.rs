@@ -1,3 +1,5 @@
+#![cfg(feature = "online")]
+
 use criterion::{criterion_group, criterion_main, Criterion};
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use std::time::Duration;

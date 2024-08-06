@@ -3,9 +3,10 @@ use std::path::Path;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::common::DEFAULT_CACHE_DIR;
+use crate::sparse_text_embedding::SparseTextEmbedding;
 use crate::{
     read_file_to_bytes, EmbeddingModel, InitOptions, InitOptionsUserDefined, RerankInitOptions,
-    RerankInitOptionsUserDefined, RerankerModel, TextEmbedding, TextRerank, TokenizerFiles,
+    RerankInitOptionsUserDefined, RerankerModel, SparseInitOptions, TextEmbedding, TextRerank,
     UserDefinedEmbeddingModel, UserDefinedRerankingModel,
 };
 
@@ -34,6 +35,36 @@ fn test_embeddings() {
             for embedding in embeddings {
                 assert_eq!(embedding.len(), supported_model.dim);
             }
+        });
+}
+
+#[test]
+fn test_sparse_embeddings() {
+    SparseTextEmbedding::list_supported_models()
+        .par_iter()
+        .for_each(|supported_model| {
+            let model: SparseTextEmbedding = SparseTextEmbedding::try_new(SparseInitOptions {
+                model_name: supported_model.model.clone(),
+                ..Default::default()
+            })
+            .unwrap();
+
+            let documents = vec![
+                "Hello, World!",
+                "This is an example passage.",
+                "fastembed-rs is licensed under Apache-2.0",
+                "Some other short text here blah blah blah",
+            ];
+
+            // Generate embeddings with the default batch size, 256
+            let embeddings = model.embed(documents.clone(), None).unwrap();
+
+            assert_eq!(embeddings.len(), documents.len());
+            embeddings.into_iter().for_each(|embedding| {
+                assert!(embedding.values.iter().all(|&v| v > 0.0));
+                assert!(embedding.indices.len() < 100);
+                assert_eq!(embedding.indices.len(), embedding.values.len());
+            });
         });
 }
 
@@ -87,22 +118,12 @@ fn test_user_defined_embedding_model() {
     .expect("Could not read onnx file");
 
     // Load the tokenizer files
-    let tokenizer_files = TokenizerFiles {
-        tokenizer_file: read_file_to_bytes(&model_files_dir.join("tokenizer.json"))
-            .expect("Could not read tokenizer.json"),
-        config_file: read_file_to_bytes(&model_files_dir.join("config.json"))
-            .expect("Could not read config.json"),
-        special_tokens_map_file: read_file_to_bytes(
-            &model_files_dir.join("special_tokens_map.json"),
-        )
-        .expect("Could not read special_tokens_map.json"),
-        tokenizer_config_file: read_file_to_bytes(&model_files_dir.join("tokenizer_config.json"))
-            .expect("Could not read tokenizer_config.json"),
-    };
+    let tokenizer_file = read_file_to_bytes(&model_files_dir.join("tokenizer.json"))
+        .expect("Could not read tokenizer.json");
     // Create a UserDefinedEmbeddingModel
     let user_defined_model = UserDefinedEmbeddingModel {
         onnx_file,
-        tokenizer_files,
+        tokenizer_file,
     };
 
     // Try creating a TextEmbedding instance from the user-defined model
@@ -155,8 +176,8 @@ fn test_rerank() {
             .unwrap();
 
         assert_eq!(results.len(), documents.len());
-        assert!(results[0].document.as_ref().unwrap() == "panda is an animal");
-        assert!(results[1].document.as_ref().unwrap() == "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");    
+        assert_eq!(results[0].document.as_ref().unwrap(), "panda is an animal");
+        assert_eq!(results[1].document.as_ref().unwrap(), "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");
     });
 }
 
@@ -212,22 +233,12 @@ fn test_user_defined_reranking_model() {
     .expect("Could not read onnx file");
 
     // Load the tokenizer files
-    let tokenizer_files = TokenizerFiles {
-        tokenizer_file: read_file_to_bytes(&model_files_dir.join("tokenizer.json"))
-            .expect("Could not read tokenizer.json"),
-        config_file: read_file_to_bytes(&model_files_dir.join("config.json"))
-            .expect("Could not read config.json"),
-        special_tokens_map_file: read_file_to_bytes(
-            &model_files_dir.join("special_tokens_map.json"),
-        )
-        .expect("Could not read special_tokens_map.json"),
-        tokenizer_config_file: read_file_to_bytes(&model_files_dir.join("tokenizer_config.json"))
-            .expect("Could not read tokenizer_config.json"),
-    };
+    let tokenizer_file = read_file_to_bytes(&model_files_dir.join("tokenizer.json"))
+        .expect("Could not read tokenizer.json");
     // Create a UserDefinedEmbeddingModel
     let user_defined_model = UserDefinedRerankingModel {
         onnx_file,
-        tokenizer_files,
+        tokenizer_file,
     };
 
     // Try creating a TextEmbedding instance from the user-defined model
@@ -252,3 +263,70 @@ fn test_user_defined_reranking_model() {
     assert_eq!(results.len(), documents.len());
     assert_eq!(results.first().unwrap().index, 0);
 }
+
+// #[test]
+// fn test_tokenizer() {
+//     TextEmbedding::list_supported_models()
+//         .par_iter()
+//         .for_each(|suppoted_model| {
+//             let op = InitOptions {
+//                 model_name: suppoted_model.model.clone(),
+//                 ..Default::default()
+//             };
+//             let InitOptions {
+//                 model_name,
+//                 max_length,
+//                 cache_dir,
+//                 show_download_progress,
+//                 ..
+//             } = op;
+//             let cache = Cache::new(cache_dir);
+//             let api = ApiBuilder::from_cache(cache)
+//                 .with_progress(show_download_progress)
+//                 .build()
+//                 .unwrap();
+//             let repo = api.model(model_name.to_string());
+
+//             let tokenizer1 = Tokenizer::from_file(repo.get("tokenizer.json").unwrap()).unwrap();
+//             let tokenizer2 = load_tokenizer_hf_hub(repo, max_length).unwrap();
+
+//             let text = "A blue cat";
+
+//             let encoding1 = tokenizer1.encode(text, true).unwrap();
+//             let encoding2 = tokenizer2.encode(text, true).unwrap();
+
+//             assert_eq!(encoding1, encoding2, "{:?}", suppoted_model);
+//         });
+
+//     SparseTextEmbedding::list_supported_models()
+//         .par_iter()
+//         .for_each(|supported_model| {
+//             let op = SparseInitOptions {
+//                 model_name: supported_model.model.clone(),
+//                 ..Default::default()
+//             };
+//             let SparseInitOptions {
+//                 model_name,
+//                 max_length,
+//                 cache_dir,
+//                 show_download_progress,
+//                 ..
+//             } = op;
+//             let cache = Cache::new(cache_dir);
+//             let api = ApiBuilder::from_cache(cache)
+//                 .with_progress(show_download_progress)
+//                 .build()
+//                 .unwrap();
+//             let repo = api.model(model_name.to_string());
+
+//             let tokenizer1 = Tokenizer::from_file(repo.get("tokenizer.json").unwrap()).unwrap();
+//             let tokenizer2 = load_tokenizer_hf_hub(repo, max_length).unwrap();
+
+//             let text = "A blue cat";
+
+//             let encoding1 = tokenizer1.encode(text, true).unwrap();
+//             let encoding2 = tokenizer2.encode(text, true).unwrap();
+
+//             assert_eq!(encoding1, encoding2, "{:?}", supported_model);
+//         });
+// }
