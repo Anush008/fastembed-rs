@@ -1,7 +1,7 @@
 #[cfg(feature = "online")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::{load_tokenizer, normalize, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR},
+    common::{load_tokenizer, mean_pool, normalize, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR},
     models::text_embedding::models_list,
     Embedding, EmbeddingModel, ModelInfo,
 };
@@ -267,7 +267,7 @@ impl TextEmbedding {
 
                 let mut session_inputs = ort::inputs![
                     "input_ids" => Value::from_array(inputs_ids_array)?,
-                    "attention_mask" => Value::from_array(attention_mask_array)?,
+                    "attention_mask" => Value::from_array(attention_mask_array.clone())?,
                 ]?;
 
                 if self.need_token_type_ids {
@@ -286,15 +286,18 @@ impl TextEmbedding {
                     _ => "last_hidden_state",
                 };
 
-                // Extract and normalize embeddings
+                // Extract, perform mean pool and normalize embeddings
                 let output_data = outputs[last_hidden_state_key].try_extract_tensor::<f32>()?;
+                let attention_mask = attention_mask_array.mapv(|x| x as f32);
 
-                let embeddings: Vec<Vec<f32>> = output_data
-                    .slice(s![.., 0, ..])
-                    .rows()
-                    .into_iter()
-                    .map(|row| normalize(row.as_slice().unwrap()))
-                    .collect();
+                let embeddings = output_data
+                    .axis_iter(ndarray::Axis(0)) // first axis is sentence batches
+                    .map(|token_embeddings| {
+                        // TODO: customise pooling method to respect pooling/config.json per model if available
+                        let pooled = mean_pool(&token_embeddings, &attention_mask);
+                        normalize(pooled.as_slice().expect("Fail to convert pooled to slice"))
+                    })
+                    .collect::<Vec<_>>();
 
                 Ok(embeddings)
             })
