@@ -5,9 +5,10 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use crate::common::DEFAULT_CACHE_DIR;
 use crate::sparse_text_embedding::SparseTextEmbedding;
 use crate::{
-    read_file_to_bytes, EmbeddingModel, InitOptions, InitOptionsUserDefined, RerankInitOptions,
-    RerankInitOptionsUserDefined, RerankerModel, SparseInitOptions, TextEmbedding, TextRerank,
-    UserDefinedEmbeddingModel, UserDefinedRerankingModel,
+    read_file_to_bytes, EmbeddingModel, ImageEmbedding, ImageInitOptions, InitOptions,
+    InitOptionsUserDefined, RerankInitOptions, RerankInitOptionsUserDefined, RerankerModel,
+    SparseInitOptions, TextEmbedding, TextRerank, UserDefinedEmbeddingModel,
+    UserDefinedRerankingModel,
 };
 
 #[test]
@@ -264,69 +265,25 @@ fn test_user_defined_reranking_model() {
     assert_eq!(results.first().unwrap().index, 0);
 }
 
-// #[test]
-// fn test_tokenizer() {
-//     TextEmbedding::list_supported_models()
-//         .par_iter()
-//         .for_each(|suppoted_model| {
-//             let op = InitOptions {
-//                 model_name: suppoted_model.model.clone(),
-//                 ..Default::default()
-//             };
-//             let InitOptions {
-//                 model_name,
-//                 max_length,
-//                 cache_dir,
-//                 show_download_progress,
-//                 ..
-//             } = op;
-//             let cache = Cache::new(cache_dir);
-//             let api = ApiBuilder::from_cache(cache)
-//                 .with_progress(show_download_progress)
-//                 .build()
-//                 .unwrap();
-//             let repo = api.model(model_name.to_string());
+#[test]
+fn test_image_embedding_model() {
+    ImageEmbedding::list_supported_models()
+        .par_iter()
+        .for_each(|supported_model| {
+            let model: ImageEmbedding = ImageEmbedding::try_new(ImageInitOptions {
+                model_name: supported_model.model.clone(),
+                ..Default::default()
+            })
+            .unwrap();
 
-//             let tokenizer1 = Tokenizer::from_file(repo.get("tokenizer.json").unwrap()).unwrap();
-//             let tokenizer2 = load_tokenizer_hf_hub(repo, max_length).unwrap();
+            let images = vec!["assets/image_0.png", "assets/image_1.png"];
 
-//             let text = "A blue cat";
+            // Generate embeddings with the default batch size, 256
+            let embeddings = model.embed(images.clone(), None).unwrap();
 
-//             let encoding1 = tokenizer1.encode(text, true).unwrap();
-//             let encoding2 = tokenizer2.encode(text, true).unwrap();
-
-//             assert_eq!(encoding1, encoding2, "{:?}", suppoted_model);
-//         });
-
-//     SparseTextEmbedding::list_supported_models()
-//         .par_iter()
-//         .for_each(|supported_model| {
-//             let op = SparseInitOptions {
-//                 model_name: supported_model.model.clone(),
-//                 ..Default::default()
-//             };
-//             let SparseInitOptions {
-//                 model_name,
-//                 max_length,
-//                 cache_dir,
-//                 show_download_progress,
-//                 ..
-//             } = op;
-//             let cache = Cache::new(cache_dir);
-//             let api = ApiBuilder::from_cache(cache)
-//                 .with_progress(show_download_progress)
-//                 .build()
-//                 .unwrap();
-//             let repo = api.model(model_name.to_string());
-
-//             let tokenizer1 = Tokenizer::from_file(repo.get("tokenizer.json").unwrap()).unwrap();
-//             let tokenizer2 = load_tokenizer_hf_hub(repo, max_length).unwrap();
-
-//             let text = "A blue cat";
-
-//             let encoding1 = tokenizer1.encode(text, true).unwrap();
-//             let encoding2 = tokenizer2.encode(text, true).unwrap();
-
-//             assert_eq!(encoding1, encoding2, "{:?}", supported_model);
-//         });
-// }
+            assert_eq!(embeddings.len(), images.len());
+            for embedding in embeddings {
+                assert_eq!(embedding.len(), supported_model.dim);
+            }
+        });
+}

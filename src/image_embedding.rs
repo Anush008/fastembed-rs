@@ -1,17 +1,14 @@
 use crate::{
-    common::{
-        load_tokenizer, load_tokenizer_hf_hub, normalize, Tokenizer, TokenizerFiles,
-        DEFAULT_CACHE_DIR,
-    },
-    models::image_embedding::{models_list, EmbeddingModel, ModelInfo},
-    Embedding,
+    common::{normalize, Compose, Transform, TransformData, DEFAULT_CACHE_DIR},
+    models::image_embedding::{models_list, ImageEmbeddingModel},
+    Embedding, ModelInfo,
 };
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},
     Cache,
 };
-use ndarray::{s, Array};
+use ndarray::{Array3, ArrayView3};
 use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 use std::{
@@ -20,25 +17,22 @@ use std::{
     thread::available_parallelism,
 };
 const DEFAULT_BATCH_SIZE: usize = 256;
-const DEFAULT_MAX_LENGTH: usize = 512;
-const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::ClipVitB32;
+const DEFAULT_EMBEDDING_MODEL: ImageEmbeddingModel = ImageEmbeddingModel::ClipVitB32;
 
 /// Options for initializing the TextEmbedding model
 #[derive(Debug, Clone)]
-pub struct InitOptions {
-    pub model_name: EmbeddingModel,
+pub struct ImageInitOptions {
+    pub model_name: ImageEmbeddingModel,
     pub execution_providers: Vec<ExecutionProviderDispatch>,
-    pub max_length: usize,
     pub cache_dir: PathBuf,
     pub show_download_progress: bool,
 }
 
-impl Default for InitOptions {
+impl Default for ImageInitOptions {
     fn default() -> Self {
         Self {
             model_name: DEFAULT_EMBEDDING_MODEL,
             execution_providers: Default::default(),
-            max_length: DEFAULT_MAX_LENGTH,
             cache_dir: Path::new(DEFAULT_CACHE_DIR).to_path_buf(),
             show_download_progress: true,
         }
@@ -49,16 +43,14 @@ impl Default for InitOptions {
 ///
 /// Model files are held by the UserDefinedEmbeddingModel struct
 #[derive(Debug, Clone)]
-pub struct InitOptionsUserDefined {
+pub struct ImageInitOptionsUserDefined {
     pub execution_providers: Vec<ExecutionProviderDispatch>,
-    pub max_length: usize,
 }
 
-impl Default for InitOptionsUserDefined {
+impl Default for ImageInitOptionsUserDefined {
     fn default() -> Self {
         Self {
             execution_providers: Default::default(),
-            max_length: DEFAULT_MAX_LENGTH,
         }
     }
 }
@@ -66,31 +58,30 @@ impl Default for InitOptionsUserDefined {
 /// Convert InitOptions to InitOptionsUserDefined
 ///
 /// This is useful for when the user wants to use the same options for both the default and user-defined models
-impl From<InitOptions> for InitOptionsUserDefined {
-    fn from(options: InitOptions) -> Self {
-        InitOptionsUserDefined {
+impl From<ImageInitOptions> for ImageInitOptionsUserDefined {
+    fn from(options: ImageInitOptions) -> Self {
+        ImageInitOptionsUserDefined {
             execution_providers: options.execution_providers,
-            max_length: options.max_length,
         }
     }
 }
 
 /// Struct for "bring your own" embedding models
 ///
-/// The onnx_file and tokenizer_files are expecting the files' bytes
+/// The onnx_file and preprocessor_files are expecting the files' bytes
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UserDefinedEmbeddingModel {
+pub struct UserDefinedImageEmbeddingModel {
     pub onnx_file: Vec<u8>,
-    pub tokenizer_files: TokenizerFiles,
+    pub preprocessor_file: Vec<u8>,
 }
 
 /// Rust representation of the TextEmbedding model
 pub struct ImageEmbedding {
+    preprocessor: Compose,
     session: Session,
-    need_token_type_ids: bool,
 }
 
-impl Display for EmbeddingModel {
+impl Display for ImageEmbeddingModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let model_info = ImageEmbedding::list_supported_models()
             .into_iter()
@@ -101,16 +92,15 @@ impl Display for EmbeddingModel {
 }
 
 impl ImageEmbedding {
-    /// Try to generate a new TextEmbedding Instance
+    /// Try to generate a new ImageEmbedding Instance
     ///
     /// Uses the highest level of Graph optimization
     ///
     /// Uses the total number of CPUs available as the number of intra-threads
-    pub fn try_new(options: InitOptions) -> Result<Self> {
-        let InitOptions {
+    pub fn try_new(options: ImageInitOptions) -> Result<Self> {
+        let ImageInitOptions {
             model_name,
             execution_providers,
-            max_length,
             cache_dir,
             show_download_progress,
         } = options;
@@ -123,6 +113,11 @@ impl ImageEmbedding {
             show_download_progress,
         )?;
 
+        let preprocessor_file = model_repo
+            .get("preprocessor_config.json")
+            .unwrap_or_else(|_| panic!("Failed to retrieve preprocessor_config.json"));
+        let preprocessor = Compose::from_file(preprocessor_file)?;
+
         let model_file_name = ImageEmbedding::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo
             .get(&model_file_name)
@@ -134,22 +129,23 @@ impl ImageEmbedding {
             .with_intra_threads(threads)?
             .commit_from_file(model_file_reference)?;
 
-        Ok(Self::new(session))
+        Ok(Self::new(preprocessor, session))
     }
 
-    /// Create a TextEmbedding instance from model files provided by the user.
+    /// Create a ImageEmbedding instance from model files provided by the user.
     ///
     /// This can be used for 'bring your own' embedding models
     pub fn try_new_from_user_defined(
-        model: UserDefinedEmbeddingModel,
-        options: InitOptionsUserDefined,
+        model: UserDefinedImageEmbeddingModel,
+        options: ImageInitOptionsUserDefined,
     ) -> Result<Self> {
-        let InitOptionsUserDefined {
+        let ImageInitOptionsUserDefined {
             execution_providers,
-            max_length,
         } = options;
 
         let threads = available_parallelism()?.get();
+
+        let preprocessor = Compose::from_bytes(model.preprocessor_file)?;
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
@@ -157,24 +153,20 @@ impl ImageEmbedding {
             .with_intra_threads(threads)?
             .commit_from_memory(&model.onnx_file)?;
 
-        let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
-        Ok(Self::new(tokenizer, session))
+        Ok(Self::new(preprocessor, session))
     }
 
     /// Private method to return an instance
-    fn new(session: Session) -> Self {
-        let need_token_type_ids = session
-            .inputs
-            .iter()
-            .any(|input| input.name == "token_type_ids");
+    fn new(preprocessor: Compose, session: Session) -> Self {
         Self {
+            preprocessor,
             session,
-            need_token_type_ids,
         }
     }
+
     /// Return the ImageEmbedding model's directory from cache or remote retrieval
     fn retrieve_model(
-        model: EmbeddingModel,
+        model: ImageEmbeddingModel,
         cache_dir: PathBuf,
         show_download_progress: bool,
     ) -> Result<ApiRepo> {
@@ -189,19 +181,19 @@ impl ImageEmbedding {
     }
 
     /// Retrieve a list of supported models
-    pub fn list_supported_models() -> Vec<ModelInfo> {
+    pub fn list_supported_models() -> Vec<ModelInfo<ImageEmbeddingModel>> {
         models_list()
     }
 
     /// Get ModelInfo from EmbeddingModel
-    pub fn get_model_info(model: &EmbeddingModel) -> ModelInfo {
+    pub fn get_model_info(model: &ImageEmbeddingModel) -> ModelInfo<ImageEmbeddingModel> {
         ImageEmbedding::list_supported_models()
             .into_iter()
             .find(|m| &m.model == model)
             .expect("Model not found.")
     }
 
-    /// Method to generate sentence embeddings for a Vec of texts
+    /// Method to generate image embeddings for a Vec of image path
     // Generic type to accept String, &str, OsString, &OsStr
     pub fn embed<S: AsRef<Path> + Send + Sync>(
         &self,
@@ -217,55 +209,27 @@ impl ImageEmbedding {
                 // Encode the texts in the batch
                 let inputs = batch
                     .iter()
-                    .map(|img| image::ImageReader::open(img)?.decode())
-                    .collect();
-                let encodings = self.tokenizer.encode_batch(inputs, true).unwrap();
+                    .map(|img| {
+                        let img = image::ImageReader::open(img)?
+                            .decode()
+                            .map_err(|err| anyhow!("image decode: {}", err))?;
+                        let pixels = self.preprocessor.transform(TransformData::Image(img))?;
+                        match pixels {
+                            TransformData::NdArray(array) => Ok(array),
+                            _ => Err(anyhow!("Preprocessor configuration error!")),
+                        }
+                    })
+                    .collect::<Result<Vec<Array3<f32>>>>()?;
 
-                // Extract the encoding length and batch size
-                let encoding_length = encodings[0].len();
-                let batch_size = batch.len();
+                // Extract the batch size
+                let inputs_view: Vec<ArrayView3<f32>> =
+                    inputs.iter().map(|img| img.view()).collect();
+                let pixel_values_array = ndarray::stack(ndarray::Axis(0), &inputs_view)?;
 
-                let max_size = encoding_length * batch_size;
-
-                // Preallocate arrays with the maximum size
-                let mut ids_array = Vec::with_capacity(max_size);
-                let mut mask_array = Vec::with_capacity(max_size);
-                let mut typeids_array = Vec::with_capacity(max_size);
-
-                // Not using par_iter because the closure needs to be FnMut
-                encodings.iter().for_each(|encoding| {
-                    let ids = encoding.get_ids();
-                    let mask = encoding.get_attention_mask();
-                    let typeids = encoding.get_type_ids();
-
-                    // Extend the preallocated arrays with the current encoding
-                    // Requires the closure to be FnMut
-                    ids_array.extend(ids.iter().map(|x| *x as i64));
-                    mask_array.extend(mask.iter().map(|x| *x as i64));
-                    typeids_array.extend(typeids.iter().map(|x| *x as i64));
-                });
-
-                // Create CowArrays from vectors
-                let inputs_ids_array =
-                    Array::from_shape_vec((batch_size, encoding_length), ids_array)?;
-
-                let attention_mask_array =
-                    Array::from_shape_vec((batch_size, encoding_length), mask_array)?;
-
-                let token_type_ids_array =
-                    Array::from_shape_vec((batch_size, encoding_length), typeids_array)?;
-
-                let mut session_inputs = ort::inputs![
-                    "input_ids" => Value::from_array(inputs_ids_array)?,
-                    "attention_mask" => Value::from_array(attention_mask_array)?,
+                let input_name = self.session.inputs[0].name.clone();
+                let session_inputs = ort::inputs![
+                    input_name => Value::from_array(pixel_values_array)?,
                 ]?;
-
-                if self.need_token_type_ids {
-                    session_inputs.push((
-                        "token_type_ids".into(),
-                        Value::from_array(token_type_ids_array)?.into(),
-                    ));
-                }
 
                 let outputs = self.session.run(session_inputs)?;
 
@@ -273,14 +237,13 @@ impl ImageEmbedding {
                 // If multiple, then default to `last_hidden_state`
                 let last_hidden_state_key = match outputs.len() {
                     1 => outputs.keys().next().unwrap(),
-                    _ => "last_hidden_state",
+                    _ => "image_embeds",
                 };
 
                 // Extract and normalize embeddings
                 let output_data = outputs[last_hidden_state_key].try_extract_tensor::<f32>()?;
 
                 let embeddings: Vec<Vec<f32>> = output_data
-                    .slice(s![.., 0, ..])
                     .rows()
                     .into_iter()
                     .map(|row| normalize(row.as_slice().unwrap()))
