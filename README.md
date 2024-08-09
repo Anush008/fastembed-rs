@@ -46,6 +46,13 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 
 - [**prithivida/Splade_PP_en_v1**](https://huggingface.co/prithivida/Splade_PP_en_v1) - Default
 
+### Image Embedding
+
+- [**Qdrant/clip-ViT-B-32-vision**](https://huggingface.co/Qdrant/clip-ViT-B-32-vision) - Default
+- [**Qdrant/resnet50-onnx**](https://huggingface.co/Qdrant/resnet50-onnx)
+- [**Qdrant/Unicom-ViT-B-16**](https://huggingface.co/Qdrant/Unicom-ViT-B-16)
+- [**Qdrant/Unicom-ViT-B-32**](https://huggingface.co/Qdrant/Unicom-ViT-B-32)
+
 ### Reranking
 
 - [**BAAI/bge-reranker-base**](https://huggingface.co/BAAI/bge-reranker-base)
@@ -98,6 +105,30 @@ let documents = vec![
  println!("Embeddings length: {}", embeddings.len()); // -> Embeddings length: 4
  println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 384
 
+```
+
+### Image Embedding
+
+```rust
+use fastembed::{ImageEmbedding, ImageInitOptions, ImageEmbeddingModel};
+
+// With default InitOptions
+let model = ImageEmbedding::try_new(Default::default())?;
+
+// With custom InitOptions
+let model = ImageEmbedding::try_new(ImageInitOptions {
+    model_name: ImageEmbeddingModel::ClipVitB32,
+    show_download_progress: true,
+    ..Default::default()
+})?;
+
+let images = vec!["assets/image_0.png", "assets/image_1.png"];
+
+// Generate embeddings with the default batch size, 256
+let embeddings = model.embed(images, None)?;
+
+println!("Embeddings length: {}", embeddings.len()); // -> Embeddings length: 4
+println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 384
 ```
 
 ### Candidates Reranking

@@ -5,9 +5,10 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use crate::common::DEFAULT_CACHE_DIR;
 use crate::sparse_text_embedding::SparseTextEmbedding;
 use crate::{
-    read_file_to_bytes, EmbeddingModel, InitOptions, InitOptionsUserDefined, RerankInitOptions,
-    RerankInitOptionsUserDefined, RerankerModel, SparseInitOptions, TextEmbedding, TextRerank,
-    TokenizerFiles, UserDefinedEmbeddingModel, UserDefinedRerankingModel,
+    read_file_to_bytes, EmbeddingModel, ImageEmbedding, ImageInitOptions, InitOptions,
+    InitOptionsUserDefined, RerankInitOptions, RerankInitOptionsUserDefined, RerankerModel,
+    SparseInitOptions, TextEmbedding, TextRerank, UserDefinedEmbeddingModel,
+    UserDefinedRerankingModel,
 };
 
 #[test]
@@ -118,22 +119,12 @@ fn test_user_defined_embedding_model() {
     .expect("Could not read onnx file");
 
     // Load the tokenizer files
-    let tokenizer_files = TokenizerFiles {
-        tokenizer_file: read_file_to_bytes(&model_files_dir.join("tokenizer.json"))
-            .expect("Could not read tokenizer.json"),
-        config_file: read_file_to_bytes(&model_files_dir.join("config.json"))
-            .expect("Could not read config.json"),
-        special_tokens_map_file: read_file_to_bytes(
-            &model_files_dir.join("special_tokens_map.json"),
-        )
-        .expect("Could not read special_tokens_map.json"),
-        tokenizer_config_file: read_file_to_bytes(&model_files_dir.join("tokenizer_config.json"))
-            .expect("Could not read tokenizer_config.json"),
-    };
+    let tokenizer_file = read_file_to_bytes(&model_files_dir.join("tokenizer.json"))
+        .expect("Could not read tokenizer.json");
     // Create a UserDefinedEmbeddingModel
     let user_defined_model = UserDefinedEmbeddingModel {
         onnx_file,
-        tokenizer_files,
+        tokenizer_file,
     };
 
     // Try creating a TextEmbedding instance from the user-defined model
@@ -243,22 +234,12 @@ fn test_user_defined_reranking_model() {
     .expect("Could not read onnx file");
 
     // Load the tokenizer files
-    let tokenizer_files = TokenizerFiles {
-        tokenizer_file: read_file_to_bytes(&model_files_dir.join("tokenizer.json"))
-            .expect("Could not read tokenizer.json"),
-        config_file: read_file_to_bytes(&model_files_dir.join("config.json"))
-            .expect("Could not read config.json"),
-        special_tokens_map_file: read_file_to_bytes(
-            &model_files_dir.join("special_tokens_map.json"),
-        )
-        .expect("Could not read special_tokens_map.json"),
-        tokenizer_config_file: read_file_to_bytes(&model_files_dir.join("tokenizer_config.json"))
-            .expect("Could not read tokenizer_config.json"),
-    };
+    let tokenizer_file = read_file_to_bytes(&model_files_dir.join("tokenizer.json"))
+        .expect("Could not read tokenizer.json");
     // Create a UserDefinedEmbeddingModel
     let user_defined_model = UserDefinedRerankingModel {
         onnx_file,
-        tokenizer_files,
+        tokenizer_file,
     };
 
     // Try creating a TextEmbedding instance from the user-defined model
@@ -282,4 +263,27 @@ fn test_user_defined_reranking_model() {
 
     assert_eq!(results.len(), documents.len());
     assert_eq!(results.first().unwrap().index, 0);
+}
+
+#[test]
+fn test_image_embedding_model() {
+    ImageEmbedding::list_supported_models()
+        .par_iter()
+        .for_each(|supported_model| {
+            let model: ImageEmbedding = ImageEmbedding::try_new(ImageInitOptions {
+                model_name: supported_model.model.clone(),
+                ..Default::default()
+            })
+            .unwrap();
+
+            let images = vec!["assets/image_0.png", "assets/image_1.png"];
+
+            // Generate embeddings with the default batch size, 256
+            let embeddings = model.embed(images.clone(), None).unwrap();
+
+            assert_eq!(embeddings.len(), images.len());
+            for embedding in embeddings {
+                assert_eq!(embedding.len(), supported_model.dim);
+            }
+        });
 }
