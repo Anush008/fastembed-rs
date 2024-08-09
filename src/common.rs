@@ -139,10 +139,10 @@ pub fn normalize(v: &[f32]) -> Vec<f32> {
 }
 
 pub fn mean_pool(
-    tensor: ArrayBase<ViewRepr<&f32>, Dim<IxDynImpl>>,
+    tensor: &ArrayBase<ViewRepr<&f32>, Dim<IxDynImpl>>,
     attention_mask: &ArrayBase<OwnedRepr<f32>, Dim<[usize; 2]>>,
 ) -> ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>> {
-    let masked_tensor = &tensor * attention_mask;
+    let masked_tensor = tensor * attention_mask;
     let sum = masked_tensor.sum_axis(ndarray::Axis(0));
     let mask_sum = attention_mask.sum_axis(ndarray::Axis(1));
     let mask_sum = mask_sum.mapv(|x| if x == 0f32 { 1.0 } else { x as f32 });

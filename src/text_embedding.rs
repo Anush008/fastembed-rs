@@ -291,10 +291,10 @@ impl TextEmbedding {
                 let attention_mask = attention_mask_array.mapv(|x| x as f32);
 
                 let embeddings = output_data
-                    .axis_iter(ndarray::Axis(0))
+                    .axis_iter(ndarray::Axis(0)) // first axis is sentence batches
                     .map(|token_embeddings| {
-                        // TODO: customise pooling method to obey pooling/config.json per model if available
-                        let pooled = mean_pool(token_embeddings, &attention_mask);
+                        // TODO: customise pooling method to respect pooling/config.json per model if available
+                        let pooled = mean_pool(&token_embeddings, &attention_mask);
                         normalize(pooled.as_slice().expect("Fail to convert pooled to slice"))
                     })
                     .collect::<Vec<_>>();
