@@ -1,7 +1,7 @@
 #[cfg(feature = "online")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::{load_tokenizer, normalize, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR},
+    common::{load_tokenizer, mean_pool, normalize, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR},
     models::text_embedding::models_list,
     Embedding, EmbeddingModel, ModelInfo,
 };
@@ -267,7 +267,7 @@ impl TextEmbedding {
 
                 let mut session_inputs = ort::inputs![
                     "input_ids" => Value::from_array(inputs_ids_array)?,
-                    "attention_mask" => Value::from_array(attention_mask_array)?,
+                    "attention_mask" => Value::from_array(attention_mask_array.clone())?,
                 ]?;
 
                 if self.need_token_type_ids {
@@ -287,20 +287,17 @@ impl TextEmbedding {
                 };
 
                 // Extract, perform mean pool and normalize embeddings
-                // TODO: customise pooling method to obey pooling/config.json per model if available
                 let output_data = outputs[last_hidden_state_key].try_extract_tensor::<f32>()?;
-                let embeddings = 
-                    output_data
-                        .axis_iter(ndarray::Axis(0))
-                        .map(|token_embeddings| {
-                            normalize(
-                                token_embeddings
-                                   .mean_axis(ndarray::Axis(0))
-                                   .expect("Mean pool token embedding into sentence embedding failed")
-                                   .as_slice()
-                                   .expect("Flatten tensor into slice failed"))
-                        })
-                        .collect::<Vec<_>>();
+                let attention_mask = attention_mask_array.mapv(|x| x as f32);
+
+                let embeddings = output_data
+                    .axis_iter(ndarray::Axis(0))
+                    .map(|token_embeddings| {
+                        // TODO: customise pooling method to obey pooling/config.json per model if available
+                        let pooled = mean_pool(token_embeddings, &attention_mask);
+                        normalize(pooled.as_slice().expect("Fail to convert pooled to slice"))
+                    })
+                    .collect::<Vec<_>>();
 
                 Ok(embeddings)
             })

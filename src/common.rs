@@ -4,6 +4,7 @@ use std::{fs::File, path::PathBuf};
 use anyhow::Result;
 #[cfg(feature = "online")]
 use hf_hub::api::sync::ApiRepo;
+use ndarray::{ArrayBase, Dim, IxDynImpl, OwnedRepr, ViewRepr};
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 
 pub const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
@@ -135,6 +136,17 @@ pub fn normalize(v: &[f32]) -> Vec<f32> {
 
     // We add the super-small epsilon to avoid dividing by zero
     v.iter().map(|&val| val / (norm + epsilon)).collect()
+}
+
+pub fn mean_pool(
+    tensor: ArrayBase<ViewRepr<&f32>, Dim<IxDynImpl>>,
+    attention_mask: &ArrayBase<OwnedRepr<f32>, Dim<[usize; 2]>>,
+) -> ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>> {
+    let masked_tensor = &tensor * attention_mask;
+    let sum = masked_tensor.sum_axis(ndarray::Axis(0));
+    let mask_sum = attention_mask.sum_axis(ndarray::Axis(1));
+    let mask_sum = mask_sum.mapv(|x| if x == 0f32 { 1.0 } else { x as f32 });
+    &sum / &mask_sum
 }
 
 /// Public function to read a file to bytes.
