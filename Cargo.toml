@@ -10,7 +10,8 @@ authors = [
   "GrisiaEvy <a115020115@gmail.com>",
   "George MacKerron <georgemackerron@neon.tech>",
   "Timon Vonk <mail@timonv.nl>",
-  "Tri <tri@triandco.com>"
+  "Tri <tri@triandco.com>",
+  "Denny Wong <denwong47@hotmail.com>"
 ]
 documentation = "https://docs.rs/fastembed"
 repository = "https://github.com/Anush008/fastembed-rs"
@@ -37,6 +38,9 @@ default = ["ort-download-binaries", "online"]
 online = ["hf-hub/online"]
 ort-download-binaries = ["ort/download-binaries"]
 ort-load-dynamic = ["ort/load-dynamic"]
+# This feature does not change any code, but is used to limit tests if
+# the user does not have `optimum-cli` or even python installed.
+optimum-cli = []
 
 [[bench]]
 name = "embed"
