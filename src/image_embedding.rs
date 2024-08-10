@@ -19,7 +19,7 @@ use std::{
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_EMBEDDING_MODEL: ImageEmbeddingModel = ImageEmbeddingModel::ClipVitB32;
 
-/// Options for initializing the TextEmbedding model
+/// Options for initializing the ImageEmbedding model
 #[derive(Debug, Clone)]
 pub struct ImageInitOptions {
     pub model_name: ImageEmbeddingModel,
@@ -39,9 +39,9 @@ impl Default for ImageInitOptions {
     }
 }
 
-/// Options for initializing UserDefinedEmbeddingModel
+/// Options for initializing UserDefinedImageEmbeddingModel
 ///
-/// Model files are held by the UserDefinedEmbeddingModel struct
+/// Model files are held by the UserDefinedImageEmbeddingModel struct
 #[derive(Debug, Clone)]
 pub struct ImageInitOptionsUserDefined {
     pub execution_providers: Vec<ExecutionProviderDispatch>,
@@ -55,7 +55,7 @@ impl Default for ImageInitOptionsUserDefined {
     }
 }
 
-/// Convert InitOptions to InitOptionsUserDefined
+/// Convert ImageInitOptions to ImageInitOptionsUserDefined
 ///
 /// This is useful for when the user wants to use the same options for both the default and user-defined models
 impl From<ImageInitOptions> for ImageInitOptionsUserDefined {
@@ -75,7 +75,7 @@ pub struct UserDefinedImageEmbeddingModel {
     pub preprocessor_file: Vec<u8>,
 }
 
-/// Rust representation of the TextEmbedding model
+/// Rust representation of the ImageEmbedding model
 pub struct ImageEmbedding {
     preprocessor: Compose,
     session: Session,
@@ -185,7 +185,7 @@ impl ImageEmbedding {
         models_list()
     }
 
-    /// Get ModelInfo from EmbeddingModel
+    /// Get ModelInfo from ImageEmbeddingModel
     pub fn get_model_info(model: &ImageEmbeddingModel) -> ModelInfo<ImageEmbeddingModel> {
         ImageEmbedding::list_supported_models()
             .into_iter()
@@ -234,7 +234,7 @@ impl ImageEmbedding {
                 let outputs = self.session.run(session_inputs)?;
 
                 // Try to get the only output key
-                // If multiple, then default to `last_hidden_state`
+                // If multiple, then default to `image_embeds`
                 let last_hidden_state_key = match outputs.len() {
                     1 => outputs.keys().next().unwrap(),
                     _ => "image_embeds",

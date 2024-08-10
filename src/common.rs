@@ -169,12 +169,12 @@ impl Transform for Rescale {
     }
 }
 
-pub struct Normlize {
+pub struct Normalize {
     pub mean: Vec<f32>,
     pub std: Vec<f32>,
 }
 
-impl Transform for Normlize {
+impl Transform for Normalize {
     fn transform(&self, data: TransformData) -> Result<TransformData> {
         let array = data.array()?;
         let mean = Array::from_vec(self.mean.clone())
@@ -210,7 +210,7 @@ impl Compose {
 
     pub fn from_file<P: AsRef<Path>>(file: P) -> Result<Self> {
         let content = read_to_string(file)?;
-        let config: serde_json::Value = serde_json::from_str(&content)?;
+        let config = serde_json::from_str(&content)?;
         load_preprocessor(config)
     }
 
@@ -319,7 +319,7 @@ fn load_preprocessor(config: serde_json::Value) -> Result<Compose> {
     if config["do_normalize"].as_bool().unwrap_or(false) {
         let mean = config["image_mean"]
             .as_array()
-            .ok_or(anyhow!("image_mean must be contain"))?
+            .ok_or(anyhow!("image_mean must be contained"))?
             .iter()
             .map(|value| {
                 value
@@ -330,7 +330,7 @@ fn load_preprocessor(config: serde_json::Value) -> Result<Compose> {
             .collect::<Result<Vec<f32>>>()?;
         let std = config["image_std"]
             .as_array()
-            .ok_or(anyhow!("image_std must be contain"))?
+            .ok_or(anyhow!("image_std must be contained"))?
             .iter()
             .map(|value| {
                 value
@@ -339,7 +339,7 @@ fn load_preprocessor(config: serde_json::Value) -> Result<Compose> {
                     .ok_or(anyhow!("image_std must be float"))
             })
             .collect::<Result<Vec<f32>>>()?;
-        transformers.push(Box::new(Normlize { mean, std }));
+        transformers.push(Box::new(Normalize { mean, std }));
     }
 
     Ok(Compose::new(transformers))
