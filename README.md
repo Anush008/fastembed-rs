@@ -156,9 +156,7 @@ let results = model.rerank("what is panda?", documents, true, None);
 println!("Rerank result: {:?}", results);
 ```
 
-Alternatively, raw `.onnx` files can be loaded through the `UserDefinedEmbeddingModel` struct (for "bring your own" text embedding models) using `TextEmbedding::try_new_from_user_defined(...)`. Similarly,
-"bring your own" image embedding models can be loaded using the `UserDefinedImageEmbeddingModel` struct and `ImageEmbedding::try_new_from_user_defined(...)`,
-"bring your own" reranking models can be loaded using the `UserDefinedRerankingModel` struct and `TextRerank::try_new_from_user_defined(...)`.
+Alternatively, local model files can be used for inference via the `try_new_from_user_defined(...)` methods of respective structs.
 For example:
 
 ```rust
