@@ -160,17 +160,13 @@ Alternatively, local model files can be used for inference via the `try_new_from
 For example:
 
 ```rust
-macro_rules! local_model {
-    ($folder:literal) => {
-        UserDefinedEmbeddingModel {
-            onnx_file: include_bytes!(concat!($folder, "/model.onnx")).to_vec(),
-            tokenizer_files: include_bytes!(concat!($folder, "/tokenizer.json")).to_vec(),
-        }
-    };
-}
+let model = UserDefinedEmbeddingModel {
+      onnx_file: include_bytes!("model.onnx").to_vec(),
+      tokenizer_files: include_bytes!("tokenizer.json").to_vec(),
+};
 
-let user_def_model_data = local_model!("path/to/model");
-let user_def_model = TextEmbedding::try_new_from_user_defined(user_def_model, Default::default()).unwrap();
+let user_def_model =
+    TextEmbedding::try_new_from_user_defined(user_def_model, Default::default()).unwrap();
 ```
 
 ## 🚒 Under the hood
