@@ -46,17 +46,11 @@ impl Default for InitOptions {
 ///
 /// Model files are held by the UserDefinedEmbeddingModel struct
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct InitOptionsUserDefined {
     pub execution_providers: Vec<ExecutionProviderDispatch>,
 }
 
-impl Default for InitOptionsUserDefined {
-    fn default() -> Self {
-        Self {
-            execution_providers: Default::default(),
-        }
-    }
-}
 
 /// Convert InitOptions to InitOptionsUserDefined
 ///

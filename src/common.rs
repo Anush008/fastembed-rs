@@ -299,7 +299,7 @@ fn load_preprocessor(config: serde_json::Value) -> Result<Compose> {
                 }))
             } else {
                 transformers.push(Box::new(Resize {
-                    size: (shortest_edge as u32, shortest_edge as u32),
+                    size: (shortest_edge, shortest_edge),
                     resample: FilterType::CatmullRom,
                 }));
             }

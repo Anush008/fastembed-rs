@@ -11,7 +11,7 @@ use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::{s, Array};
 use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
-use tokenizers::Tokenizer;
+use tokenizers::{PaddingParams, PaddingStrategy, Tokenizer};
 
 use crate::{models::reranking::reranker_model_list, RerankerModel, RerankerModelInfo};
 
@@ -48,17 +48,11 @@ impl Default for RerankInitOptions {
 ///
 /// Model files are held by the UserDefinedRerankerModel struct
 /// #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct RerankInitOptionsUserDefined {
     pub execution_providers: Vec<ExecutionProviderDispatch>,
 }
 
-impl Default for RerankInitOptionsUserDefined {
-    fn default() -> Self {
-        Self {
-            execution_providers: Default::default(),
-        }
-    }
-}
 
 /// Convert RerankInitOptions to RerankInitOptionsUserDefined
 ///
@@ -116,6 +110,8 @@ impl TextRerank {
 
     #[cfg(feature = "online")]
     pub fn try_new(options: RerankInitOptions) -> Result<TextRerank> {
+        use tokenizers::{PaddingParams, PaddingStrategy};
+
         let RerankInitOptions {
             model_name,
             execution_providers,
@@ -133,9 +129,13 @@ impl TextRerank {
         let model_repo = api.model(model_name.to_string());
 
         let tokenizer_file_reference = model_repo.get("tokenizer.json")?;
-        let tokenizer = Tokenizer::from_file(tokenizer_file_reference)
+        let mut tokenizer = Tokenizer::from_file(tokenizer_file_reference)
             .map_err(|err| anyhow!("Failed to load tokenizer: {}", err))?;
 
+        tokenizer.with_padding(Some(PaddingParams {
+            strategy: PaddingStrategy::BatchLongest,
+            ..Default::default()
+        }));
         let model_file_name = TextRerank::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo
             .get(&model_file_name)
@@ -169,8 +169,12 @@ impl TextRerank {
             .with_intra_threads(threads)?
             .commit_from_memory(&model.onnx_file)?;
 
-        let tokenizer = Tokenizer::from_bytes(model.tokenizer_file)
+        let mut tokenizer = Tokenizer::from_bytes(model.tokenizer_file)
             .map_err(|err| anyhow!("Failed to load tokenizer: {}", err))?;
+        tokenizer.with_padding(Some(PaddingParams {
+            strategy: PaddingStrategy::BatchLongest,
+            ..Default::default()
+        }));
         Ok(Self::new(tokenizer, session))
     }
 
