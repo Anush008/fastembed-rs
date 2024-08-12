@@ -83,6 +83,7 @@ impl From<InitOptions> for InitOptionsUserDefined {
 pub struct UserDefinedEmbeddingModel {
     pub onnx_file: Vec<u8>,
     pub tokenizer_files: TokenizerFiles,
+    pub pooling: Option<Pooling>,
 }
 
 /// Rust representation of the TextEmbedding model
@@ -145,8 +146,8 @@ impl TextEmbedding {
             Err(_) => model_name.get_default_pooling_method(),
             Ok(path) => match EmbeddingModel::load_pooling_config(&path) {
                 Err(_) => None,
-                Ok(t) => Some(EmbeddingModel::best_pooling_method(t))
-            }
+                Ok(t) => Some(EmbeddingModel::best_pooling_method(t)),
+            },
         };
 
         let session = Session::builder()?
@@ -180,7 +181,7 @@ impl TextEmbedding {
             .commit_from_memory(&model.onnx_file)?;
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
-        Ok(Self::new(tokenizer, session, None))
+        Ok(Self::new(tokenizer, session, model.pooling))
     }
 
     /// Private method to return an instance
@@ -302,29 +303,32 @@ impl TextEmbedding {
                 let output_data = outputs[last_hidden_state_key].try_extract_tensor::<f32>()?;
 
                 // Pre compute attention mask for post processing
-                let attention_mask = attention_mask_array.mapv(|x| x as f32);
+                let attention_mask = attention_mask_array
+                    .insert_axis(ndarray::Axis(2));
+                let attention_mask = attention_mask
+                    .broadcast(output_data.dim())
+                    .expect("Resize attention mask to match output successfull")
+                    .mapv(|x| x as f32);
 
-                let embeddings = output_data
-                    .axis_iter(ndarray::Axis(0)) // first axis is usually sentence batches
-                    .map(|token_embeddings| match self.pooling {
-                        // This option allow model which already includes pooling layer to return its result as is
-                        None => token_embeddings
-                            .as_slice()
-                            .expect("Fail to convert to slice")
-                            .to_vec(),
-                        Some(Pooling::Cls) => normalize(
-                            pooling::cls(&token_embeddings)
-                                .as_slice()
-                                .expect("Fail to convert pooled tensor into slice"),
-                        ),
-                        Some(Pooling::Mean) => normalize(
-                            pooling::mean(&token_embeddings, &attention_mask)
-                                .as_slice()
-                                .expect("Fail to convert pooled tensor into slice"),
-                        ),
-                    })
-                    .collect::<Vec<_>>();
-
+                let embeddings: Vec<Vec<f32>> = match self.pooling {
+                    // default to cls so as not to break the existing implementations
+                    // TODO: Consider return output as is to support custom model that has bulit-in pooling layer.
+                    None => pooling::cls(&output_data)
+                        .rows()
+                        .into_iter()
+                        .map(|row| normalize(row.as_slice().expect("success")))
+                        .collect(),
+                    Some(Pooling::Cls) => pooling::cls(&output_data)
+                        .rows()
+                        .into_iter()
+                        .map(|row| normalize(row.as_slice().expect("success")))
+                        .collect(),
+                    Some(Pooling::Mean) => pooling::mean(&output_data, &attention_mask)
+                        .rows()
+                        .into_iter()
+                        .map(|row| normalize(row.as_slice().expect("success")))
+                        .collect(),
+                };
                 Ok(embeddings)
             })
             .flat_map(|result: Result<Vec<Vec<f32>>, anyhow::Error>| result.unwrap())

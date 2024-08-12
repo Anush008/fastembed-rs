@@ -3,6 +3,7 @@ use std::path::Path;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::common::DEFAULT_CACHE_DIR;
+use crate::pooling::Pooling;
 use crate::sparse_text_embedding::SparseTextEmbedding;
 use crate::{
     read_file_to_bytes, EmbeddingModel, InitOptions, InitOptionsUserDefined, RerankInitOptions,
@@ -72,6 +73,7 @@ fn test_sparse_embeddings() {
 fn test_user_defined_embedding_model() {
     // Constitute the model in order to ensure it's downloaded and cached
     let test_model_info = TextEmbedding::get_model_info(&EmbeddingModel::AllMiniLML6V2);
+    let pooling = Some(Pooling::Mean);
 
     TextEmbedding::try_new(InitOptions {
         model_name: test_model_info.model,
@@ -134,6 +136,7 @@ fn test_user_defined_embedding_model() {
     let user_defined_model = UserDefinedEmbeddingModel {
         onnx_file,
         tokenizer_files,
+        pooling
     };
 
     // Try creating a TextEmbedding instance from the user-defined model
@@ -300,7 +303,7 @@ fn test_bgesmallen1point5_match_python_counterpart() {
         ..Default::default()
     }).expect("Create model succesfully");
     let text = get_sample_text();
-    // baseline is generated in python using qdrant/all-mini-lm-l6-v2.onnx
+    // baseline is generated in python using Xenova/bge-small-en-v1.5.onnx
     let baseline: Vec<f32> = vec![
         4.20819372e-02, -2.74813324e-02, 6.74281046e-02, 2.28279047e-02,
         4.25719209e-02, -4.16398346e-02, 6.81480742e-06, -9.64393280e-03,
