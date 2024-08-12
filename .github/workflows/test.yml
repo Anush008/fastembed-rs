@@ -20,7 +20,7 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - macos-latest-xlarge
+          - macos-13-xlarge
           - windows-latest
 
     runs-on: ${{ matrix.os }}
