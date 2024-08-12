@@ -56,8 +56,8 @@
 )]
 
 mod common;
-mod pooling;
 mod models;
+mod pooling;
 mod reranking;
 mod sparse_text_embedding;
 mod text_embedding;
