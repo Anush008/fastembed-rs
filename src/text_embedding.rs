@@ -12,7 +12,7 @@ use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},
     Cache,
 };
-use ndarray::{s, Array};
+use ndarray::Array;
 use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 use std::{
