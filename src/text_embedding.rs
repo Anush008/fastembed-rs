@@ -142,13 +142,7 @@ impl TextEmbedding {
         }
 
         // prioritise loading pooling config if available, if not (thanks qdrant!), look for it in hardcoded
-        let post_processing = match model_repo.get("1_Pooling/config.json") {
-            Err(_) => model_name.get_default_pooling_method(),
-            Ok(path) => match EmbeddingModel::load_pooling_config(&path) {
-                Err(_) => None,
-                Ok(t) => Some(EmbeddingModel::best_pooling_method(t)),
-            },
-        };
+        let post_processing = model_name.get_default_pooling_method();
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
