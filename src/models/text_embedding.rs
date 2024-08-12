@@ -1,4 +1,3 @@
-
 use crate::pooling::Pooling;
 
 use super::model_info::ModelInfo;
