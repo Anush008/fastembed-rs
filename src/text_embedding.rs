@@ -2,6 +2,7 @@
 use crate::{
     common::{normalize, DEFAULT_CACHE_DIR},
     models::text_embedding::models_list,
+    pooling::{self, Pooling},
     Embedding, EmbeddingModel, ModelInfo,
 };
 use anyhow::{anyhow, Result};
@@ -10,7 +11,7 @@ use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},
     Cache,
 };
-use ndarray::{s, Array};
+use ndarray::Array;
 use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 use std::{
@@ -68,11 +69,13 @@ impl From<InitOptions> for InitOptionsUserDefined {
 pub struct UserDefinedEmbeddingModel {
     pub onnx_file: Vec<u8>,
     pub tokenizer_file: Vec<u8>,
+    pub pooling: Option<Pooling>,
 }
 
 /// Rust representation of the TextEmbedding model
 pub struct TextEmbedding {
     pub tokenizer: Tokenizer,
+    pub pooling: Option<Pooling>,
     session: Session,
     need_token_type_ids: bool,
 }
@@ -133,13 +136,16 @@ impl TextEmbedding {
                 .expect("Failed to retrieve model.onnx_data.");
         }
 
+        // prioritise loading pooling config if available, if not (thanks qdrant!), look for it in hardcoded
+        let post_processing = model_name.get_default_pooling_method();
+
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(threads)?
             .commit_from_file(model_file_reference)?;
 
-        Ok(Self::new(tokenizer, session))
+        Ok(Self::new(tokenizer, session, post_processing))
     }
 
     /// Create a TextEmbedding instance from model files provided by the user.
@@ -163,11 +169,11 @@ impl TextEmbedding {
 
         let tokenizer = Tokenizer::from_bytes(model.tokenizer_file)
             .map_err(|err| anyhow!("Failed to load tokenizer: {}", err))?;
-        Ok(Self::new(tokenizer, session))
+        Ok(Self::new(tokenizer, session, model.pooling))
     }
 
     /// Private method to return an instance
-    fn new(tokenizer: Tokenizer, session: Session) -> Self {
+    fn new(tokenizer: Tokenizer, session: Session, post_process: Option<Pooling>) -> Self {
         let need_token_type_ids = session
             .inputs
             .iter()
@@ -176,6 +182,7 @@ impl TextEmbedding {
             tokenizer,
             session,
             need_token_type_ids,
+            pooling: post_process,
         }
     }
     /// Return the TextEmbedding model's directory from cache or remote retrieval
@@ -261,7 +268,7 @@ impl TextEmbedding {
 
                 let mut session_inputs = ort::inputs![
                     "input_ids" => Value::from_array(inputs_ids_array)?,
-                    "attention_mask" => Value::from_array(attention_mask_array)?,
+                    "attention_mask" => Value::from_array(attention_mask_array.clone())?,
                 ]?;
 
                 if self.need_token_type_ids {
@@ -280,16 +287,35 @@ impl TextEmbedding {
                     _ => "last_hidden_state",
                 };
 
-                // Extract and normalize embeddings
+                // Extract as tensor
                 let output_data = outputs[last_hidden_state_key].try_extract_tensor::<f32>()?;
 
-                let embeddings: Vec<Vec<f32>> = output_data
-                    .slice(s![.., 0, ..])
-                    .rows()
-                    .into_iter()
-                    .map(|row| normalize(row.as_slice().unwrap()))
-                    .collect();
+                // Pre compute attention mask for post processing
+                let attention_mask = attention_mask_array.insert_axis(ndarray::Axis(2));
+                let attention_mask = attention_mask
+                    .broadcast(output_data.dim())
+                    .expect("Resize attention mask to match output successfull")
+                    .mapv(|x| x as f32);
 
+                let embeddings: Vec<Vec<f32>> = match self.pooling {
+                    // default to cls so as not to break the existing implementations
+                    // TODO: Consider return output as is to support custom model that has built-in pooling layer.
+                    None => pooling::cls(&output_data)
+                        .rows()
+                        .into_iter()
+                        .map(|row| normalize(row.as_slice().expect("success")))
+                        .collect(),
+                    Some(Pooling::Cls) => pooling::cls(&output_data)
+                        .rows()
+                        .into_iter()
+                        .map(|row| normalize(row.as_slice().expect("success")))
+                        .collect(),
+                    Some(Pooling::Mean) => pooling::mean(&output_data, &attention_mask)
+                        .rows()
+                        .into_iter()
+                        .map(|row| normalize(row.as_slice().expect("success")))
+                        .collect(),
+                };
                 Ok(embeddings)
             })
             .flat_map(|result: Result<Vec<Vec<f32>>, anyhow::Error>| result.unwrap())

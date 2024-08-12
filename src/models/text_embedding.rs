@@ -1,3 +1,5 @@
+use crate::pooling::Pooling;
+
 use super::model_info::ModelInfo;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -256,4 +258,43 @@ pub fn models_list() -> Vec<ModelInfo<EmbeddingModel>> {
     // );
 
     models_list
+}
+
+impl EmbeddingModel {
+    pub fn get_default_pooling_method(&self) -> Option<Pooling> {
+        match self {
+            EmbeddingModel::AllMiniLML6V2 => Some(Pooling::Mean),
+            EmbeddingModel::AllMiniLML6V2Q => Some(Pooling::Mean),
+            EmbeddingModel::AllMiniLML12V2 => Some(Pooling::Mean),
+            EmbeddingModel::AllMiniLML12V2Q => Some(Pooling::Mean),
+
+            EmbeddingModel::BGEBaseENV15 => Some(Pooling::Cls),
+            EmbeddingModel::BGEBaseENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::BGELargeENV15 => Some(Pooling::Cls),
+            EmbeddingModel::BGELargeENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::BGESmallENV15 => Some(Pooling::Cls),
+            EmbeddingModel::BGESmallENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::BGESmallZHV15 => Some(Pooling::Cls),
+
+            EmbeddingModel::NomicEmbedTextV1 => Some(Pooling::Mean),
+            EmbeddingModel::NomicEmbedTextV15 => Some(Pooling::Mean),
+            EmbeddingModel::NomicEmbedTextV15Q => Some(Pooling::Mean),
+
+            EmbeddingModel::ParaphraseMLMiniLML12V2 => Some(Pooling::Mean),
+            EmbeddingModel::ParaphraseMLMiniLML12V2Q => Some(Pooling::Mean),
+            EmbeddingModel::ParaphraseMLMpnetBaseV2 => Some(Pooling::Mean),
+
+            EmbeddingModel::MultilingualE5Base => Some(Pooling::Mean),
+            EmbeddingModel::MultilingualE5Small => Some(Pooling::Mean),
+            EmbeddingModel::MultilingualE5Large => Some(Pooling::Mean),
+
+            EmbeddingModel::MxbaiEmbedLargeV1 => Some(Pooling::Cls),
+            EmbeddingModel::MxbaiEmbedLargeV1Q => Some(Pooling::Cls),
+
+            EmbeddingModel::GTEBaseENV15 => Some(Pooling::Cls),
+            EmbeddingModel::GTEBaseENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::GTELargeENV15 => Some(Pooling::Cls),
+            EmbeddingModel::GTELargeENV15Q => Some(Pooling::Cls),
+        }
+    }
 }

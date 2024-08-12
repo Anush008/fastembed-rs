@@ -11,6 +11,7 @@ authors = [
     "George MacKerron <georgemackerron@neon.tech>",
     "Timon Vonk <mail@timonv.nl>",
     "Luya Wang <luya.wang@qq.com>",
+    "Tri <tri@triandco.com>",
 ]
 documentation = "https://docs.rs/fastembed"
 repository = "https://github.com/Anush008/fastembed-rs"
