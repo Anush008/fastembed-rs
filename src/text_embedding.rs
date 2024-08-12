@@ -303,8 +303,7 @@ impl TextEmbedding {
                 let output_data = outputs[last_hidden_state_key].try_extract_tensor::<f32>()?;
 
                 // Pre compute attention mask for post processing
-                let attention_mask = attention_mask_array
-                    .insert_axis(ndarray::Axis(2));
+                let attention_mask = attention_mask_array.insert_axis(ndarray::Axis(2));
                 let attention_mask = attention_mask
                     .broadcast(output_data.dim())
                     .expect("Resize attention mask to match output successfull")
@@ -312,7 +311,7 @@ impl TextEmbedding {
 
                 let embeddings: Vec<Vec<f32>> = match self.pooling {
                     // default to cls so as not to break the existing implementations
-                    // TODO: Consider return output as is to support custom model that has bulit-in pooling layer.
+                    // TODO: Consider return output as is to support custom model that has built-in pooling layer.
                     None => pooling::cls(&output_data)
                         .rows()
                         .into_iter()

@@ -263,7 +263,7 @@ pub fn models_list() -> Vec<ModelInfo<EmbeddingModel>> {
 }
 
 impl EmbeddingModel {
-    pub fn get_default_pooling_method(&self) -> Option<Pooling>{
+    pub fn get_default_pooling_method(&self) -> Option<Pooling> {
         match self {
             EmbeddingModel::AllMiniLML6V2 => Some(Pooling::Mean),
             EmbeddingModel::AllMiniLML6V2Q => Some(Pooling::Mean),
@@ -285,7 +285,7 @@ impl EmbeddingModel {
             EmbeddingModel::ParaphraseMLMiniLML12V2 => Some(Pooling::Mean),
             EmbeddingModel::ParaphraseMLMiniLML12V2Q => Some(Pooling::Mean),
             EmbeddingModel::ParaphraseMLMpnetBaseV2 => Some(Pooling::Mean),
-            
+
             EmbeddingModel::MultilingualE5Base => Some(Pooling::Mean),
             EmbeddingModel::MultilingualE5Small => Some(Pooling::Mean),
             EmbeddingModel::MultilingualE5Large => Some(Pooling::Mean),
@@ -301,16 +301,21 @@ impl EmbeddingModel {
     }
 
     // this allow HF models that respects the 1Pooling/config.json to load config (no thanks to qdrant for bucking the trend >,>)
-    pub fn load_pooling_config(path: &PathBuf) -> Result<PoolingConfig, LoadPoolingError>{
+    pub fn load_pooling_config(path: &PathBuf) -> Result<PoolingConfig, LoadPoolingError> {
         let file = File::open(path).map_err(|_| LoadPoolingError::FailToLoadCacheConfigFile)?;
         let reader = BufReader::new(file);
-        serde_json::from_reader::<_,PoolingConfig>(reader).map_err(|_| LoadPoolingError::FailToDeserialiseConfig)
+        serde_json::from_reader::<_, PoolingConfig>(reader)
+            .map_err(|_| LoadPoolingError::FailToDeserialiseConfig)
     }
 
     // Pick a default pooling method for a model because our embed method only output a single set of vector
     pub fn best_pooling_method(config: PoolingConfig) -> Pooling {
-        if config.pooling_mode_cls_token { Pooling::Cls }
-        else if config.pooling_mode_mean_tokens { Pooling::Mean }
-        else { Pooling::Cls }
+        if config.pooling_mode_cls_token {
+            Pooling::Cls
+        } else if config.pooling_mode_mean_tokens {
+            Pooling::Mean
+        } else {
+            Pooling::Cls
+        }
     }
 }

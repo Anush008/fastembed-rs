@@ -1,4 +1,3 @@
-
 use ndarray::{s, ArrayBase, Dim, IxDynImpl, OwnedRepr, ViewRepr};
 use serde::Deserialize;
 
@@ -7,23 +6,24 @@ pub struct PoolingConfig {
     pub pooling_mode_cls_token: bool,
     pub pooling_mode_mean_tokens: bool,
     pub pooling_mode_max_tokens: bool,
-    pub pooling_mode_mean_sqrt_len_tokens: bool
+    pub pooling_mode_mean_sqrt_len_tokens: bool,
 }
 
 pub enum LoadPoolingError {
     FailToLoadCacheConfigFile,
-    FailToDeserialiseConfig
+    FailToDeserialiseConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Pooling{
+pub enum Pooling {
     Cls,
     Mean,
 }
 
-pub fn cls(tensor: &ArrayBase<ViewRepr<&f32>, Dim<IxDynImpl>>)
-    -> ArrayBase<OwnedRepr<f32>, Dim<[usize; 2]>> {
-    tensor.slice(s![..,0,..]).to_owned()
+pub fn cls(
+    tensor: &ArrayBase<ViewRepr<&f32>, Dim<IxDynImpl>>,
+) -> ArrayBase<OwnedRepr<f32>, Dim<[usize; 2]>> {
+    tensor.slice(s![.., 0, ..]).to_owned()
 }
 
 pub fn mean(
