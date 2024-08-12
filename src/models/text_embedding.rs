@@ -1,3 +1,7 @@
+use std::{fs::File, io::BufReader, path::PathBuf};
+
+use crate::pooling::{LoadPoolingError, Pooling, PoolingConfig};
+
 use super::model_info::ModelInfo;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -256,4 +260,57 @@ pub fn models_list() -> Vec<ModelInfo<EmbeddingModel>> {
     // );
 
     models_list
+}
+
+impl EmbeddingModel {
+    pub fn get_default_pooling_method(&self) -> Option<Pooling>{
+        match self {
+            EmbeddingModel::AllMiniLML6V2 => Some(Pooling::Mean),
+            EmbeddingModel::AllMiniLML6V2Q => Some(Pooling::Mean),
+            EmbeddingModel::AllMiniLML12V2 => Some(Pooling::Mean),
+            EmbeddingModel::AllMiniLML12V2Q => Some(Pooling::Mean),
+
+            EmbeddingModel::BGEBaseENV15 => Some(Pooling::Cls),
+            EmbeddingModel::BGEBaseENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::BGELargeENV15 => Some(Pooling::Cls),
+            EmbeddingModel::BGELargeENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::BGESmallENV15 => Some(Pooling::Cls),
+            EmbeddingModel::BGESmallENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::BGESmallZHV15 => Some(Pooling::Cls),
+
+            EmbeddingModel::NomicEmbedTextV1 => Some(Pooling::Mean),
+            EmbeddingModel::NomicEmbedTextV15 => Some(Pooling::Mean),
+            EmbeddingModel::NomicEmbedTextV15Q => Some(Pooling::Mean),
+
+            EmbeddingModel::ParaphraseMLMiniLML12V2 => Some(Pooling::Mean),
+            EmbeddingModel::ParaphraseMLMiniLML12V2Q => Some(Pooling::Mean),
+            EmbeddingModel::ParaphraseMLMpnetBaseV2 => Some(Pooling::Mean),
+            
+            EmbeddingModel::MultilingualE5Base => Some(Pooling::Mean),
+            EmbeddingModel::MultilingualE5Small => Some(Pooling::Mean),
+            EmbeddingModel::MultilingualE5Large => Some(Pooling::Mean),
+
+            EmbeddingModel::MxbaiEmbedLargeV1 => Some(Pooling::Cls),
+            EmbeddingModel::MxbaiEmbedLargeV1Q => Some(Pooling::Cls),
+
+            EmbeddingModel::GTEBaseENV15 => Some(Pooling::Cls),
+            EmbeddingModel::GTEBaseENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::GTELargeENV15 => Some(Pooling::Cls),
+            EmbeddingModel::GTELargeENV15Q => Some(Pooling::Cls),
+        }
+    }
+
+    // this allow HF models that respects the 1Pooling/config.json to load config (no thanks to qdrant for bucking the trend >,>)
+    pub fn load_pooling_config(path: &PathBuf) -> Result<PoolingConfig, LoadPoolingError>{
+        let file = File::open(path).map_err(|_| LoadPoolingError::FailToLoadCacheConfigFile)?;
+        let reader = BufReader::new(file);
+        serde_json::from_reader::<_,PoolingConfig>(reader).map_err(|_| LoadPoolingError::FailToDeserialiseConfig)
+    }
+
+    // Pick a default pooling method for a model because our embed method only output a single set of vector
+    pub fn best_pooling_method(config: PoolingConfig) -> Pooling {
+        if config.pooling_mode_cls_token { Pooling::Cls }
+        else if config.pooling_mode_mean_tokens { Pooling::Mean }
+        else { Pooling::Cls }
+    }
 }

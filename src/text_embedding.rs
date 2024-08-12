@@ -1,8 +1,9 @@
 #[cfg(feature = "online")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::{load_tokenizer, mean_pool, normalize, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR},
+    common::{load_tokenizer, normalize, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR},
     models::text_embedding::models_list,
+    pooling::{self, Pooling},
     Embedding, EmbeddingModel, ModelInfo,
 };
 use anyhow::Result;
@@ -87,6 +88,7 @@ pub struct UserDefinedEmbeddingModel {
 /// Rust representation of the TextEmbedding model
 pub struct TextEmbedding {
     pub tokenizer: Tokenizer,
+    pub pooling: Option<Pooling>,
     session: Session,
     need_token_type_ids: bool,
 }
@@ -138,6 +140,15 @@ impl TextEmbedding {
                 .expect("Failed to retrieve model.onnx_data.");
         }
 
+        // prioritise loading pooling config if available, if not (thanks qdrant!), look for it in hardcoded
+        let post_processing = match model_repo.get("1_Pooling/config.json") {
+            Err(_) => model_name.get_default_pooling_method(),
+            Ok(path) => match EmbeddingModel::load_pooling_config(&path) {
+                Err(_) => None,
+                Ok(t) => Some(EmbeddingModel::best_pooling_method(t))
+            }
+        };
+
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
@@ -145,7 +156,7 @@ impl TextEmbedding {
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
-        Ok(Self::new(tokenizer, session))
+        Ok(Self::new(tokenizer, session, post_processing))
     }
 
     /// Create a TextEmbedding instance from model files provided by the user.
@@ -169,11 +180,11 @@ impl TextEmbedding {
             .commit_from_memory(&model.onnx_file)?;
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
-        Ok(Self::new(tokenizer, session))
+        Ok(Self::new(tokenizer, session, None))
     }
 
     /// Private method to return an instance
-    fn new(tokenizer: Tokenizer, session: Session) -> Self {
+    fn new(tokenizer: Tokenizer, session: Session, post_process: Option<Pooling>) -> Self {
         let need_token_type_ids = session
             .inputs
             .iter()
@@ -182,6 +193,7 @@ impl TextEmbedding {
             tokenizer,
             session,
             need_token_type_ids,
+            pooling: post_process,
         }
     }
     /// Return the TextEmbedding model's directory from cache or remote retrieval
@@ -286,16 +298,30 @@ impl TextEmbedding {
                     _ => "last_hidden_state",
                 };
 
-                // Extract, perform mean pool and normalize embeddings
+                // Extract as tensor
                 let output_data = outputs[last_hidden_state_key].try_extract_tensor::<f32>()?;
+
+                // Pre compute attention mask for post processing
                 let attention_mask = attention_mask_array.mapv(|x| x as f32);
 
                 let embeddings = output_data
-                    .axis_iter(ndarray::Axis(0)) // first axis is sentence batches
-                    .map(|token_embeddings| {
-                        // TODO: customise pooling method to respect pooling/config.json per model if available
-                        let pooled = mean_pool(&token_embeddings, &attention_mask);
-                        normalize(pooled.as_slice().expect("Fail to convert pooled to slice"))
+                    .axis_iter(ndarray::Axis(0)) // first axis is usually sentence batches
+                    .map(|token_embeddings| match self.pooling {
+                        // This option allow model which already includes pooling layer to return its result as is
+                        None => token_embeddings
+                            .as_slice()
+                            .expect("Fail to convert to slice")
+                            .to_vec(),
+                        Some(Pooling::Cls) => normalize(
+                            pooling::cls(&token_embeddings)
+                                .as_slice()
+                                .expect("Fail to convert pooled tensor into slice"),
+                        ),
+                        Some(Pooling::Mean) => normalize(
+                            pooling::mean(&token_embeddings, &attention_mask)
+                                .as_slice()
+                                .expect("Fail to convert pooled tensor into slice"),
+                        ),
                     })
                     .collect::<Vec<_>>();
 
