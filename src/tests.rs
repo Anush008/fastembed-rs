@@ -1,5 +1,7 @@
+use std::fs;
 use std::path::Path;
 
+use hf_hub::{Cache, CacheRepo, Repo};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::common::DEFAULT_CACHE_DIR;
@@ -36,6 +38,11 @@ fn test_embeddings() {
             for embedding in embeddings {
                 assert_eq!(embedding.len(), supported_model.dim);
             }
+
+            let repo = Repo::model(supported_model.model_code.clone());
+            let cache_dir = format!("{}/{}", DEFAULT_CACHE_DIR, repo.folder_name());
+            let res = fs::remove_dir(cache_dir);
+            assert!(res.is_ok());
         });
 }
 
@@ -176,7 +183,7 @@ fn test_rerank() {
             .rerank("what is panda?", documents.clone(), true, None)
             .unwrap();
 
-        assert_eq!(results.len(), documents.len());
+        assert_eq!(results.len(), documents.len(), "rerank model {:?} failed", supported_model);
         assert_eq!(results[0].document.as_ref().unwrap(), "panda is an animal");
         assert_eq!(results[1].document.as_ref().unwrap(), "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");
     });
