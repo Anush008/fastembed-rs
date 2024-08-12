@@ -126,7 +126,7 @@ impl TextEmbedding {
         let model_file_name = TextEmbedding::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo
             .get(&model_file_name)
-            .unwrap_or_else(|_| panic!("Failed to retrieve {} ", model_file_name));
+            .unwrap_or_else(|_| panic!("Failed to retrieve {} {} ", model_name, model_file_name));
 
         // TODO: If more models need .onnx_data, implement a better way to handle this
         // Probably by adding `additional_files` field in the `ModelInfo` struct

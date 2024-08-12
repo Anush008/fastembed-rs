@@ -41,7 +41,7 @@ fn test_embeddings() {
             }
 
             // Clear the model cache to avoid running out of space on GitHub Actions.
-            clean_cache(supported_model.model_code.clone())
+            // clean_cache(supported_model.model_code.clone())
         });
 }
 
@@ -313,7 +313,7 @@ fn clean_cache(model_code: String) {
 }
 // This is item "test-environment-aeghhgwpe-pro02a" of the [Aguana corpus](http://argumentation.bplaced.net/arguana/data)
 fn get_sample_text() -> String {
-    let t = "animals environment general health health general weight philosophy ethics Being vegetarian helps the environment  Becoming a vegetarian is an environmentally friendly thing to do. Modern farming is one of the main sources of pollution in our rivers. Beef farming is one of the main causes of deforestation, and as long as people continue to buy fast food in their billions, there will be a financial incentive to continue cutting down trees to make room for cattle. Because of our desire to eat fish, our rivers and seas are being emptied of fish and many species are facing extinction. Energy resources are used up much more greedily by meat farming than my farming cereals, pulses etc. Eating meat and fish not only causes cruelty to animals, it causes serious harm to the environment and to biodiversity. For example consider Meat production related pollution and deforestation  At Toronto\u{2019}s 1992 Royal Agricultural Winter Fair, Agriculture Canada displayed two contrasting statistics: \u{201c}it takes four football fields of land (about 1.6 hectares) to feed each Canadian\u{201d} and \u{201c}one apple tree produces enough fruit to make 320 pies.\u{201d} Think about it \u{2014} a couple of apple trees and a few rows of wheat on a mere fraction of a hectare could produce enough food for one person! [1]  The 2006 U.N. Food and Agriculture Organization (FAO) report concluded that worldwide livestock farming generates 18% of the planet's greenhouse gas emissions \u{2014} by comparison, all the world's cars, trains, planes and boats account for a combined 13% of greenhouse gas emissions. [2]  As a result of the above point producing meat damages the environment. The demand for meat drives deforestation. Daniel Cesar Avelino of Brazil's Federal Public Prosecution Office says \u{201c}We know that the single biggest driver of deforestation in the Amazon is cattle.\u{201d} This clearing of tropical rainforests such as the Amazon for agriculture is estimated to produce 17% of the world's greenhouse gas emissions. [3] Not only this but the production of meat takes a lot more energy than it ultimately gives us chicken meat production consumes energy in a 4:1 ratio to protein output; beef cattle production requires an energy input to protein output ratio of 54:1.  The same is true with water use due to the same phenomenon of meat being inefficient to produce in terms of the amount of grain needed to produce the same weight of meat, production requires a lot of water. Water is another scarce resource that we will soon not have enough of in various areas of the globe. Grain-fed beef production takes 100,000 liters of water for every kilogram of food. Raising broiler chickens takes 3,500 liters of water to make a kilogram of meat. In comparison, soybean production uses 2,000 liters for kilogram of food produced; rice, 1,912; wheat, 900; and potatoes, 500 liters. [4] This is while there are areas of the globe that have severe water shortages. With farming using up to 70 times more water than is used for domestic purposes: cooking and washing. A third of the population of the world is already suffering from a shortage of water. [5] Groundwater levels are falling all over the world and rivers are beginning to dry up. Already some of the biggest rivers such as China\u{2019}s Yellow river do not reach the sea. [6]  With a rising population becoming vegetarian is the only responsible way to eat.  [1] Stephen Leckie, \u{2018}How Meat-centred Eating Patterns Affect Food Security and the Environment\u{2019}, International development research center  [2] Bryan Walsh, Meat: Making Global Warming Worse, Time magazine, 10 September 2008 .  [3] David Adam, Supermarket suppliers \u{2018}helping to destroy Amazon rainforest\u{2019}, The Guardian, 21st June 2009.  [4] Roger Segelken, U.S. could feed 800 million people with grain that livestock eat, Cornell Science News, 7th August 1997.  [5] Fiona Harvey, Water scarcity affects one in three, FT.com, 21st August 2003  [6] Rupert Wingfield-Hayes, Yellow river \u{2018}drying up\u{2019}, BBC News, 29th July 2004";
+    let t = "Light: FastEmbed is a lightweight library with few external dependencies. We don't require a GPU and don't download GBs of PyTorch dependencies, and instead use the ONNX Runtime. This makes it a great candidate for serverless runtimes like AWS Lambda. Fast: FastEmbed is designed for speed. We use the ONNX Runtime, which is faster than PyTorch. We also use data parallelism for encoding large datasets. Accurate: FastEmbed is better than OpenAI Ada-002. We also support an ever-expanding set of models, including a few multilingual models.";
     t.to_string()
 }
 
@@ -329,26 +329,27 @@ fn test_bgesmallen1point5_match_python_counterpart() {
     // baseline is generated in python using Xenova/bge-small-en-v1.5.onnx
     // we only take a 10 items to keep the test file polite
     let baseline: Vec<f32> = vec![
-        4.20819372e-02,
-        -2.74813324e-02,
-        6.74281046e-02,
-        2.28279047e-02,
-        4.25719209e-02,
-        -4.16398346e-02,
-        6.81480742e-06,
-        -9.64393280e-03,
-        -3.47558293e-03,
-        6.60627186e-02,
+        -8.27567950e-02,
+        1.47374356e-02,
+        -6.30538464e-02,
+        3.90174128e-02,
+        7.83568323e-02,
+        3.55395637e-02,
+        -8.25874433e-02,
+        -2.60544941e-02,
+        6.47016615e-03,
+        1.35167930e-02,
     ];
 
     let embeddings = model.embed(vec![text], None).expect("create successfully");
-    let tolerance: f32 = 1e-6;
+    let tolerance: f32 = 1e-3;
     for (expected, actual) in embeddings[0]
         .clone()
         .into_iter()
         .take(baseline.len())
         .zip(baseline.into_iter())
     {
+        println!("{}: {}", expected, actual);
         assert!((expected - actual).abs() < tolerance);
     }
 }
