@@ -18,7 +18,7 @@ use std::{
     path::{Path, PathBuf},
     thread::available_parallelism,
 };
-use tokenizers::Tokenizer;
+use tokenizers::{PaddingParams, PaddingStrategy, Tokenizer};
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallENV15;
 
@@ -45,12 +45,10 @@ impl Default for InitOptions {
 /// Options for initializing UserDefinedEmbeddingModel
 ///
 /// Model files are held by the UserDefinedEmbeddingModel struct
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct InitOptionsUserDefined {
     pub execution_providers: Vec<ExecutionProviderDispatch>,
 }
-
 
 /// Convert InitOptions to InitOptionsUserDefined
 ///
@@ -113,8 +111,14 @@ impl TextEmbedding {
         )?;
 
         let tokenizer_file_reference = model_repo.get("tokenizer.json")?;
-        let tokenizer = Tokenizer::from_file(tokenizer_file_reference)
+        let mut tokenizer = Tokenizer::from_file(tokenizer_file_reference)
             .map_err(|err| anyhow!("Failed to load tokenizer: {}", err))?;
+        if tokenizer.get_padding().is_none() {
+            tokenizer.with_padding(Some(PaddingParams {
+                strategy: PaddingStrategy::BatchLongest,
+                ..Default::default()
+            }));
+        }
 
         let model_file_name = TextEmbedding::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo

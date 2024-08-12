@@ -53,7 +53,6 @@ pub struct RerankInitOptionsUserDefined {
     pub execution_providers: Vec<ExecutionProviderDispatch>,
 }
 
-
 /// Convert RerankInitOptions to RerankInitOptionsUserDefined
 ///
 /// This is useful for when the user wants to use the same options for both the default and user-defined models
@@ -131,11 +130,13 @@ impl TextRerank {
         let tokenizer_file_reference = model_repo.get("tokenizer.json")?;
         let mut tokenizer = Tokenizer::from_file(tokenizer_file_reference)
             .map_err(|err| anyhow!("Failed to load tokenizer: {}", err))?;
+        if tokenizer.get_padding().is_none() {
+            tokenizer.with_padding(Some(PaddingParams {
+                strategy: PaddingStrategy::BatchLongest,
+                ..Default::default()
+            }));
+        }
 
-        tokenizer.with_padding(Some(PaddingParams {
-            strategy: PaddingStrategy::BatchLongest,
-            ..Default::default()
-        }));
         let model_file_name = TextRerank::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo
             .get(&model_file_name)
