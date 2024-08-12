@@ -33,6 +33,6 @@ pub fn mean(
     let masked_tensor = tensor * attention_mask;
     let sum = masked_tensor.sum_axis(ndarray::Axis(1));
     let mask_sum = attention_mask.sum_axis(ndarray::Axis(1));
-    let mask_sum = mask_sum.mapv(|x| if x == 0f32 { 1.0 } else { x as f32 });
+    let mask_sum = mask_sum.mapv(|x| if x == 0f32 { 1.0 } else { x });
     &sum / &mask_sum
 }
