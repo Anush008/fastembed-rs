@@ -1,6 +1,6 @@
 use std::{fs::File, io::BufReader, path::PathBuf};
 
-use crate::pooling::{LoadPoolingError, Pooling, PoolingConfig};
+use crate::pooling::Pooling;
 
 use super::model_info::ModelInfo;
 

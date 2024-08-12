@@ -1,18 +1,4 @@
 use ndarray::{s, ArrayBase, Dim, IxDynImpl, OwnedRepr, ViewRepr};
-use serde::Deserialize;
-
-#[derive(Deserialize)]
-pub struct PoolingConfig {
-    pub pooling_mode_cls_token: bool,
-    pub pooling_mode_mean_tokens: bool,
-    pub pooling_mode_max_tokens: bool,
-    pub pooling_mode_mean_sqrt_len_tokens: bool,
-}
-
-pub enum LoadPoolingError {
-    FailToLoadCacheConfigFile,
-    FailToDeserialiseConfig,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Pooling {
