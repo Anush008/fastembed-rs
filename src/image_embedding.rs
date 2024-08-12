@@ -43,17 +43,11 @@ impl Default for ImageInitOptions {
 ///
 /// Model files are held by the UserDefinedImageEmbeddingModel struct
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct ImageInitOptionsUserDefined {
     pub execution_providers: Vec<ExecutionProviderDispatch>,
 }
 
-impl Default for ImageInitOptionsUserDefined {
-    fn default() -> Self {
-        Self {
-            execution_providers: Default::default(),
-        }
-    }
-}
 
 /// Convert ImageInitOptions to ImageInitOptionsUserDefined
 ///

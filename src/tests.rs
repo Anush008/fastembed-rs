@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use hf_hub::{Cache, CacheRepo, Repo};
+use hf_hub::Repo;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::common::DEFAULT_CACHE_DIR;
@@ -39,10 +39,8 @@ fn test_embeddings() {
                 assert_eq!(embedding.len(), supported_model.dim);
             }
 
-            let repo = Repo::model(supported_model.model_code.clone());
-            let cache_dir = format!("{}/{}", DEFAULT_CACHE_DIR, repo.folder_name());
-            let res = fs::remove_dir(cache_dir);
-            assert!(res.is_ok());
+            // Clear the model cache to avoid running out of space on GitHub Actions.
+            clean_cache(supported_model.model_code.clone())
         });
 }
 
@@ -73,6 +71,9 @@ fn test_sparse_embeddings() {
                 assert!(embedding.indices.len() < 100);
                 assert_eq!(embedding.indices.len(), embedding.values.len());
             });
+
+            // Clear the model cache to avoid running out of space on GitHub Actions.
+            clean_cache(supported_model.model_code.clone())
         });
 }
 
@@ -186,6 +187,9 @@ fn test_rerank() {
         assert_eq!(results.len(), documents.len(), "rerank model {:?} failed", supported_model);
         assert_eq!(results[0].document.as_ref().unwrap(), "panda is an animal");
         assert_eq!(results[1].document.as_ref().unwrap(), "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");
+
+        // Clear the model cache to avoid running out of space on GitHub Actions.
+        clean_cache(supported_model.model_code.clone())
     });
 }
 
@@ -292,5 +296,15 @@ fn test_image_embedding_model() {
             for embedding in embeddings {
                 assert_eq!(embedding.len(), supported_model.dim);
             }
+
+            // Clear the model cache to avoid running out of space on GitHub Actions.
+            clean_cache(supported_model.model_code.clone())
         });
+}
+
+fn clean_cache(model_code: String) {
+    let repo = Repo::model(model_code);
+    let cache_dir = format!("{}/{}", DEFAULT_CACHE_DIR, repo.folder_name());
+    let res = fs::remove_dir_all(cache_dir);
+    assert!(res.is_ok());
 }
