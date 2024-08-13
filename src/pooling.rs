@@ -28,7 +28,7 @@ pub fn mean(
     let input_mask_expanded = attention_mask
         .insert_axis(ndarray::Axis(2))
         .broadcast(token_embeddings.dim())
-        .expect("Resize attention mask to match output successfull")
+        .expect("Resize attention mask to match output successful")
         .mapv(|x| x as f32);
 
     let sum_embeddings = (token_embeddings * &input_mask_expanded).sum_axis(ndarray::Axis(1));
