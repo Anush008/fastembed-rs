@@ -6,10 +6,11 @@ use std::{
 };
 
 #[cfg(feature = "online")]
-use crate::common::{load_tokenizer, load_tokenizer_hf_hub, DEFAULT_CACHE_DIR};
+use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::TokenizerFiles, models::reranking::reranker_model_list, RerankerModel,
-    RerankerModelInfo,
+    common::{load_tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR},
+    models::reranking::reranker_model_list,
+    RerankerModel, RerankerModelInfo,
 };
 #[cfg(feature = "online")]
 use hf_hub::{api::sync::ApiBuilder, Cache};

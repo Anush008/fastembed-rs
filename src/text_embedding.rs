@@ -1,7 +1,7 @@
-use crate::common::{load_tokenizer, load_tokenizer_hf_hub, TokenizerFiles};
 #[cfg(feature = "online")]
+use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::{normalize, DEFAULT_CACHE_DIR},
+    common::{load_tokenizer, normalize, TokenizerFiles, DEFAULT_CACHE_DIR},
     models::text_embedding::models_list,
     pooling::{self, Pooling},
     Embedding, EmbeddingModel, ModelInfo,
