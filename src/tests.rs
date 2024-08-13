@@ -337,7 +337,11 @@ fn test_bgesmallen1point5_match_python_counterpart() {
     })
     .expect("Create model succesfully");
     let text = get_sample_text();
+
     // baseline is generated in python using Xenova/bge-small-en-v1.5.onnx
+    // Tokenize with python SentenceTransformer("BAAI/bge-small-en-v1.5") default tokenizer
+    // with (text, padding="max_length",max_length=384,truncation=True, return_tensors="np").
+    // Normalized and pooled with SentenceTransformer("BAAI/bge-small-en-v1.5") default pooling settings.
     // we only take a 10 items to keep the test file polite
     let baseline: Vec<f32> = vec![
         4.20819372e-02,
@@ -375,7 +379,11 @@ fn test_allminilml6v2_match_python_counterpart() {
     .expect("Create model succesfully");
 
     let text = get_sample_text();
+
     // baseline is generated in python using qdrant/all-mini-lm-l6-v2.onnx
+    // Tokenizer with python SentenceTransformer("all-mini-lm-l6-v2") default tokenizer
+    // with (text, padding="max_length",max_length=384,truncation=True, return_tensors="np").
+    // Normalized and pooled with SentenceTransformer("all-mini-lm-l6-v2") default pooling settings.
     // we only take a 10 items to keep the test file polite
     let baseline: Vec<f32> = vec![
         3.51051763e-02,
