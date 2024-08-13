@@ -85,3 +85,5 @@ pub use crate::sparse_text_embedding::{SparseInitOptions, SparseTextEmbedding};
 pub use crate::text_embedding::{
     InitOptions, InitOptionsUserDefined, TextEmbedding, UserDefinedEmbeddingModel,
 };
+
+pub use crate::pooling::Pooling;
