@@ -1,3 +1,4 @@
+use crate::common::{load_tokenizer, load_tokenizer_hf_hub, TokenizerFiles};
 #[cfg(feature = "online")]
 use crate::{
     common::{normalize, DEFAULT_CACHE_DIR},
@@ -5,7 +6,7 @@ use crate::{
     pooling::{self, Pooling},
     Embedding, EmbeddingModel, ModelInfo,
 };
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 #[cfg(feature = "online")]
 use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},
@@ -19,8 +20,10 @@ use std::{
     path::{Path, PathBuf},
     thread::available_parallelism,
 };
-use tokenizers::{PaddingParams, PaddingStrategy, Tokenizer};
+use tokenizers::Tokenizer;
+
 const DEFAULT_BATCH_SIZE: usize = 256;
+const DEFAULT_MAX_LENGTH: usize = 512;
 const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallENV15;
 
 /// Options for initializing the TextEmbedding model
@@ -28,6 +31,7 @@ const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallENV15;
 pub struct InitOptions {
     pub model_name: EmbeddingModel,
     pub execution_providers: Vec<ExecutionProviderDispatch>,
+    pub max_length: usize,
     pub cache_dir: PathBuf,
     pub show_download_progress: bool,
 }
@@ -37,6 +41,7 @@ impl Default for InitOptions {
         Self {
             model_name: DEFAULT_EMBEDDING_MODEL,
             execution_providers: Default::default(),
+            max_length: DEFAULT_MAX_LENGTH,
             cache_dir: Path::new(DEFAULT_CACHE_DIR).to_path_buf(),
             show_download_progress: true,
         }
@@ -46,9 +51,19 @@ impl Default for InitOptions {
 /// Options for initializing UserDefinedEmbeddingModel
 ///
 /// Model files are held by the UserDefinedEmbeddingModel struct
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct InitOptionsUserDefined {
     pub execution_providers: Vec<ExecutionProviderDispatch>,
+    pub max_length: usize,
+}
+
+impl Default for InitOptionsUserDefined {
+    fn default() -> Self {
+        Self {
+            execution_providers: Default::default(),
+            max_length: DEFAULT_MAX_LENGTH,
+        }
+    }
 }
 
 /// Convert InitOptions to InitOptionsUserDefined
@@ -58,6 +73,7 @@ impl From<InitOptions> for InitOptionsUserDefined {
     fn from(options: InitOptions) -> Self {
         InitOptionsUserDefined {
             execution_providers: options.execution_providers,
+            max_length: options.max_length,
         }
     }
 }
@@ -68,7 +84,7 @@ impl From<InitOptions> for InitOptionsUserDefined {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UserDefinedEmbeddingModel {
     pub onnx_file: Vec<u8>,
-    pub tokenizer_file: Vec<u8>,
+    pub tokenizer_files: TokenizerFiles,
     pub pooling: Option<Pooling>,
 }
 
@@ -101,6 +117,7 @@ impl TextEmbedding {
         let InitOptions {
             model_name,
             execution_providers,
+            max_length,
             cache_dir,
             show_download_progress,
         } = options;
@@ -112,16 +129,6 @@ impl TextEmbedding {
             cache_dir.clone(),
             show_download_progress,
         )?;
-
-        let tokenizer_file_reference = model_repo.get("tokenizer.json")?;
-        let mut tokenizer = Tokenizer::from_file(tokenizer_file_reference)
-            .map_err(|err| anyhow!("Failed to load tokenizer: {}", err))?;
-        if tokenizer.get_padding().is_none() {
-            tokenizer.with_padding(Some(PaddingParams {
-                strategy: PaddingStrategy::BatchLongest,
-                ..Default::default()
-            }));
-        }
 
         let model_file_name = TextEmbedding::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo
@@ -145,6 +152,7 @@ impl TextEmbedding {
             .with_intra_threads(threads)?
             .commit_from_file(model_file_reference)?;
 
+        let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
         Ok(Self::new(tokenizer, session, post_processing))
     }
 
@@ -157,6 +165,7 @@ impl TextEmbedding {
     ) -> Result<Self> {
         let InitOptionsUserDefined {
             execution_providers,
+            max_length,
         } = options;
 
         let threads = available_parallelism()?.get();
@@ -167,8 +176,7 @@ impl TextEmbedding {
             .with_intra_threads(threads)?
             .commit_from_memory(&model.onnx_file)?;
 
-        let tokenizer = Tokenizer::from_bytes(model.tokenizer_file)
-            .map_err(|err| anyhow!("Failed to load tokenizer: {}", err))?;
+        let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
         Ok(Self::new(tokenizer, session, model.pooling))
     }
 

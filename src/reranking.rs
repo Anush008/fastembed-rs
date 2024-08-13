@@ -1,21 +1,25 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use std::{
     fmt::Display,
     path::{Path, PathBuf},
     thread::available_parallelism,
 };
 
-use crate::common::DEFAULT_CACHE_DIR;
+#[cfg(feature = "online")]
+use crate::common::{load_tokenizer, load_tokenizer_hf_hub, DEFAULT_CACHE_DIR};
+use crate::{
+    common::TokenizerFiles, models::reranking::reranker_model_list, RerankerModel,
+    RerankerModelInfo,
+};
 #[cfg(feature = "online")]
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::{s, Array};
 use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
-use tokenizers::{PaddingParams, PaddingStrategy, Tokenizer};
-
-use crate::{models::reranking::reranker_model_list, RerankerModel, RerankerModelInfo};
+use tokenizers::Tokenizer;
 
 const DEFAULT_RE_RANKER_MODEL: RerankerModel = RerankerModel::BGERerankerBase;
+const DEFAULT_MAX_LENGTH: usize = 512;
 const DEFAULT_BATCH_SIZE: usize = 256;
 
 pub struct TextRerank {
@@ -29,6 +33,7 @@ pub struct TextRerank {
 pub struct RerankInitOptions {
     pub model_name: RerankerModel,
     pub execution_providers: Vec<ExecutionProviderDispatch>,
+    pub max_length: usize,
     pub cache_dir: PathBuf,
     pub show_download_progress: bool,
 }
@@ -38,6 +43,7 @@ impl Default for RerankInitOptions {
         Self {
             model_name: DEFAULT_RE_RANKER_MODEL,
             execution_providers: Default::default(),
+            max_length: DEFAULT_MAX_LENGTH,
             cache_dir: Path::new(DEFAULT_CACHE_DIR).to_path_buf(),
             show_download_progress: true,
         }
@@ -48,9 +54,18 @@ impl Default for RerankInitOptions {
 ///
 /// Model files are held by the UserDefinedRerankerModel struct
 /// #[derive(Debug, Clone)]
-#[derive(Default)]
 pub struct RerankInitOptionsUserDefined {
     pub execution_providers: Vec<ExecutionProviderDispatch>,
+    pub max_length: usize,
+}
+
+impl Default for RerankInitOptionsUserDefined {
+    fn default() -> Self {
+        Self {
+            execution_providers: Default::default(),
+            max_length: DEFAULT_MAX_LENGTH,
+        }
+    }
 }
 
 /// Convert RerankInitOptions to RerankInitOptionsUserDefined
@@ -60,6 +75,7 @@ impl From<RerankInitOptions> for RerankInitOptionsUserDefined {
     fn from(options: RerankInitOptions) -> Self {
         RerankInitOptionsUserDefined {
             execution_providers: options.execution_providers,
+            max_length: options.max_length,
         }
     }
 }
@@ -70,7 +86,7 @@ impl From<RerankInitOptions> for RerankInitOptionsUserDefined {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UserDefinedRerankingModel {
     pub onnx_file: Vec<u8>,
-    pub tokenizer_file: Vec<u8>,
+    pub tokenizer_files: TokenizerFiles,
 }
 
 impl Display for RerankerModel {
@@ -109,11 +125,10 @@ impl TextRerank {
 
     #[cfg(feature = "online")]
     pub fn try_new(options: RerankInitOptions) -> Result<TextRerank> {
-        use tokenizers::{PaddingParams, PaddingStrategy};
-
         let RerankInitOptions {
             model_name,
             execution_providers,
+            max_length,
             cache_dir,
             show_download_progress,
         } = options;
@@ -127,16 +142,6 @@ impl TextRerank {
             .expect("Failed to build API from cache");
         let model_repo = api.model(model_name.to_string());
 
-        let tokenizer_file_reference = model_repo.get("tokenizer.json")?;
-        let mut tokenizer = Tokenizer::from_file(tokenizer_file_reference)
-            .map_err(|err| anyhow!("Failed to load tokenizer: {}", err))?;
-        if tokenizer.get_padding().is_none() {
-            tokenizer.with_padding(Some(PaddingParams {
-                strategy: PaddingStrategy::BatchLongest,
-                ..Default::default()
-            }));
-        }
-
         let model_file_name = TextRerank::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo
             .get(&model_file_name)
@@ -148,6 +153,7 @@ impl TextRerank {
             .with_intra_threads(threads)?
             .commit_from_file(model_file_reference)?;
 
+        let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
         Ok(Self::new(tokenizer, session))
     }
 
@@ -160,6 +166,7 @@ impl TextRerank {
     ) -> Result<Self> {
         let RerankInitOptionsUserDefined {
             execution_providers,
+            max_length,
         } = options;
 
         let threads = available_parallelism()?.get();
@@ -170,12 +177,7 @@ impl TextRerank {
             .with_intra_threads(threads)?
             .commit_from_memory(&model.onnx_file)?;
 
-        let mut tokenizer = Tokenizer::from_bytes(model.tokenizer_file)
-            .map_err(|err| anyhow!("Failed to load tokenizer: {}", err))?;
-        tokenizer.with_padding(Some(PaddingParams {
-            strategy: PaddingStrategy::BatchLongest,
-            ..Default::default()
-        }));
+        let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
         Ok(Self::new(tokenizer, session))
     }
 

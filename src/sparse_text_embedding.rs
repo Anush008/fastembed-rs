@@ -1,9 +1,9 @@
 use crate::{
-    common::DEFAULT_CACHE_DIR,
+    common::{load_tokenizer_hf_hub, TokenizerFiles, DEFAULT_CACHE_DIR},
     models::sparse::{models_list, SparseModel},
     ModelInfo, SparseEmbedding,
 };
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 #[cfg(feature = "online")]
 use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},
@@ -23,6 +23,7 @@ use tokenizers::Tokenizer;
 #[cfg_attr(not(feature = "online"), allow(unused_imports))]
 use std::thread::available_parallelism;
 const DEFAULT_BATCH_SIZE: usize = 256;
+const DEFAULT_MAX_LENGTH: usize = 512;
 const DEFAULT_EMBEDDING_MODEL: SparseModel = SparseModel::SPLADEPPV1;
 
 /// Options for initializing the SparseTextEmbedding model
@@ -30,6 +31,7 @@ const DEFAULT_EMBEDDING_MODEL: SparseModel = SparseModel::SPLADEPPV1;
 pub struct SparseInitOptions {
     pub model_name: SparseModel,
     pub execution_providers: Vec<ExecutionProviderDispatch>,
+    pub max_length: usize,
     pub cache_dir: PathBuf,
     pub show_download_progress: bool,
 }
@@ -39,6 +41,7 @@ impl Default for SparseInitOptions {
         Self {
             model_name: DEFAULT_EMBEDDING_MODEL,
             execution_providers: Default::default(),
+            max_length: DEFAULT_MAX_LENGTH,
             cache_dir: Path::new(DEFAULT_CACHE_DIR).to_path_buf(),
             show_download_progress: true,
         }
@@ -51,7 +54,7 @@ impl Default for SparseInitOptions {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UserDefinedSparseModel {
     pub onnx_file: Vec<u8>,
-    pub tokenizer_file: Vec<u8>,
+    pub tokenizer_files: TokenizerFiles,
 }
 
 /// Rust representation of the SparseTextEmbedding model
@@ -83,6 +86,7 @@ impl SparseTextEmbedding {
         let SparseInitOptions {
             model_name,
             execution_providers,
+            max_length,
             cache_dir,
             show_download_progress,
         } = options;
@@ -95,10 +99,6 @@ impl SparseTextEmbedding {
             show_download_progress,
         )?;
 
-        let tokenizer_file_reference = model_repo.get("tokenizer.json")?;
-        let tokenizer = Tokenizer::from_file(tokenizer_file_reference)
-            .map_err(|err| anyhow!("Failed to load tokenizer: {}", err))?;
-
         let model_file_name = SparseTextEmbedding::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo
             .get(&model_file_name)
@@ -110,6 +110,7 @@ impl SparseTextEmbedding {
             .with_intra_threads(threads)?
             .commit_from_file(model_file_reference)?;
 
+        let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
         Ok(Self::new(tokenizer, session, model_name))
     }
 
