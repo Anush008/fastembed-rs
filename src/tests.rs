@@ -41,7 +41,7 @@ fn test_embeddings() {
             }
 
             // Clear the model cache to avoid running out of space on GitHub Actions.
-            // clean_cache(supported_model.model_code.clone())
+            clean_cache(supported_model.model_code.clone())
         });
 }
 
@@ -74,7 +74,7 @@ fn test_sparse_embeddings() {
             });
 
             // Clear the model cache to avoid running out of space on GitHub Actions.
-            // clean_cache(supported_model.model_code.clone())
+            clean_cache(supported_model.model_code.clone())
         });
 }
 
