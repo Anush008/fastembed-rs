@@ -323,7 +323,7 @@ fn test_batch_size_does_not_change_output() {
 
     assert_eq!(single_batch.len(), small_batch.len());
     for (a, b) in single_batch.into_iter().zip(small_batch.into_iter()) {
-        assert!(a == b, "Expect sentence are equal");
+        assert!(a == b, "Expect each sentence embedding are equal.");
     }
 }
 
