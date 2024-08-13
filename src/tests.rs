@@ -6,10 +6,89 @@ use crate::common::DEFAULT_CACHE_DIR;
 use crate::pooling::Pooling;
 use crate::sparse_text_embedding::SparseTextEmbedding;
 use crate::{
-    read_file_to_bytes, EmbeddingModel, InitOptions, InitOptionsUserDefined, RerankInitOptions,
-    RerankInitOptionsUserDefined, RerankerModel, SparseInitOptions, TextEmbedding, TextRerank,
-    TokenizerFiles, UserDefinedEmbeddingModel, UserDefinedRerankingModel,
+    read_file_to_bytes, Embedding, EmbeddingModel, InitOptions, InitOptionsUserDefined,
+    RerankInitOptions, RerankInitOptionsUserDefined, RerankerModel, SparseInitOptions,
+    TextEmbedding, TextRerank, TokenizerFiles, UserDefinedEmbeddingModel,
+    UserDefinedRerankingModel,
 };
+
+/// A small epsilon value for floating point comparisons.
+const EPS: f32 = 1e-4;
+
+/// Precalculated embeddings for the supported models using #99
+/// (4f09b6842ce1fcfaf6362678afcad9a176e05304).
+///
+/// These are the sum of all embedding values for each document. While not
+/// perfect, they should be good enough to verify that the embeddings are being
+/// generated correctly.
+///
+/// If you have just inserted a new `EmbeddingModel` variant, please update the
+/// expected embeddings.
+///
+/// # Returns
+///
+/// If the embeddings are correct, this function returns `Ok(())`. If there are
+/// any mismatches, it returns `Err(Vec<usize>)` with the indices of the
+/// mismatched embeddings.
+#[allow(unreachable_patterns)]
+fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result<(), Vec<usize>> {
+    let expected = match model {
+        EmbeddingModel::AllMiniLML12V2 => [-0.12147753, 0.30144796, -0.06882502, -0.6303331],
+        EmbeddingModel::AllMiniLML12V2Q => [-0.07808663, 0.27919534, -0.0770612, -0.75660324],
+        EmbeddingModel::AllMiniLML6V2 => [0.59605527, 0.36542925, -0.16450031, -0.40903988],
+        EmbeddingModel::AllMiniLML6V2Q => [0.5677276, 0.40180072, -0.15454668, -0.4672576],
+        EmbeddingModel::BGEBaseENV15 => [-0.51290065, -0.4844747, -0.53036124, -0.5337459],
+        EmbeddingModel::BGEBaseENV15Q => [-0.5130697, -0.48461288, -0.53067875, -0.5337806],
+        EmbeddingModel::BGELargeENV15 => [-0.19347441, -0.28394595, -0.1549195, -0.22201893],
+        EmbeddingModel::BGELargeENV15Q => [-0.19366685, -0.2842059, -0.15471499, -0.22216901],
+        EmbeddingModel::BGESmallENV15 => [0.09881669, 0.15151203, 0.12057499, 0.13641948],
+        EmbeddingModel::BGESmallENV15Q => [0.09881936, 0.15154803, 0.12057378, 0.13639033],
+        EmbeddingModel::BGESmallZHV15 => [-1.1194772, -1.0928253, -1.0325904, -1.0050416],
+        EmbeddingModel::GTEBaseENV15 => [-1.6900877, -1.7148916, -1.7333382, -1.5121834],
+        EmbeddingModel::GTEBaseENV15Q => [-1.7032102, -1.7076654, -1.729326, -1.5317788],
+        EmbeddingModel::GTELargeENV15 => [-1.6457459, -1.6582386, -1.6809471, -1.6070237],
+        EmbeddingModel::GTELargeENV15Q => [-1.6044945, -1.6469251, -1.6828246, -1.6265479],
+        EmbeddingModel::MultilingualE5Base => [-0.057211064, -0.14287914, -0.071678676, -0.17549144],
+        EmbeddingModel::MultilingualE5Large => [-0.7473163, -0.76040405, -0.7537941, -0.72920954],
+        EmbeddingModel::MultilingualE5Small => [-0.2640718, -0.13929011, -0.08091972, -0.12388548],
+        EmbeddingModel::MxbaiEmbedLargeV1 => [-0.2032495, -0.29803938, -0.15803768, -0.23155808],
+        EmbeddingModel::MxbaiEmbedLargeV1Q => [-0.1811538, -0.2884392, -0.1636593, -0.21548103],
+        EmbeddingModel::NomicEmbedTextV1 => [0.13788113, 0.10750078, 0.050809078, 0.09284662],
+        EmbeddingModel::NomicEmbedTextV15 => [0.1932303, 0.13795732, 0.14700879, 0.14940643],
+        EmbeddingModel::NomicEmbedTextV15Q => [0.20999804, 0.13103808, 0.14427708, 0.13452803],
+        EmbeddingModel::ParaphraseMLMiniLML12V2 => [-0.07795018, -0.059113946, -0.043668486, -0.1880083],
+        EmbeddingModel::ParaphraseMLMiniLML12V2Q => [-0.07749095, -0.058981877, -0.043487836, -0.18775631],
+        EmbeddingModel::ParaphraseMLMpnetBaseV2 => [0.39132136, 0.49490625, 0.65497226, 0.34237382],
+        _ => panic!("Model {model} not found. If you have just inserted this `EmbeddingModel` variant, please update the expected embeddings."),
+    };
+
+    let mismatched_indices = embeddings
+        .iter()
+        .map(|embedding| embedding.iter().sum::<f32>())
+        .zip(expected.iter())
+        .enumerate()
+        .filter_map(|(i, (sum, &expected))| {
+            if (sum - expected).abs() > EPS {
+                eprintln!(
+                    "Mismatched embeddings for model {model} at index {i}: {sum} != {expected}",
+                    model = model,
+                    i = i,
+                    sum = sum,
+                    expected = expected
+                );
+                Some(i)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if mismatched_indices.is_empty() {
+        Ok(())
+    } else {
+        Err(mismatched_indices)
+    }
+}
 
 #[test]
 fn test_embeddings() {
@@ -33,8 +112,23 @@ fn test_embeddings() {
             let embeddings = model.embed(documents.clone(), None).unwrap();
 
             assert_eq!(embeddings.len(), documents.len());
-            for embedding in embeddings {
+
+            for embedding in &embeddings {
                 assert_eq!(embedding.len(), supported_model.dim);
+            }
+
+            match verify_embeddings(&supported_model.model, &embeddings) {
+                Ok(_) => {}
+                Err(mismatched_indices) => {
+                    panic!(
+                        "Mismatched embeddings for model {model}: {sentences:?}",
+                        model = supported_model.model,
+                        sentences = &mismatched_indices
+                            .iter()
+                            .map(|&i| documents[i])
+                            .collect::<Vec<_>>()
+                    );
+                }
             }
         });
 }
@@ -344,16 +438,16 @@ fn test_bgesmallen1point5_match_python_counterpart() {
     // Normalized and pooled with SentenceTransformer("BAAI/bge-small-en-v1.5") default pooling settings.
     // we only take a 10 items to keep the test file polite
     let baseline: Vec<f32> = vec![
-        4.20819372e-02,
-        -2.74813324e-02,
-        6.74281046e-02,
-        2.28279047e-02,
-        4.25719209e-02,
-        -4.16398346e-02,
-        6.81480742e-06,
-        -9.64393280e-03,
-        -3.47558293e-03,
-        6.60627186e-02,
+        4.208_193_7e-2,
+        -2.748_133_2e-2,
+        6.742_810_5e-2,
+        2.282_790_5e-2,
+        4.257_192e-2,
+        -4.163_983_5e-2,
+        6.814_807_4e-6,
+        -9.643_933e-3,
+        -3.475_583e-3,
+        6.606_272e-2,
     ];
 
     let embeddings = model.embed(vec![text], None).expect("create successfully");
@@ -386,16 +480,16 @@ fn test_allminilml6v2_match_python_counterpart() {
     // Normalized and pooled with SentenceTransformer("all-mini-lm-l6-v2") default pooling settings.
     // we only take a 10 items to keep the test file polite
     let baseline: Vec<f32> = vec![
-        3.51051763e-02,
-        1.04604298e-02,
-        3.76799852e-02,
-        7.07363337e-02,
-        9.09777507e-02,
-        -2.50771474e-02,
-        -2.21438203e-02,
-        -1.01643587e-02,
-        4.66012731e-02,
-        7.43136629e-02,
+        3.510_517_6e-2,
+        1.046_043e-2,
+        3.767_998_5e-2,
+        7.073_633_4e-2,
+        9.097_775e-2,
+        -2.507_714_7e-2,
+        -2.214_382e-2,
+        -1.016_435_9e-2,
+        4.660_127_3e-2,
+        7.431_366e-2,
     ];
 
     let embeddings = model.embed(vec![text], None).expect("create successfully");

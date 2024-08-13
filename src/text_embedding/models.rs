@@ -1,10 +1,12 @@
+//! The definition of the main struct for text embeddings - [`TextEmbedding`].
+
 #[cfg(feature = "online")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::{load_tokenizer, normalize, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR},
+    common::{load_tokenizer, Tokenizer},
     models::text_embedding::models_list,
-    pooling::{self, Pooling},
-    Embedding, EmbeddingModel, ModelInfo,
+    pooling::Pooling,
+    Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, SingleBatchOutput,
 };
 use anyhow::Result;
 #[cfg(feature = "online")]
@@ -13,78 +15,18 @@ use hf_hub::{
     Cache,
 };
 use ndarray::Array;
-use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
-use rayon::{iter::ParallelIterator, slice::ParallelSlice};
-use std::{
-    fmt::Display,
-    path::{Path, PathBuf},
-    thread::available_parallelism,
+use ort::{GraphOptimizationLevel, Session, Value};
+use rayon::{
+    iter::{FromParallelIterator, ParallelIterator},
+    slice::ParallelSlice,
 };
-const DEFAULT_BATCH_SIZE: usize = 256;
-const DEFAULT_MAX_LENGTH: usize = 512;
-const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallENV15;
+#[cfg(feature = "online")]
+use std::path::PathBuf;
+use std::{fmt::Display, thread::available_parallelism};
 
-/// Options for initializing the TextEmbedding model
-#[derive(Debug, Clone)]
-pub struct InitOptions {
-    pub model_name: EmbeddingModel,
-    pub execution_providers: Vec<ExecutionProviderDispatch>,
-    pub max_length: usize,
-    pub cache_dir: PathBuf,
-    pub show_download_progress: bool,
-}
-
-impl Default for InitOptions {
-    fn default() -> Self {
-        Self {
-            model_name: DEFAULT_EMBEDDING_MODEL,
-            execution_providers: Default::default(),
-            max_length: DEFAULT_MAX_LENGTH,
-            cache_dir: Path::new(DEFAULT_CACHE_DIR).to_path_buf(),
-            show_download_progress: true,
-        }
-    }
-}
-
-/// Options for initializing UserDefinedEmbeddingModel
-///
-/// Model files are held by the UserDefinedEmbeddingModel struct
-#[derive(Debug, Clone)]
-pub struct InitOptionsUserDefined {
-    pub execution_providers: Vec<ExecutionProviderDispatch>,
-    pub max_length: usize,
-}
-
-impl Default for InitOptionsUserDefined {
-    fn default() -> Self {
-        Self {
-            execution_providers: Default::default(),
-            max_length: DEFAULT_MAX_LENGTH,
-        }
-    }
-}
-
-/// Convert InitOptions to InitOptionsUserDefined
-///
-/// This is useful for when the user wants to use the same options for both the default and user-defined models
-impl From<InitOptions> for InitOptionsUserDefined {
-    fn from(options: InitOptions) -> Self {
-        InitOptionsUserDefined {
-            execution_providers: options.execution_providers,
-            max_length: options.max_length,
-        }
-    }
-}
-
-/// Struct for "bring your own" embedding models
-///
-/// The onnx_file and tokenizer_files are expecting the files' bytes
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UserDefinedEmbeddingModel {
-    pub onnx_file: Vec<u8>,
-    pub tokenizer_files: TokenizerFiles,
-    pub pooling: Option<Pooling>,
-}
+#[cfg(feature = "online")]
+use super::InitOptions;
+use super::{output, InitOptionsUserDefined, UserDefinedEmbeddingModel, DEFAULT_BATCH_SIZE};
 
 /// Rust representation of the TextEmbedding model
 pub struct TextEmbedding {
@@ -221,19 +163,42 @@ impl TextEmbedding {
             .expect("Model not found.")
     }
 
-    /// Method to generate sentence embeddings for a Vec of texts
-    // Generic type to accept String, &str, OsString, &OsStr
-    pub fn embed<S: AsRef<str> + Send + Sync>(
-        &self,
+    /// Method to generate an [`ort::SessionOutputs`] wrapped in a [`EmbeddingOutput`]
+    /// instance, which can be used to extract the embeddings with default or custom
+    /// methods as well as output key precedence.
+    ///
+    /// Metadata that could be useful for creating the array transformer is
+    /// returned alongside the [`EmbeddingOutput`] instance, such as pooling methods
+    /// etc.
+    ///
+    /// # Note
+    ///
+    /// This is a lower level method than [`TextEmbedding::embed`], and is useful
+    /// when you need to extract the session outputs in a custom way.
+    ///
+    /// If you want to extract the embeddings directly, use [`TextEmbedding::embed`].
+    ///
+    /// If you want to use the raw session outputs, use [`EmbeddingOutput::into_raw`]
+    /// on the output of this method.
+    ///
+    /// If you want to choose a different export key or customise the way the batch
+    /// arrays are aggregated, you can define your own array transformer
+    /// and use it on [`EmbeddingOutput::export_with_transformer`] to extract the
+    /// embeddings with your custom output type.
+    pub fn transform<'e, 'r, 's, S: AsRef<str> + Send + Sync>(
+        &'e self,
         texts: Vec<S>,
         batch_size: Option<usize>,
-    ) -> Result<Vec<Embedding>> {
+    ) -> Result<EmbeddingOutput<'r, 's>>
+    where
+        'e: 'r,
+        'e: 's,
+    {
         // Determine the batch size, default if not specified
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
 
-        let output = texts
-            .par_chunks(batch_size)
-            .map(|batch| {
+        let batches =
+            anyhow::Result::<Vec<_>>::from_par_iter(texts.par_chunks(batch_size).map(|batch| {
                 // Encode the texts in the batch
                 let inputs = batch.iter().map(|text| text.as_ref()).collect();
                 let encodings = self.tokenizer.encode_batch(inputs, true).unwrap();
@@ -274,7 +239,7 @@ impl TextEmbedding {
 
                 let mut session_inputs = ort::inputs![
                     "input_ids" => Value::from_array(inputs_ids_array)?,
-                    "attention_mask" => Value::from_array(attention_mask_array.clone())?,
+                    "attention_mask" => Value::from_array(attention_mask_array.view())?,
                 ]?;
 
                 if self.need_token_type_ids {
@@ -284,62 +249,43 @@ impl TextEmbedding {
                     ));
                 }
 
-                let outputs = self.session.run(session_inputs)?;
+                Ok(
+                    // Package all the data required for post-processing (e.g. pooling)
+                    // into a SingleBatchOutput struct.
+                    SingleBatchOutput {
+                        session_outputs: self
+                            .session
+                            .run(session_inputs)
+                            .map_err(anyhow::Error::new)?,
+                        attention_mask_array,
+                    },
+                )
+            }))?;
 
-                // Try to get the only output key
-                // If multiple, then default to `last_hidden_state`
-                let last_hidden_state_key = match outputs.len() {
-                    1 => outputs.keys().next().unwrap(),
-                    _ => "last_hidden_state",
-                };
+        Ok(EmbeddingOutput::new(batches))
+    }
 
-                // Extract as tensor
-                let output_data = outputs[last_hidden_state_key].try_extract_tensor::<f32>()?;
+    /// Method to generate sentence embeddings for a Vec of texts.
+    ///
+    /// Accepts a [`Vec`] consisting of elements of either [`String`], &[`str`],
+    /// [`std::ffi::OsString`], &[`std::ffi::OsStr`].
+    ///
+    /// The output is a [`Vec`] of [`Embedding`]s.
+    ///
+    /// # Note
+    ///
+    /// This method is a higher level method than [`TextEmbedding::transform`] by utilizing
+    /// the default output precedence and array transformer for the [`TextEmbedding`] model.
+    pub fn embed<S: AsRef<str> + Send + Sync>(
+        &self,
+        texts: Vec<S>,
+        batch_size: Option<usize>,
+    ) -> Result<Vec<Embedding>> {
+        let batches = self.transform(texts, batch_size)?;
 
-                let embeddings: Vec<Vec<f32>> = match self.pooling {
-                    // If there is none pooling, default to cls so as not to break the existing implementations
-                    // TODO: Consider return output as is to support custom model that has built-in pooling layer:
-                    // - [] Add model with built-in pooling to the list of supported model in ``models::text_embdding::models_list``
-                    // - [] Write unit test for new model
-                    // - [] Update ``pooling::Pooling`` to include None type
-                    // - [] Change the line below to return output as is
-                    // - [] Release major version because of breaking changes
-                    None => pooling::cls(&output_data)
-                        .rows()
-                        .into_iter()
-                        .map(|row| {
-                            normalize(
-                                row.as_slice()
-                                    .expect("Fail to read rows as slice for cls pooling."),
-                            )
-                        })
-                        .collect(),
-                    Some(Pooling::Cls) => pooling::cls(&output_data)
-                        .rows()
-                        .into_iter()
-                        .map(|row| {
-                            normalize(
-                                row.as_slice()
-                                    .expect("Fail to read rows as slice for cls pooling."),
-                            )
-                        })
-                        .collect(),
-                    Some(Pooling::Mean) => pooling::mean(&output_data, attention_mask_array)
-                        .rows()
-                        .into_iter()
-                        .map(|row| {
-                            normalize(
-                                row.as_slice()
-                                    .expect("Fail to read rows as slice for mean pooling."),
-                            )
-                        })
-                        .collect(),
-                };
-                Ok(embeddings)
-            })
-            .flat_map(|result: Result<Vec<Vec<f32>>, anyhow::Error>| result.unwrap())
-            .collect();
-
-        Ok(output)
+        batches.export_with_transformer(output::transformer_with_precedence(
+            output::OUTPUT_TYPE_PRECENDENCE,
+            self.pooling.clone(),
+        ))
     }
 }
