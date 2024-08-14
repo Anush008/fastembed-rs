@@ -1,4 +1,4 @@
-use ndarray::{s, Array, Array2, ArrayView, Dim, Dimension, IxDynImpl};
+use ndarray::{s, Array2, ArrayView, Dim, Dimension, IxDynImpl};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Pooling {
@@ -15,10 +15,10 @@ impl Default for Pooling {
     }
 }
 
-pub fn cls(tensor: &ArrayView<f32, Dim<IxDynImpl>>) -> anyhow::Result<Array<f32, Dim<IxDynImpl>>> {
+pub fn cls(tensor: &ArrayView<f32, Dim<IxDynImpl>>) -> anyhow::Result<Array2<f32>> {
     match tensor.dim().ndim() {
-        2 => Ok(tensor.to_owned()),
-        3 => Ok(tensor.slice(s![.., 0, ..]).to_owned().into_dyn()),
+        2 => Ok(tensor.slice(s![.., ..]).to_owned()),
+        3 => Ok(tensor.slice(s![.., 0, ..]).to_owned()),
         _ => Err(anyhow::Error::msg(format!(
             "Invalid output shape: {shape:?}. Expected 2D or 3D tensor.",
             shape = tensor.dim()
@@ -34,8 +34,26 @@ pub fn cls(tensor: &ArrayView<f32, Dim<IxDynImpl>>) -> anyhow::Result<Array<f32,
 pub fn mean(
     token_embeddings: &ArrayView<f32, Dim<IxDynImpl>>,
     attention_mask_array: Array2<i64>,
-) -> anyhow::Result<Array<f32, Dim<IxDynImpl>>> {
+) -> anyhow::Result<Array2<f32>> {
     let attention_mask_original_dim = attention_mask_array.dim();
+
+    if token_embeddings.dim().ndim() == 2 {
+        // There are no means to speak of if the Axis(1) is missing.
+        // Typically we'll see a dimension of (batch_size, feature_count) here.
+        // It can be assumed that pooling is already done within the model.
+        return Ok(token_embeddings.slice(s![.., ..]).to_owned());
+    } else if token_embeddings.dim().ndim() != 3 {
+        return Err(anyhow::Error::msg(format!(
+            "Invalid output shape: {shape:?}. Expected 2D or 3D tensor.",
+            shape = token_embeddings.dim()
+        )));
+    }
+
+    let token_embeddings =
+        // If the token_embeddings is 3D, return the whole thing.
+        // Using `slice` here to assert the dimension.
+        token_embeddings
+            .slice(s![.., .., ..]);
 
     // Compute attention mask
     let attention_mask = attention_mask_array
@@ -50,7 +68,7 @@ pub fn mean(
         })
         .mapv(|x| x as f32);
 
-    let masked_tensor = token_embeddings * &attention_mask.view();
+    let masked_tensor = &attention_mask * &token_embeddings;
     let sum = masked_tensor.sum_axis(ndarray::Axis(1));
     let mask_sum = attention_mask.sum_axis(ndarray::Axis(1));
     let mask_sum = mask_sum.mapv(|x| if x == 0f32 { 1.0 } else { x });

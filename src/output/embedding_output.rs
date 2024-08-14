@@ -1,4 +1,4 @@
-use ndarray::{Array, Array2, ArrayView, Dim, IxDynImpl};
+use ndarray::{Array2, ArrayView, Dim, IxDynImpl};
 
 use crate::pooling;
 
@@ -61,7 +61,7 @@ impl<'r, 's> SingleBatchOutput<'r, 's> {
         &self,
         precedence: &impl OutputPrecedence,
         pooling_opt: Option<pooling::Pooling>,
-    ) -> anyhow::Result<Array<f32, Dim<IxDynImpl>>> {
+    ) -> anyhow::Result<Array2<f32>> {
         let tensor = self.select_output(precedence)?;
 
         // If there is none pooling, default to cls so as not to break the existing implementations
