@@ -298,30 +298,43 @@ impl TextEmbedding {
                 // Extract as tensor
                 let output_data = outputs[last_hidden_state_key].try_extract_tensor::<f32>()?;
 
-                // Pre compute attention mask for post processing
-                let attention_mask = attention_mask_array.insert_axis(ndarray::Axis(2));
-                let attention_mask = attention_mask
-                    .broadcast(output_data.dim())
-                    .expect("Resize attention mask to match output successfull")
-                    .mapv(|x| x as f32);
-
                 let embeddings: Vec<Vec<f32>> = match self.pooling {
-                    // default to cls so as not to break the existing implementations
-                    // TODO: Consider return output as is to support custom model that has built-in pooling layer.
+                    // If there is none pooling, default to cls so as not to break the existing implementations
+                    // TODO: Consider return output as is to support custom model that has built-in pooling layer:
+                    // - [] Add model with built-in pooling to the list of supported model in ``models::text_embdding::models_list``
+                    // - [] Write unit test for new model
+                    // - [] Update ``pooling::Pooling`` to include None type
+                    // - [] Change the line below to return output as is
+                    // - [] Release major version because of breaking changes
                     None => pooling::cls(&output_data)
                         .rows()
                         .into_iter()
-                        .map(|row| normalize(row.as_slice().expect("success")))
+                        .map(|row| {
+                            normalize(
+                                row.as_slice()
+                                    .expect("Fail to read rows as slice for cls pooling."),
+                            )
+                        })
                         .collect(),
                     Some(Pooling::Cls) => pooling::cls(&output_data)
                         .rows()
                         .into_iter()
-                        .map(|row| normalize(row.as_slice().expect("success")))
+                        .map(|row| {
+                            normalize(
+                                row.as_slice()
+                                    .expect("Fail to read rows as slice for cls pooling."),
+                            )
+                        })
                         .collect(),
-                    Some(Pooling::Mean) => pooling::mean(&output_data, &attention_mask)
+                    Some(Pooling::Mean) => pooling::mean(&output_data, attention_mask_array)
                         .rows()
                         .into_iter()
-                        .map(|row| normalize(row.as_slice().expect("success")))
+                        .map(|row| {
+                            normalize(
+                                row.as_slice()
+                                    .expect("Fail to read rows as slice for mean pooling."),
+                            )
+                        })
                         .collect(),
                 };
                 Ok(embeddings)
