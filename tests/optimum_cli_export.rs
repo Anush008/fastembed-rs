@@ -10,7 +10,8 @@
 use std::{path::PathBuf, process};
 
 use fastembed::{
-    Pooling, TextEmbedding, TokenizerFiles, UserDefinedEmbeddingModel, DEFAULT_CACHE_DIR,
+    Pooling, QuantizationMode, TextEmbedding, TokenizerFiles, UserDefinedEmbeddingModel,
+    DEFAULT_CACHE_DIR,
 };
 
 const EPS: f32 = 1e-4;
@@ -66,6 +67,7 @@ fn load_model(output: &PathBuf, pooling: Option<Pooling>) -> anyhow::Result<Text
             tokenizer_config_file: load_bytes_from_file(&output.join("tokenizer_config.json"))?,
         },
         pooling,
+        quantization: QuantizationMode::None,
     };
 
     TextEmbedding::try_new_from_user_defined(model, Default::default())

@@ -7,8 +7,8 @@ use crate::pooling::Pooling;
 use crate::sparse_text_embedding::SparseTextEmbedding;
 use crate::{
     read_file_to_bytes, Embedding, EmbeddingModel, InitOptions, InitOptionsUserDefined,
-    RerankInitOptions, RerankInitOptionsUserDefined, RerankerModel, SparseInitOptions,
-    TextEmbedding, TextRerank, TokenizerFiles, UserDefinedEmbeddingModel,
+    QuantizationMode, RerankInitOptions, RerankInitOptionsUserDefined, RerankerModel,
+    SparseInitOptions, TextEmbedding, TextRerank, TokenizerFiles, UserDefinedEmbeddingModel,
     UserDefinedRerankingModel,
 };
 
@@ -90,48 +90,77 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
     }
 }
 
-#[test]
-fn test_embeddings() {
-    TextEmbedding::list_supported_models()
-        .par_iter()
-        .for_each(|supported_model| {
-            let model: TextEmbedding = TextEmbedding::try_new(InitOptions {
-                model_name: supported_model.model.clone(),
-                ..Default::default()
-            })
-            .unwrap();
+macro_rules! create_embeddings_test {
+    (
+        name: $name:ident,
+        batch_size: $batch_size:expr,
+    ) => {
+        #[test]
+        fn $name() {
+            TextEmbedding::list_supported_models()
+                .par_iter()
+                .for_each(|supported_model| {
+                    let model: TextEmbedding = TextEmbedding::try_new(InitOptions {
+                        model_name: supported_model.model.clone(),
+                        ..Default::default()
+                    })
+                    .unwrap();
 
-            let documents = vec![
-                "Hello, World!",
-                "This is an example passage.",
-                "fastembed-rs is licensed under Apache-2.0",
-                "Some other short text here blah blah blah",
-            ];
+                    let documents = vec![
+                        "Hello, World!",
+                        "This is an example passage.",
+                        "fastembed-rs is licensed under Apache-2.0",
+                        "Some other short text here blah blah blah",
+                    ];
 
-            // Generate embeddings with the default batch size, 256
-            let embeddings = model.embed(documents.clone(), None).unwrap();
+                    // Generate embeddings with the default batch size, 256
+                    let batch_size = $batch_size;
+                    let embeddings = model.embed(documents.clone(), batch_size);
 
-            assert_eq!(embeddings.len(), documents.len());
+                    if matches!(
+                        (batch_size, supported_model.model.get_quantization_mode()),
+                        (Some(n), QuantizationMode::Dynamic) if n < documents.len()
+                    ) {
+                        // For Dynamic quantization, the batch size must be greater than or equal to the number of documents
+                        // Otherwise, an error is expected
+                        assert!(embeddings.is_err(), "Expected error for batch size < document count for {model} using dynamic quantization.", model=supported_model.model);
+                    } else {
+                        let embeddings = embeddings.unwrap_or_else(
+                            |exc| panic!("Expected embeddings for {model} to be generated successfully: {exc}", model=supported_model.model, exc=exc),
+                        );
+                        assert_eq!(embeddings.len(), documents.len());
 
-            for embedding in &embeddings {
-                assert_eq!(embedding.len(), supported_model.dim);
-            }
+                        for embedding in &embeddings {
+                            assert_eq!(embedding.len(), supported_model.dim);
+                        }
 
-            match verify_embeddings(&supported_model.model, &embeddings) {
-                Ok(_) => {}
-                Err(mismatched_indices) => {
-                    panic!(
-                        "Mismatched embeddings for model {model}: {sentences:?}",
-                        model = supported_model.model,
-                        sentences = &mismatched_indices
-                            .iter()
-                            .map(|&i| documents[i])
-                            .collect::<Vec<_>>()
-                    );
-                }
-            }
-        });
+                        match verify_embeddings(&supported_model.model, &embeddings) {
+                            Ok(_) => {}
+                            Err(mismatched_indices) => {
+                                panic!(
+                                    "Mismatched embeddings for model {model}: {sentences:?}",
+                                    model = supported_model.model,
+                                    sentences = &mismatched_indices
+                                        .iter()
+                                        .map(|&i| documents[i])
+                                        .collect::<Vec<_>>()
+                                );
+                            }
+                        }
+                    }
+                });
+        }
+
+    };
 }
+create_embeddings_test!(
+    name: test_batch_size_default,
+    batch_size: None,
+);
+create_embeddings_test!(
+    name: test_batch_size_less_than_document_count,
+    batch_size: Some(3),
+);
 
 #[test]
 fn test_sparse_embeddings() {
@@ -166,11 +195,11 @@ fn test_sparse_embeddings() {
 #[test]
 fn test_user_defined_embedding_model() {
     // Constitute the model in order to ensure it's downloaded and cached
-    let test_model_info = TextEmbedding::get_model_info(&EmbeddingModel::AllMiniLML6V2);
+    let test_model_info = TextEmbedding::get_model_info(&EmbeddingModel::AllMiniLML6V2).unwrap();
     let pooling = Some(Pooling::Mean);
 
     TextEmbedding::try_new(InitOptions {
-        model_name: test_model_info.model,
+        model_name: test_model_info.model.clone(),
         ..Default::default()
     })
     .unwrap();
@@ -231,6 +260,7 @@ fn test_user_defined_embedding_model() {
         onnx_file,
         tokenizer_files,
         pooling,
+        quantization: QuantizationMode::None,
     };
 
     // Try creating a TextEmbedding instance from the user-defined model
