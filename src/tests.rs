@@ -41,7 +41,7 @@ fn test_embeddings() {
             }
 
             // Clear the model cache to avoid running out of space on GitHub Actions.
-            // clean_cache(supported_model.model_code.clone())
+            clean_cache(supported_model.model_code.clone())
         });
 }
 
@@ -74,7 +74,7 @@ fn test_sparse_embeddings() {
             });
 
             // Clear the model cache to avoid running out of space on GitHub Actions.
-            // clean_cache(supported_model.model_code.clone())
+            clean_cache(supported_model.model_code.clone())
         });
 }
 
@@ -328,8 +328,7 @@ fn test_image_embedding_model() {
 fn clean_cache(model_code: String) {
     let repo = Repo::model(model_code);
     let cache_dir = format!("{}/{}", DEFAULT_CACHE_DIR, repo.folder_name());
-    let res = fs::remove_dir_all(cache_dir);
-    assert!(res.is_ok());
+    fs::remove_dir_all(cache_dir).ok();
 }
 // This is item "test-environment-aeghhgwpe-pro02a" of the [Aguana corpus](http://argumentation.bplaced.net/arguana/data)
 fn get_sample_text() -> String {
