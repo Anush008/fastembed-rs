@@ -1,10 +1,9 @@
-use std::io::Read;
-use std::{fs::File, path::PathBuf};
-
 use anyhow::Result;
 #[cfg(feature = "online")]
 use hf_hub::api::sync::ApiRepo;
-use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
+use std::io::Read;
+use std::{fs::File, path::PathBuf};
+use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, Tokenizer, TruncationParams};
 
 pub const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
 
@@ -126,7 +125,7 @@ pub fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Res
             }
         }
     }
-    Ok(tokenizer)
+    Ok(tokenizer.into())
 }
 
 pub fn normalize(v: &[f32]) -> Vec<f32> {
@@ -148,13 +147,3 @@ pub fn read_file_to_bytes(file: &PathBuf) -> Result<Vec<u8>> {
     file.read_to_end(&mut buffer)?;
     Ok(buffer)
 }
-
-// This type was inferred using IDE hints
-// Turned into a type alias for type hinting
-pub type Tokenizer = tokenizers::TokenizerImpl<
-    tokenizers::ModelWrapper,
-    tokenizers::NormalizerWrapper,
-    tokenizers::PreTokenizerWrapper,
-    tokenizers::PostProcessorWrapper,
-    tokenizers::DecoderWrapper,
->;
