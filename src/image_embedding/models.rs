@@ -10,9 +10,8 @@ use std::path::PathBuf;
 use std::{fmt::Display, path::Path, thread::available_parallelism};
 
 use crate::{
-    common::{normalize, Compose, Transform, TransformData},
-    models::image_embedding::models_list,
-    Embedding, ImageEmbeddingModel, ModelInfo,
+    common::normalize, models::image_embedding::models_list, Embedding, ImageEmbeddingModel,
+    ModelInfo,
 };
 use anyhow::anyhow;
 use rayon::prelude::*;
@@ -21,6 +20,7 @@ use rayon::prelude::*;
 use super::ImageInitOptions;
 use super::{
     init::{ImageInitOptionsUserDefined, UserDefinedImageEmbeddingModel},
+    utils::{Compose, Transform, TransformData},
     DEFAULT_BATCH_SIZE,
 };
 
