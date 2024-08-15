@@ -206,19 +206,24 @@ fn load_preprocessor(config: serde_json::Value) -> anyhow::Result<Compose> {
                 let size = config["size"].clone();
                 let shortest_edge = size["shortest_edge"].as_u64();
                 let (height, width) = (size["height"].as_u64(), size["width"].as_u64());
-                let size = if shortest_edge.is_some() {
-                    (shortest_edge.unwrap() as u32, shortest_edge.unwrap() as u32)
-                } else if height.is_some() && width.is_some() {
-                    (height.unwrap() as u32, width.unwrap() as u32)
+
+                if let Some(shortest_edge) = shortest_edge {
+                    let size = (shortest_edge as u32, shortest_edge as u32);
+                    transformers.push(Box::new(Resize {
+                        size,
+                        resample: FilterType::CatmullRom,
+                    }));
+                } else if let(Some(height), Some(width)) = (height, width) {
+                    let size = (height as u32, width as u32);
+                    transformers.push(Box::new(Resize {
+                        size,
+                        resample: FilterType::CatmullRom,
+                    }));
                 } else {
                     return Err(anyhow!(
                         "Size must contain either 'shortest_edge' or 'height' and 'width'."
                     ));
-                };
-                transformers.push(Box::new(Resize {
-                    size,
-                    resample: FilterType::CatmullRom,
-                }));
+                }
             }
 
             if config["do_center_crop"].as_bool().unwrap_or(false) {
