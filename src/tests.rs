@@ -5,12 +5,13 @@ use hf_hub::Repo;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::common::{TokenizerFiles, DEFAULT_CACHE_DIR};
+use crate::image_embedding::{ImageEmbedding, ImageInitOptions};
 use crate::pooling::Pooling;
 use crate::sparse_text_embedding::SparseTextEmbedding;
 use crate::{
     read_file_to_bytes, Embedding, EmbeddingModel, InitOptions, InitOptionsUserDefined,
     QuantizationMode, RerankInitOptions, RerankInitOptionsUserDefined, RerankerModel,
-    SparseInitOptions, TextEmbedding, TextRerank, TokenizerFiles, UserDefinedEmbeddingModel,
+    SparseInitOptions, TextEmbedding, TextRerank, UserDefinedEmbeddingModel,
     UserDefinedRerankingModel,
 };
 

@@ -42,12 +42,10 @@ impl Default for ImageInitOptions {
 /// Options for initializing UserDefinedImageEmbeddingModel
 ///
 /// Model files are held by the UserDefinedImageEmbeddingModel struct
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ImageInitOptionsUserDefined {
     pub execution_providers: Vec<ExecutionProviderDispatch>,
 }
-
 
 /// Convert ImageInitOptions to ImageInitOptionsUserDefined
 ///

@@ -45,6 +45,7 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 - [**intfloat/multilingual-e5-large**](https://huggingface.co/intfloat/multilingual-e5-large)
 - [**Alibaba-NLP/gte-base-en-v1.5**](https://huggingface.co/Alibaba-NLP/gte-base-en-v1.5)
 - [**Alibaba-NLP/gte-large-en-v1.5**](https://huggingface.co/Alibaba-NLP/gte-large-en-v1.5)
+
 </details>
 
 ### Sparse Text Embedding
@@ -162,17 +163,6 @@ println!("Rerank result: {:?}", results);
 ```
 
 Alternatively, local model files can be used for inference via the `try_new_from_user_defined(...)` methods of respective structs.
-For example:
-
-```rust
-let model = UserDefinedEmbeddingModel {
-      onnx_file: include_bytes!("model.onnx").to_vec(),
-      tokenizer_files: include_bytes!("tokenizer.json").to_vec(),
-};
-
-let user_def_model =
-    TextEmbedding::try_new_from_user_defined(user_def_model, Default::default()).unwrap();
-```
 
 ## 🚒 Under the hood
 
