@@ -225,7 +225,7 @@ fn test_user_defined_embedding_model() {
         .unwrap()
         .path();
 
-    // FInd the onnx file - it will be any file ending with .onnx
+    // Find the onnx file - it will be any file ending with .onnx
     let onnx_file = read_file_to_bytes(
         &model_files_dir
             .read_dir()
@@ -354,7 +354,7 @@ fn test_user_defined_reranking_model() {
         .unwrap()
         .path();
 
-    // FInd the onnx file - it will be any file in ./onnx ending with .onnx
+    // Find the onnx file - it will be any file in ./onnx ending with .onnx
     let onnx_file = read_file_to_bytes(
         &model_files_dir
             .join("onnx")
@@ -430,7 +430,7 @@ fn test_image_embedding_model() {
             })
             .unwrap();
 
-            let images = vec!["./assets/image_0.png", "./assets/image_1.png"];
+            let images = vec!["tests/assets/image_0.png", "tests/assets/image_1.png"];
 
             // Generate embeddings with the default batch size, 256
             let embeddings = model.embed(images.clone(), None).unwrap();
