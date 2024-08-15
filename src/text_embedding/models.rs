@@ -4,11 +4,10 @@
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
     common::{load_tokenizer, Tokenizer},
-    models::text_embedding::models_list,
+    models::text_embedding::{get_model_info, models_list},
     pooling::Pooling,
-    Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, SingleBatchOutput,
+    Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, QuantizationMode, SingleBatchOutput,
 };
-use anyhow::Result;
 #[cfg(feature = "online")]
 use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},
@@ -34,6 +33,7 @@ pub struct TextEmbedding {
     pub pooling: Option<Pooling>,
     session: Session,
     need_token_type_ids: bool,
+    quantization: QuantizationMode,
 }
 
 impl Display for EmbeddingModel {
@@ -53,7 +53,7 @@ impl TextEmbedding {
     ///
     /// Uses the total number of CPUs available as the number of intra-threads
     #[cfg(feature = "online")]
-    pub fn try_new(options: InitOptions) -> Result<Self> {
+    pub fn try_new(options: InitOptions) -> anyhow::Result<Self> {
         let InitOptions {
             model_name,
             execution_providers,
@@ -70,9 +70,10 @@ impl TextEmbedding {
             show_download_progress,
         )?;
 
-        let model_file_name = TextEmbedding::get_model_info(&model_name).model_file;
+        let model_info = TextEmbedding::get_model_info(&model_name)?;
+        let model_file_name = &model_info.model_file;
         let model_file_reference = model_repo
-            .get(&model_file_name)
+            .get(model_file_name)
             .unwrap_or_else(|_| panic!("Failed to retrieve {} ", model_file_name));
 
         // TODO: If more models need .onnx_data, implement a better way to handle this
@@ -93,7 +94,12 @@ impl TextEmbedding {
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
-        Ok(Self::new(tokenizer, session, post_processing))
+        Ok(Self::new(
+            tokenizer,
+            session,
+            post_processing,
+            model_name.get_quantization_mode(),
+        ))
     }
 
     /// Create a TextEmbedding instance from model files provided by the user.
@@ -102,7 +108,7 @@ impl TextEmbedding {
     pub fn try_new_from_user_defined(
         model: UserDefinedEmbeddingModel,
         options: InitOptionsUserDefined,
-    ) -> Result<Self> {
+    ) -> anyhow::Result<Self> {
         let InitOptionsUserDefined {
             execution_providers,
             max_length,
@@ -117,11 +123,21 @@ impl TextEmbedding {
             .commit_from_memory(&model.onnx_file)?;
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
-        Ok(Self::new(tokenizer, session, model.pooling))
+        Ok(Self::new(
+            tokenizer,
+            session,
+            model.pooling,
+            model.quantization,
+        ))
     }
 
     /// Private method to return an instance
-    fn new(tokenizer: Tokenizer, session: Session, post_process: Option<Pooling>) -> Self {
+    fn new(
+        tokenizer: Tokenizer,
+        session: Session,
+        post_process: Option<Pooling>,
+        quantization: QuantizationMode,
+    ) -> Self {
         let need_token_type_ids = session
             .inputs
             .iter()
@@ -131,6 +147,7 @@ impl TextEmbedding {
             session,
             need_token_type_ids,
             pooling: post_process,
+            quantization,
         }
     }
     /// Return the TextEmbedding model's directory from cache or remote retrieval
@@ -139,7 +156,7 @@ impl TextEmbedding {
         model: EmbeddingModel,
         cache_dir: PathBuf,
         show_download_progress: bool,
-    ) -> Result<ApiRepo> {
+    ) -> anyhow::Result<ApiRepo> {
         let cache = Cache::new(cache_dir);
         let api = ApiBuilder::from_cache(cache)
             .with_progress(show_download_progress)
@@ -156,11 +173,13 @@ impl TextEmbedding {
     }
 
     /// Get ModelInfo from EmbeddingModel
-    pub fn get_model_info(model: &EmbeddingModel) -> ModelInfo<EmbeddingModel> {
-        TextEmbedding::list_supported_models()
-            .into_iter()
-            .find(|m| &m.model == model)
-            .expect("Model not found.")
+    pub fn get_model_info(model: &EmbeddingModel) -> anyhow::Result<&ModelInfo<EmbeddingModel>> {
+        get_model_info(model).ok_or_else(|| {
+            anyhow::Error::msg(format!(
+                "Model {model:?} not found. Please check if the model is supported \
+                by the current version."
+            ))
+        })
     }
 
     /// Method to generate an [`ort::SessionOutputs`] wrapped in a [`EmbeddingOutput`]
@@ -189,19 +208,41 @@ impl TextEmbedding {
         &'e self,
         texts: Vec<S>,
         batch_size: Option<usize>,
-    ) -> Result<EmbeddingOutput<'r, 's>>
+    ) -> anyhow::Result<EmbeddingOutput<'r, 's>>
     where
         'e: 'r,
         'e: 's,
     {
-        // Determine the batch size, default if not specified
-        let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
+        // Determine the batch size according to the quantization method used.
+        // Default if not specified
+        let batch_size = match self.quantization {
+            QuantizationMode::Dynamic => {
+                if let Some(batch_size) = batch_size {
+                    if batch_size < texts.len() {
+                        Err(anyhow::Error::msg(
+                            "Dynamic quantization cannot be used with batching. \
+                            This is due to the dynamic quantization process adjusting \
+                            the data range to fit each batch, making the embeddings \
+                            incompatible across batches. Try specifying a batch size \
+                            of `None`, or use a model with static or no quantization.",
+                        ))
+                    } else {
+                        Ok(texts.len())
+                    }
+                } else {
+                    Ok(texts.len())
+                }
+            }
+            _ => Ok(batch_size.unwrap_or(DEFAULT_BATCH_SIZE)),
+        }?;
 
         let batches =
             anyhow::Result::<Vec<_>>::from_par_iter(texts.par_chunks(batch_size).map(|batch| {
                 // Encode the texts in the batch
                 let inputs = batch.iter().map(|text| text.as_ref()).collect();
-                let encodings = self.tokenizer.encode_batch(inputs, true).unwrap();
+                let encodings = self.tokenizer.encode_batch(inputs, true).map_err(|e| {
+                    anyhow::Error::msg(e.to_string()).context("Failed to encode the batch.")
+                })?;
 
                 // Extract the encoding length and batch size
                 let encoding_length = encodings[0].len();
@@ -280,7 +321,7 @@ impl TextEmbedding {
         &self,
         texts: Vec<S>,
         batch_size: Option<usize>,
-    ) -> Result<Vec<Embedding>> {
+    ) -> anyhow::Result<Vec<Embedding>> {
         let batches = self.transform(texts, batch_size)?;
 
         batches.export_with_transformer(output::transformer_with_precedence(

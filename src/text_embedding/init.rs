@@ -4,7 +4,7 @@
 use crate::{
     common::{TokenizerFiles, DEFAULT_CACHE_DIR},
     pooling::Pooling,
-    EmbeddingModel,
+    EmbeddingModel, QuantizationMode,
 };
 use ort::ExecutionProviderDispatch;
 use std::path::{Path, PathBuf};
@@ -71,4 +71,5 @@ pub struct UserDefinedEmbeddingModel {
     pub onnx_file: Vec<u8>,
     pub tokenizer_files: TokenizerFiles,
     pub pooling: Option<Pooling>,
+    pub quantization: QuantizationMode,
 }
