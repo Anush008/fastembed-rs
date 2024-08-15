@@ -5,10 +5,9 @@ use image::{imageops::FilterType, DynamicImage, GenericImageView};
 use ndarray::{Array, Array3};
 use std::io::Read;
 use std::ops::{Div, Sub};
-use std::{
-    fs::{read_to_string, File},
-    path::{Path, PathBuf},
-};
+#[cfg(feature = "online")]
+use std::{fs::read_to_string, path::Path};
+use std::{fs::File, path::PathBuf};
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, Tokenizer, TruncationParams};
 
 pub const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
@@ -320,6 +319,7 @@ impl Compose {
         Self { transforms }
     }
 
+    #[cfg(feature = "online")]
     pub fn from_file<P: AsRef<Path>>(file: P) -> Result<Self> {
         let content = read_to_string(file)?;
         let config = serde_json::from_str(&content)?;

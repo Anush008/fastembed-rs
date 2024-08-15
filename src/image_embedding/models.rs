@@ -1,15 +1,13 @@
-use std::{
-    fmt::Display,
-    path::{Path, PathBuf},
-    thread::available_parallelism,
-};
-
+#[cfg(feature = "online")]
 use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},
     Cache,
 };
 use ndarray::{Array3, ArrayView3};
 use ort::{GraphOptimizationLevel, Session, Value};
+#[cfg(feature = "online")]
+use std::path::PathBuf;
+use std::{fmt::Display, path::Path, thread::available_parallelism};
 
 use crate::{
     common::{normalize, Compose, Transform, TransformData},
@@ -19,8 +17,10 @@ use crate::{
 use anyhow::anyhow;
 use rayon::prelude::*;
 
+#[cfg(feature = "online")]
+use super::ImageInitOptions;
 use super::{
-    init::{ImageInitOptions, ImageInitOptionsUserDefined, UserDefinedImageEmbeddingModel},
+    init::{ImageInitOptionsUserDefined, UserDefinedImageEmbeddingModel},
     DEFAULT_BATCH_SIZE,
 };
 
@@ -46,6 +46,7 @@ impl ImageEmbedding {
     /// Uses the highest level of Graph optimization
     ///
     /// Uses the total number of CPUs available as the number of intra-threads
+    #[cfg(feature = "online")]
     pub fn try_new(options: ImageInitOptions) -> anyhow::Result<Self> {
         let ImageInitOptions {
             model_name,
@@ -114,6 +115,7 @@ impl ImageEmbedding {
     }
 
     /// Return the ImageEmbedding model's directory from cache or remote retrieval
+    #[cfg(feature = "online")]
     fn retrieve_model(
         model: ImageEmbeddingModel,
         cache_dir: PathBuf,
