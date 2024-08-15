@@ -57,6 +57,8 @@
 
 mod common;
 mod models;
+pub mod output;
+mod pooling;
 mod reranking;
 mod sparse_text_embedding;
 mod text_embedding;
@@ -67,9 +69,15 @@ mod tests;
 
 pub use ort::ExecutionProviderDispatch;
 
-pub use crate::common::{read_file_to_bytes, Embedding, Error, SparseEmbedding, TokenizerFiles};
+pub use crate::common::{
+    read_file_to_bytes, Embedding, Error, SparseEmbedding, TokenizerFiles, DEFAULT_CACHE_DIR,
+};
 pub use crate::models::reranking::{RerankerModel, RerankerModelInfo};
-pub use crate::models::{model_info::ModelInfo, text_embedding::EmbeddingModel};
+pub use crate::models::{
+    model_info::ModelInfo, quantization::QuantizationMode, text_embedding::EmbeddingModel,
+};
+pub use crate::output::{EmbeddingOutput, OutputKey, OutputPrecedence, SingleBatchOutput};
+pub use crate::pooling::Pooling;
 pub use crate::reranking::{
     RerankInitOptions, RerankInitOptionsUserDefined, RerankResult, TextRerank,
     UserDefinedRerankingModel,

@@ -1,6 +1,15 @@
+use crate::pooling::Pooling;
+
 use super::model_info::ModelInfo;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+use super::quantization::QuantizationMode;
+
+use std::{collections::HashMap, sync::OnceLock};
+
+/// Lazy static list of all available models.
+static MODEL_MAP: OnceLock<HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>>> = OnceLock::new();
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EmbeddingModel {
     /// sentence-transformers/all-MiniLM-L6-v2
     AllMiniLML6V2,
@@ -56,7 +65,8 @@ pub enum EmbeddingModel {
     GTELargeENV15Q,
 }
 
-pub fn models_list() -> Vec<ModelInfo<EmbeddingModel>> {
+/// Centralized function to initialize the models map.
+fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
     let models_list = vec![
         ModelInfo {
             model: EmbeddingModel::AllMiniLML6V2,
@@ -256,4 +266,96 @@ pub fn models_list() -> Vec<ModelInfo<EmbeddingModel>> {
     // );
 
     models_list
+        .into_iter()
+        .fold(HashMap::new(), |mut map, model| {
+            // Insert the model into the map
+            map.insert(model.model.clone(), model);
+            map
+        })
+}
+
+/// Get a map of all available models.
+pub fn models_map() -> &'static HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
+    MODEL_MAP.get_or_init(init_models_map)
+}
+
+/// Get model information by model code.
+pub fn get_model_info(model: &EmbeddingModel) -> Option<&ModelInfo<EmbeddingModel>> {
+    models_map().get(model)
+}
+
+/// Get a list of all available models.
+///
+/// This will assign new memory to the models list; where possible, use
+/// [`models_map`] instead.
+pub fn models_list() -> Vec<ModelInfo<EmbeddingModel>> {
+    models_map().values().cloned().collect()
+}
+
+impl EmbeddingModel {
+    pub fn get_default_pooling_method(&self) -> Option<Pooling> {
+        match self {
+            EmbeddingModel::AllMiniLML6V2 => Some(Pooling::Mean),
+            EmbeddingModel::AllMiniLML6V2Q => Some(Pooling::Mean),
+            EmbeddingModel::AllMiniLML12V2 => Some(Pooling::Mean),
+            EmbeddingModel::AllMiniLML12V2Q => Some(Pooling::Mean),
+
+            EmbeddingModel::BGEBaseENV15 => Some(Pooling::Cls),
+            EmbeddingModel::BGEBaseENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::BGELargeENV15 => Some(Pooling::Cls),
+            EmbeddingModel::BGELargeENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::BGESmallENV15 => Some(Pooling::Cls),
+            EmbeddingModel::BGESmallENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::BGESmallZHV15 => Some(Pooling::Cls),
+
+            EmbeddingModel::NomicEmbedTextV1 => Some(Pooling::Mean),
+            EmbeddingModel::NomicEmbedTextV15 => Some(Pooling::Mean),
+            EmbeddingModel::NomicEmbedTextV15Q => Some(Pooling::Mean),
+
+            EmbeddingModel::ParaphraseMLMiniLML12V2 => Some(Pooling::Mean),
+            EmbeddingModel::ParaphraseMLMiniLML12V2Q => Some(Pooling::Mean),
+            EmbeddingModel::ParaphraseMLMpnetBaseV2 => Some(Pooling::Mean),
+
+            EmbeddingModel::MultilingualE5Base => Some(Pooling::Mean),
+            EmbeddingModel::MultilingualE5Small => Some(Pooling::Mean),
+            EmbeddingModel::MultilingualE5Large => Some(Pooling::Mean),
+
+            EmbeddingModel::MxbaiEmbedLargeV1 => Some(Pooling::Cls),
+            EmbeddingModel::MxbaiEmbedLargeV1Q => Some(Pooling::Cls),
+
+            EmbeddingModel::GTEBaseENV15 => Some(Pooling::Cls),
+            EmbeddingModel::GTEBaseENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::GTELargeENV15 => Some(Pooling::Cls),
+            EmbeddingModel::GTELargeENV15Q => Some(Pooling::Cls),
+        }
+    }
+
+    /// Get the quantization mode of the model.
+    ///
+    /// Any models with a `Q` suffix in their name are quantized models.
+    ///
+    /// Currently only 6 supported models have dynamic quantization:
+    /// - Alibaba-NLP/gte-base-en-v1.5
+    /// - Alibaba-NLP/gte-large-en-v1.5
+    /// - mixedbread-ai/mxbai-embed-large-v1
+    /// - nomic-ai/nomic-embed-text-v1.5
+    /// - Xenova/all-MiniLM-L12-v2
+    /// - Xenova/all-MiniLM-L6-v2
+    ///
+    // TODO: Update this list when more models are added
+    pub fn get_quantization_mode(&self) -> QuantizationMode {
+        match self {
+            EmbeddingModel::AllMiniLML6V2Q => QuantizationMode::Dynamic,
+            EmbeddingModel::AllMiniLML12V2Q => QuantizationMode::Dynamic,
+            EmbeddingModel::BGEBaseENV15Q => QuantizationMode::Static,
+            EmbeddingModel::BGELargeENV15Q => QuantizationMode::Static,
+            EmbeddingModel::BGESmallENV15Q => QuantizationMode::Static,
+            EmbeddingModel::NomicEmbedTextV15Q => QuantizationMode::Dynamic,
+            EmbeddingModel::ParaphraseMLMiniLML12V2Q => QuantizationMode::Static,
+            EmbeddingModel::MxbaiEmbedLargeV1Q => QuantizationMode::Dynamic,
+            EmbeddingModel::GTEBaseENV15Q => QuantizationMode::Dynamic,
+            EmbeddingModel::GTELargeENV15Q => QuantizationMode::Dynamic,
+            _ => QuantizationMode::None,
+        }
+    }
 }
