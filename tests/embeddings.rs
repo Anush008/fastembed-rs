@@ -1,18 +1,17 @@
+#![cfg(feature = "online")]
+
 use std::fs;
 use std::path::Path;
 
 use hf_hub::Repo;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::common::{TokenizerFiles, DEFAULT_CACHE_DIR};
-use crate::image_embedding::{ImageEmbedding, ImageInitOptions};
-use crate::pooling::Pooling;
-use crate::sparse_text_embedding::SparseTextEmbedding;
-use crate::{
-    read_file_to_bytes, Embedding, EmbeddingModel, InitOptions, InitOptionsUserDefined,
-    QuantizationMode, RerankInitOptions, RerankInitOptionsUserDefined, RerankerModel,
-    SparseInitOptions, TextEmbedding, TextRerank, UserDefinedEmbeddingModel,
-    UserDefinedRerankingModel,
+use fastembed::{
+    read_file_to_bytes, Embedding, EmbeddingModel, ImageEmbedding, ImageInitOptions, InitOptions,
+    InitOptionsUserDefined, Pooling, QuantizationMode, RerankInitOptions,
+    RerankInitOptionsUserDefined, RerankerModel, SparseInitOptions, SparseTextEmbedding,
+    TextEmbedding, TextRerank, TokenizerFiles, UserDefinedEmbeddingModel,
+    UserDefinedRerankingModel, DEFAULT_CACHE_DIR,
 };
 
 /// A small epsilon value for floating point comparisons.
@@ -330,7 +329,7 @@ fn test_rerank() {
 #[test]
 fn test_user_defined_reranking_model() {
     // Constitute the model in order to ensure it's downloaded and cached
-    let test_model_info: crate::RerankerModelInfo =
+    let test_model_info: fastembed::RerankerModelInfo =
         TextRerank::get_model_info(&RerankerModel::JINARerankerV1TurboEn);
 
     TextRerank::try_new(RerankInitOptions {
@@ -431,7 +430,7 @@ fn test_image_embedding_model() {
             })
             .unwrap();
 
-            let images = vec!["assets/image_0.png", "assets/image_1.png"];
+            let images = vec!["./assets/image_0.png", "./assets/image_1.png"];
 
             // Generate embeddings with the default batch size, 256
             let embeddings = model.embed(images.clone(), None).unwrap();

@@ -15,6 +15,5 @@ pub mod output;
 mod init;
 pub use init::*;
 
-// The main struct for the text embedding model.
-mod models;
-pub use models::*;
+// The implementation of the embedding models.
+mod r#impl;

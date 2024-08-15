@@ -1,10 +1,10 @@
 use std::path::{Path, PathBuf};
 
-use ort::ExecutionProviderDispatch;
+use ort::{ExecutionProviderDispatch, Session};
 
 use crate::{ImageEmbeddingModel, DEFAULT_CACHE_DIR};
 
-use super::DEFAULT_EMBEDDING_MODEL;
+use super::{utils::Compose, DEFAULT_EMBEDDING_MODEL};
 
 /// Options for initializing the ImageEmbedding model
 #[derive(Debug, Clone)]
@@ -52,4 +52,10 @@ impl From<ImageInitOptions> for ImageInitOptionsUserDefined {
 pub struct UserDefinedImageEmbeddingModel {
     pub onnx_file: Vec<u8>,
     pub preprocessor_file: Vec<u8>,
+}
+
+/// Rust representation of the ImageEmbedding model
+pub struct ImageEmbedding {
+    pub(crate) preprocessor: Compose,
+    pub(crate) session: Session,
 }

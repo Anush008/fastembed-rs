@@ -21,31 +21,14 @@ use rayon::{
 };
 #[cfg(feature = "online")]
 use std::path::PathBuf;
-use std::{fmt::Display, thread::available_parallelism};
+use std::thread::available_parallelism;
 use tokenizers::Tokenizer;
 
 #[cfg(feature = "online")]
 use super::InitOptions;
-use super::{output, InitOptionsUserDefined, UserDefinedEmbeddingModel, DEFAULT_BATCH_SIZE};
-
-/// Rust representation of the TextEmbedding model
-pub struct TextEmbedding {
-    pub tokenizer: Tokenizer,
-    pub pooling: Option<Pooling>,
-    session: Session,
-    need_token_type_ids: bool,
-    quantization: QuantizationMode,
-}
-
-impl Display for EmbeddingModel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let model_info = TextEmbedding::list_supported_models()
-            .into_iter()
-            .find(|model| model.model == *self)
-            .unwrap();
-        write!(f, "{}", model_info.model_code)
-    }
-}
+use super::{
+    output, InitOptionsUserDefined, TextEmbedding, UserDefinedEmbeddingModel, DEFAULT_BATCH_SIZE,
+};
 
 impl TextEmbedding {
     /// Try to generate a new TextEmbedding Instance

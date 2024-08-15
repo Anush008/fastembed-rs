@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{common::SparseEmbedding, ModelInfo};
 use ndarray::{ArrayViewD, Axis, CowArray, Dim};
 
@@ -56,5 +58,15 @@ impl SparseModel {
                     .collect()
             }
         }
+    }
+}
+
+impl Display for SparseModel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let model_info = models_list()
+            .into_iter()
+            .find(|model| model.model == *self)
+            .unwrap();
+        write!(f, "{}", model_info.model_code)
     }
 }

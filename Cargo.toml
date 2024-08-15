@@ -43,7 +43,3 @@ ort-load-dynamic = ["ort/load-dynamic"]
 # This feature does not change any code, but is used to limit tests if
 # the user does not have `optimum-cli` or even python installed.
 optimum-cli = []
-
-[[bench]]
-name = "embed"
-harness = false
