@@ -64,10 +64,6 @@ mod reranking;
 mod sparse_text_embedding;
 mod text_embedding;
 
-#[cfg(feature = "online")]
-#[cfg(test)]
-mod tests;
-
 pub use ort::ExecutionProviderDispatch;
 
 pub use crate::common::{

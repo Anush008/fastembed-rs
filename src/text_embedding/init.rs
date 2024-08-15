@@ -6,8 +6,9 @@ use crate::{
     pooling::Pooling,
     EmbeddingModel, QuantizationMode,
 };
-use ort::ExecutionProviderDispatch;
+use ort::{ExecutionProviderDispatch, Session};
 use std::path::{Path, PathBuf};
+use tokenizers::Tokenizer;
 
 use super::{DEFAULT_EMBEDDING_MODEL, DEFAULT_MAX_LENGTH};
 
@@ -72,4 +73,13 @@ pub struct UserDefinedEmbeddingModel {
     pub tokenizer_files: TokenizerFiles,
     pub pooling: Option<Pooling>,
     pub quantization: QuantizationMode,
+}
+
+/// Rust representation of the TextEmbedding model
+pub struct TextEmbedding {
+    pub tokenizer: Tokenizer,
+    pub(crate) pooling: Option<Pooling>,
+    pub(crate) session: Session,
+    pub(crate) need_token_type_ids: bool,
+    pub(crate) quantization: QuantizationMode,
 }
