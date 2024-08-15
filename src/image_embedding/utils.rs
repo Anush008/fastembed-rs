@@ -213,7 +213,7 @@ fn load_preprocessor(config: serde_json::Value) -> anyhow::Result<Compose> {
                         size,
                         resample: FilterType::CatmullRom,
                     }));
-                } else if let(Some(height), Some(width)) = (height, width) {
+                } else if let (Some(height), Some(width)) = (height, width) {
                     let size = (height as u32, width as u32);
                     transformers.push(Box::new(Resize {
                         size,
