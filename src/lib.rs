@@ -56,6 +56,7 @@
 )]
 
 mod common;
+mod image_embedding;
 mod models;
 pub mod output;
 mod pooling;
@@ -72,6 +73,10 @@ pub use ort::ExecutionProviderDispatch;
 pub use crate::common::{
     read_file_to_bytes, Embedding, Error, SparseEmbedding, TokenizerFiles, DEFAULT_CACHE_DIR,
 };
+pub use crate::image_embedding::{
+    ImageEmbedding, ImageInitOptions, ImageInitOptionsUserDefined, UserDefinedImageEmbeddingModel,
+};
+pub use crate::models::image_embedding::ImageEmbeddingModel;
 pub use crate::models::reranking::{RerankerModel, RerankerModelInfo};
 pub use crate::models::{
     model_info::ModelInfo, quantization::QuantizationMode, text_embedding::EmbeddingModel,

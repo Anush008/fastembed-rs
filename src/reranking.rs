@@ -7,18 +7,21 @@ use std::{
 
 #[cfg(feature = "online")]
 use crate::common::load_tokenizer_hf_hub;
-use crate::common::{load_tokenizer, Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR};
+use crate::{
+    common::{load_tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR},
+    models::reranking::reranker_model_list,
+    RerankerModel, RerankerModelInfo,
+};
 #[cfg(feature = "online")]
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::{s, Array};
 use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
-
-use crate::{models::reranking::reranker_model_list, RerankerModel, RerankerModelInfo};
+use tokenizers::Tokenizer;
 
 const DEFAULT_RE_RANKER_MODEL: RerankerModel = RerankerModel::BGERerankerBase;
-const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
+const DEFAULT_BATCH_SIZE: usize = 256;
 
 pub struct TextRerank {
     pub tokenizer: Tokenizer,

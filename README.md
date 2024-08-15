@@ -45,11 +45,19 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 - [**intfloat/multilingual-e5-large**](https://huggingface.co/intfloat/multilingual-e5-large)
 - [**Alibaba-NLP/gte-base-en-v1.5**](https://huggingface.co/Alibaba-NLP/gte-base-en-v1.5)
 - [**Alibaba-NLP/gte-large-en-v1.5**](https://huggingface.co/Alibaba-NLP/gte-large-en-v1.5)
+
 </details>
 
 ### Sparse Text Embedding
 
 - [**prithivida/Splade_PP_en_v1**](https://huggingface.co/prithivida/Splade_PP_en_v1) - Default
+
+### Image Embedding
+
+- [**Qdrant/clip-ViT-B-32-vision**](https://huggingface.co/Qdrant/clip-ViT-B-32-vision) - Default
+- [**Qdrant/resnet50-onnx**](https://huggingface.co/Qdrant/resnet50-onnx)
+- [**Qdrant/Unicom-ViT-B-16**](https://huggingface.co/Qdrant/Unicom-ViT-B-16)
+- [**Qdrant/Unicom-ViT-B-32**](https://huggingface.co/Qdrant/Unicom-ViT-B-32)
 
 ### Reranking
 
@@ -105,6 +113,30 @@ let documents = vec![
 
 ```
 
+### Image Embedding
+
+```rust
+use fastembed::{ImageEmbedding, ImageInitOptions, ImageEmbeddingModel};
+
+// With default InitOptions
+let model = ImageEmbedding::try_new(Default::default())?;
+
+// With custom InitOptions
+let model = ImageEmbedding::try_new(ImageInitOptions {
+    model_name: ImageEmbeddingModel::ClipVitB32,
+    show_download_progress: true,
+    ..Default::default()
+})?;
+
+let images = vec!["assets/image_0.png", "assets/image_1.png"];
+
+// Generate embeddings with the default batch size, 256
+let embeddings = model.embed(images, None)?;
+
+println!("Embeddings length: {}", embeddings.len()); // -> Embeddings length: 2
+println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 512
+```
+
 ### Candidates Reranking
 
 ```rust
@@ -130,26 +162,7 @@ let results = model.rerank("what is panda?", documents, true, None);
 println!("Rerank result: {:?}", results);
 ```
 
-Alternatively, raw `.onnx` files can be loaded through the `UserDefinedEmbeddingModel` struct (for "bring your own" text embedding models) using `TextEmbedding::try_new_from_user_defined(...)`. Similarly, "bring your own" reranking models can be loaded using the `UserDefinedRerankingModel` struct and `TextRerank::try_new_from_user_defined(...)`. For example:
-
-```rust
-macro_rules! local_model {
-    ($folder:literal) => {
-        UserDefinedEmbeddingModel {
-            onnx_file: include_bytes!(concat!($folder, "/model.onnx")).to_vec(),
-            tokenizer_files: TokenizerFiles {
-                tokenizer_file: include_bytes!(concat!($folder, "/tokenizer.json")).to_vec(),
-                config_file: include_bytes!(concat!($folder, "/config.json")).to_vec(),
-                special_tokens_map_file: include_bytes!(concat!($folder, "/special_tokens_map.json")).to_vec(),
-                tokenizer_config_file: include_bytes!(concat!($folder, "/tokenizer_config.json")).to_vec(),
-            },
-        }
-    };
-}
-
-let user_def_model_data = local_model!("path/to/model");
-let user_def_model = TextEmbedding::try_new_from_user_defined(user_def_model, Default::default()).unwrap();
-```
+Alternatively, local model files can be used for inference via the `try_new_from_user_defined(...)` methods of respective structs.
 
 ## 🚒 Under the hood
 

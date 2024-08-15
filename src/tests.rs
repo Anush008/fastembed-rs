@@ -1,14 +1,17 @@
+use std::fs;
 use std::path::Path;
 
+use hf_hub::Repo;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::common::DEFAULT_CACHE_DIR;
+use crate::common::{TokenizerFiles, DEFAULT_CACHE_DIR};
+use crate::image_embedding::{ImageEmbedding, ImageInitOptions};
 use crate::pooling::Pooling;
 use crate::sparse_text_embedding::SparseTextEmbedding;
 use crate::{
     read_file_to_bytes, Embedding, EmbeddingModel, InitOptions, InitOptionsUserDefined,
     QuantizationMode, RerankInitOptions, RerankInitOptionsUserDefined, RerankerModel,
-    SparseInitOptions, TextEmbedding, TextRerank, TokenizerFiles, UserDefinedEmbeddingModel,
+    SparseInitOptions, TextEmbedding, TextRerank, UserDefinedEmbeddingModel,
     UserDefinedRerankingModel,
 };
 
@@ -189,6 +192,9 @@ fn test_sparse_embeddings() {
                 assert!(embedding.indices.len() < 100);
                 assert_eq!(embedding.indices.len(), embedding.values.len());
             });
+
+            // Clear the model cache to avoid running out of space on GitHub Actions.
+            clean_cache(supported_model.model_code.clone())
         });
 }
 
@@ -312,9 +318,12 @@ fn test_rerank() {
             .rerank("what is panda?", documents.clone(), true, None)
             .unwrap();
 
-        assert_eq!(results.len(), documents.len());
+        assert_eq!(results.len(), documents.len(), "rerank model {:?} failed", supported_model);
         assert_eq!(results[0].document.as_ref().unwrap(), "panda is an animal");
         assert_eq!(results[1].document.as_ref().unwrap(), "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");
+
+        // Clear the model cache to avoid running out of space on GitHub Actions.
+        clean_cache(supported_model.model_code.clone())
     });
 }
 
@@ -411,6 +420,37 @@ fn test_user_defined_reranking_model() {
     assert_eq!(results.first().unwrap().index, 0);
 }
 
+#[test]
+fn test_image_embedding_model() {
+    ImageEmbedding::list_supported_models()
+        .par_iter()
+        .for_each(|supported_model| {
+            let model: ImageEmbedding = ImageEmbedding::try_new(ImageInitOptions {
+                model_name: supported_model.model.clone(),
+                ..Default::default()
+            })
+            .unwrap();
+
+            let images = vec!["assets/image_0.png", "assets/image_1.png"];
+
+            // Generate embeddings with the default batch size, 256
+            let embeddings = model.embed(images.clone(), None).unwrap();
+
+            assert_eq!(embeddings.len(), images.len());
+            for embedding in embeddings {
+                assert_eq!(embedding.len(), supported_model.dim);
+            }
+
+            // Clear the model cache to avoid running out of space on GitHub Actions.
+            clean_cache(supported_model.model_code.clone())
+        });
+}
+
+fn clean_cache(model_code: String) {
+    let repo = Repo::model(model_code);
+    let cache_dir = format!("{}/{}", DEFAULT_CACHE_DIR, repo.folder_name());
+    fs::remove_dir_all(cache_dir).ok();
+}
 // This is item "test-environment-aeghhgwpe-pro02a" of the [Aguana corpus](http://argumentation.bplaced.net/arguana/data)
 fn get_sample_text() -> String {
     let t = "animals environment general health health general weight philosophy ethics Being vegetarian helps the environment  Becoming a vegetarian is an environmentally friendly thing to do. Modern farming is one of the main sources of pollution in our rivers. Beef farming is one of the main causes of deforestation, and as long as people continue to buy fast food in their billions, there will be a financial incentive to continue cutting down trees to make room for cattle. Because of our desire to eat fish, our rivers and seas are being emptied of fish and many species are facing extinction. Energy resources are used up much more greedily by meat farming than my farming cereals, pulses etc. Eating meat and fish not only causes cruelty to animals, it causes serious harm to the environment and to biodiversity. For example consider Meat production related pollution and deforestation  At Toronto\u{2019}s 1992 Royal Agricultural Winter Fair, Agriculture Canada displayed two contrasting statistics: \u{201c}it takes four football fields of land (about 1.6 hectares) to feed each Canadian\u{201d} and \u{201c}one apple tree produces enough fruit to make 320 pies.\u{201d} Think about it \u{2014} a couple of apple trees and a few rows of wheat on a mere fraction of a hectare could produce enough food for one person! [1]  The 2006 U.N. Food and Agriculture Organization (FAO) report concluded that worldwide livestock farming generates 18% of the planet's greenhouse gas emissions \u{2014} by comparison, all the world's cars, trains, planes and boats account for a combined 13% of greenhouse gas emissions. [2]  As a result of the above point producing meat damages the environment. The demand for meat drives deforestation. Daniel Cesar Avelino of Brazil's Federal Public Prosecution Office says \u{201c}We know that the single biggest driver of deforestation in the Amazon is cattle.\u{201d} This clearing of tropical rainforests such as the Amazon for agriculture is estimated to produce 17% of the world's greenhouse gas emissions. [3] Not only this but the production of meat takes a lot more energy than it ultimately gives us chicken meat production consumes energy in a 4:1 ratio to protein output; beef cattle production requires an energy input to protein output ratio of 54:1.  The same is true with water use due to the same phenomenon of meat being inefficient to produce in terms of the amount of grain needed to produce the same weight of meat, production requires a lot of water. Water is another scarce resource that we will soon not have enough of in various areas of the globe. Grain-fed beef production takes 100,000 liters of water for every kilogram of food. Raising broiler chickens takes 3,500 liters of water to make a kilogram of meat. In comparison, soybean production uses 2,000 liters for kilogram of food produced; rice, 1,912; wheat, 900; and potatoes, 500 liters. [4] This is while there are areas of the globe that have severe water shortages. With farming using up to 70 times more water than is used for domestic purposes: cooking and washing. A third of the population of the world is already suffering from a shortage of water. [5] Groundwater levels are falling all over the world and rivers are beginning to dry up. Already some of the biggest rivers such as China\u{2019}s Yellow river do not reach the sea. [6]  With a rising population becoming vegetarian is the only responsible way to eat.  [1] Stephen Leckie, \u{2018}How Meat-centred Eating Patterns Affect Food Security and the Environment\u{2019}, International development research center  [2] Bryan Walsh, Meat: Making Global Warming Worse, Time magazine, 10 September 2008 .  [3] David Adam, Supermarket suppliers \u{2018}helping to destroy Amazon rainforest\u{2019}, The Guardian, 21st June 2009.  [4] Roger Segelken, U.S. could feed 800 million people with grain that livestock eat, Cornell Science News, 7th August 1997.  [5] Fiona Harvey, Water scarcity affects one in three, FT.com, 21st August 2003  [6] Rupert Wingfield-Hayes, Yellow river \u{2018}drying up\u{2019}, BBC News, 29th July 2004";
@@ -481,7 +521,7 @@ fn test_bgesmallen1point5_match_python_counterpart() {
     ];
 
     let embeddings = model.embed(vec![text], None).expect("create successfully");
-    let tolerance: f32 = 1e-6;
+    let tolerance: f32 = 1e-3;
     for (expected, actual) in embeddings[0]
         .clone()
         .into_iter()

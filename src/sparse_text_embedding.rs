@@ -1,7 +1,7 @@
 #[cfg(feature = "online")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::{Tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR},
+    common::{TokenizerFiles, DEFAULT_CACHE_DIR},
     models::sparse::{models_list, SparseModel},
     ModelInfo, SparseEmbedding,
 };
@@ -20,6 +20,7 @@ use std::{
     fmt::Display,
     path::{Path, PathBuf},
 };
+use tokenizers::Tokenizer;
 
 #[cfg_attr(not(feature = "online"), allow(unused_imports))]
 use std::thread::available_parallelism;

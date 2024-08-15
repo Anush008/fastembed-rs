@@ -10,6 +10,7 @@ authors = [
   "GrisiaEvy <a115020115@gmail.com>",
   "George MacKerron <georgemackerron@neon.tech>",
   "Timon Vonk <mail@timonv.nl>",
+  "Luya Wang <luya.wang@qq.com>",
   "Tri <tri@triandco.com>",
   "Denny Wong <denwong47@hotmail.com>"
 ]
@@ -22,9 +23,10 @@ homepage = "https://crates.io/crates/fastembed"
 [dependencies]
 anyhow = { version = "1" }
 hf-hub = { version = "0.3", default-features = false }
+image = "0.25.2"
 ndarray = { version = "0.15", default-features = false }
 ort = { version = "=2.0.0-rc.4", default-features = false, features = [
-  "ndarray",
+    "ndarray",
 ] }
 rayon = { version = "1.10", default-features = false }
 serde_json = { version = "1" }

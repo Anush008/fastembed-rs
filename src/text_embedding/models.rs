@@ -3,7 +3,7 @@
 #[cfg(feature = "online")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::{load_tokenizer, Tokenizer},
+    common::load_tokenizer,
     models::text_embedding::{get_model_info, models_list},
     pooling::Pooling,
     Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, QuantizationMode, SingleBatchOutput,
@@ -22,6 +22,7 @@ use rayon::{
 #[cfg(feature = "online")]
 use std::path::PathBuf;
 use std::{fmt::Display, thread::available_parallelism};
+use tokenizers::Tokenizer;
 
 #[cfg(feature = "online")]
 use super::InitOptions;
