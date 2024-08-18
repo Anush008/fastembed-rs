@@ -102,10 +102,7 @@ macro_rules! create_embeddings_test {
             TextEmbedding::list_supported_models()
                 .par_iter()
                 .for_each(|supported_model| {
-                    let model: TextEmbedding = TextEmbedding::try_new(InitOptions {
-                        model_name: supported_model.model.clone(),
-                        ..Default::default()
-                    })
+                    let model: TextEmbedding = TextEmbedding::try_new(InitOptions::new(supported_model.model.clone()))
                     .unwrap();
 
                     let documents = vec![
@@ -169,11 +166,9 @@ fn test_sparse_embeddings() {
     SparseTextEmbedding::list_supported_models()
         .par_iter()
         .for_each(|supported_model| {
-            let model: SparseTextEmbedding = SparseTextEmbedding::try_new(SparseInitOptions {
-                model_name: supported_model.model.clone(),
-                ..Default::default()
-            })
-            .unwrap();
+            let model: SparseTextEmbedding =
+                SparseTextEmbedding::try_new(SparseInitOptions::new(supported_model.model.clone()))
+                    .unwrap();
 
             let documents = vec![
                 "Hello, World!",
@@ -201,13 +196,8 @@ fn test_sparse_embeddings() {
 fn test_user_defined_embedding_model() {
     // Constitute the model in order to ensure it's downloaded and cached
     let test_model_info = TextEmbedding::get_model_info(&EmbeddingModel::AllMiniLML6V2).unwrap();
-    let pooling = Some(Pooling::Mean);
 
-    TextEmbedding::try_new(InitOptions {
-        model_name: test_model_info.model.clone(),
-        ..Default::default()
-    })
-    .unwrap();
+    TextEmbedding::try_new(InitOptions::new(test_model_info.model.clone())).unwrap();
 
     // Get the directory of the model
     let model_name = test_model_info.model_code.replace('/', "--");
@@ -261,12 +251,8 @@ fn test_user_defined_embedding_model() {
             .expect("Could not read tokenizer_config.json"),
     };
     // Create a UserDefinedEmbeddingModel
-    let user_defined_model = UserDefinedEmbeddingModel {
-        onnx_file,
-        tokenizer_files,
-        pooling,
-        quantization: QuantizationMode::None,
-    };
+    let user_defined_model =
+        UserDefinedEmbeddingModel::new(onnx_file, tokenizer_files).with_pooling(Pooling::Mean);
 
     // Try creating a TextEmbedding instance from the user-defined model
     let user_defined_text_embedding = TextEmbedding::try_new_from_user_defined(
@@ -298,11 +284,7 @@ fn test_rerank() {
         .par_iter()
         .for_each(|supported_model| {
 
-        let result = TextRerank::try_new(RerankInitOptions {
-            model_name: supported_model.model.clone(),
-            show_download_progress: true,
-            ..Default::default()
-        })
+        let result = TextRerank::try_new(RerankInitOptions::new(supported_model.model.clone()))
         .unwrap();
 
         let documents = vec![
@@ -332,11 +314,7 @@ fn test_user_defined_reranking_model() {
     let test_model_info: fastembed::RerankerModelInfo =
         TextRerank::get_model_info(&RerankerModel::JINARerankerV1TurboEn);
 
-    TextRerank::try_new(RerankInitOptions {
-        model_name: test_model_info.model,
-        ..Default::default()
-    })
-    .unwrap();
+    TextRerank::try_new(RerankInitOptions::new(test_model_info.model)).unwrap();
 
     // Get the directory of the model
     let model_name = test_model_info.model_code.replace('/', "--");
@@ -391,10 +369,7 @@ fn test_user_defined_reranking_model() {
             .expect("Could not read tokenizer_config.json"),
     };
     // Create a UserDefinedEmbeddingModel
-    let user_defined_model = UserDefinedRerankingModel {
-        onnx_file,
-        tokenizer_files,
-    };
+    let user_defined_model = UserDefinedRerankingModel::new(onnx_file, tokenizer_files);
 
     // Try creating a TextEmbedding instance from the user-defined model
     let user_defined_reranker = TextRerank::try_new_from_user_defined(
@@ -424,11 +399,9 @@ fn test_image_embedding_model() {
     ImageEmbedding::list_supported_models()
         .par_iter()
         .for_each(|supported_model| {
-            let model: ImageEmbedding = ImageEmbedding::try_new(ImageInitOptions {
-                model_name: supported_model.model.clone(),
-                ..Default::default()
-            })
-            .unwrap();
+            let model: ImageEmbedding =
+                ImageEmbedding::try_new(ImageInitOptions::new(supported_model.model.clone()))
+                    .unwrap();
 
             let images = vec!["tests/assets/image_0.png", "tests/assets/image_1.png"];
 
@@ -457,12 +430,9 @@ fn get_sample_text() -> String {
 }
 #[test]
 fn test_batch_size_does_not_change_output() {
-    let model = TextEmbedding::try_new(InitOptions {
-        model_name: EmbeddingModel::AllMiniLML6V2,
-        max_length: 384,
-        show_download_progress: true,
-        ..Default::default()
-    })
+    let model = TextEmbedding::try_new(
+        InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_max_length(384),
+    )
     .expect("Create model succesfully");
 
     let sentences = vec![
@@ -492,12 +462,9 @@ fn test_batch_size_does_not_change_output() {
 
 #[test]
 fn test_bgesmallen1point5_match_python_counterpart() {
-    let model = TextEmbedding::try_new(InitOptions {
-        model_name: EmbeddingModel::BGESmallENV15,
-        max_length: 384,
-        show_download_progress: true,
-        ..Default::default()
-    })
+    let model = TextEmbedding::try_new(
+        InitOptions::new(EmbeddingModel::BGESmallENV15).with_max_length(384),
+    )
     .expect("Create model succesfully");
     let text = get_sample_text();
 
@@ -533,12 +500,9 @@ fn test_bgesmallen1point5_match_python_counterpart() {
 
 #[test]
 fn test_allminilml6v2_match_python_counterpart() {
-    let model = TextEmbedding::try_new(InitOptions {
-        model_name: EmbeddingModel::AllMiniLML6V2,
-        max_length: 384,
-        show_download_progress: true,
-        ..Default::default()
-    })
+    let model = TextEmbedding::try_new(
+        InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_max_length(384),
+    )
     .expect("Create model succesfully");
 
     let text = get_sample_text();

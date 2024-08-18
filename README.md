@@ -82,7 +82,7 @@ fastembed = "3"
 
 ## 📖 Usage
 
-### Generating Text Embeddings
+### Text Embeddings
 
 ```rust
 use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
@@ -91,11 +91,9 @@ use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
 let model = TextEmbedding::try_new(Default::default())?;
 
 // With custom InitOptions
-let model = TextEmbedding::try_new(InitOptions {
-    model_name: EmbeddingModel::AllMiniLML6V2,
-    show_download_progress: true,
-    ..Default::default()
-})?;
+let model = TextEmbedding::try_new(
+        InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true),
+    )?;
 
 let documents = vec![
     "passage: Hello, World!",
@@ -113,7 +111,7 @@ let documents = vec![
 
 ```
 
-### Image Embedding
+### Image Embeddings
 
 ```rust
 use fastembed::{ImageEmbedding, ImageInitOptions, ImageEmbeddingModel};
@@ -122,11 +120,9 @@ use fastembed::{ImageEmbedding, ImageInitOptions, ImageEmbeddingModel};
 let model = ImageEmbedding::try_new(Default::default())?;
 
 // With custom InitOptions
-let model = ImageEmbedding::try_new(ImageInitOptions {
-    model_name: ImageEmbeddingModel::ClipVitB32,
-    show_download_progress: true,
-    ..Default::default()
-})?;
+let model = ImageEmbedding::try_new(
+    ImageInitOptions::new(ImageEmbeddingModel::ClipVitB32).with_show_download_progress(true),
+)?;
 
 let images = vec!["assets/image_0.png", "assets/image_1.png"];
 
@@ -142,12 +138,9 @@ println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimens
 ```rust
 use fastembed::{TextRerank, RerankInitOptions, RerankerModel};
 
-let model = TextRerank::try_new(RerankInitOptions {
-    model_name: RerankerModel::BGERerankerBase,
-    show_download_progress: true,
-    ..Default::default()
-})
-.unwrap();
+let model = TextRerank::try_new(
+    RerankInitOptions::new(RerankerModel::BGERerankerBase).with_show_download_progress(true),
+)?;
 
 let documents = vec![
     "hi",
@@ -158,7 +151,7 @@ let documents = vec![
 ];
 
 // Rerank with the default batch size
-let results = model.rerank("what is panda?", documents, true, None);
+let results = model.rerank("what is panda?", documents, true, None)?;
 println!("Rerank result: {:?}", results);
 ```
 

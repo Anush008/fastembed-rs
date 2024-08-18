@@ -15,12 +15,45 @@ pub struct TextRerank {
 
 /// Options for initializing the reranking model
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct RerankInitOptions {
     pub model_name: RerankerModel,
     pub execution_providers: Vec<ExecutionProviderDispatch>,
     pub max_length: usize,
     pub cache_dir: PathBuf,
     pub show_download_progress: bool,
+}
+
+impl RerankInitOptions {
+    pub fn new(model_name: RerankerModel) -> Self {
+        Self {
+            model_name,
+            ..Default::default()
+        }
+    }
+
+    pub fn with_max_length(mut self, max_length: usize) -> Self {
+        self.max_length = max_length;
+        self
+    }
+
+    pub fn with_cache_dir(mut self, cache_dir: PathBuf) -> Self {
+        self.cache_dir = cache_dir;
+        self
+    }
+
+    pub fn with_execution_providers(
+        mut self,
+        execution_providers: Vec<ExecutionProviderDispatch>,
+    ) -> Self {
+        self.execution_providers = execution_providers;
+        self
+    }
+
+    pub fn with_show_download_progress(mut self, show_download_progress: bool) -> Self {
+        self.show_download_progress = show_download_progress;
+        self
+    }
 }
 
 impl Default for RerankInitOptions {
@@ -38,7 +71,8 @@ impl Default for RerankInitOptions {
 /// Options for initializing UserDefinedRerankerModel
 ///
 /// Model files are held by the UserDefinedRerankerModel struct
-/// #[derive(Debug, Clone)]
+#[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct RerankInitOptionsUserDefined {
     pub execution_providers: Vec<ExecutionProviderDispatch>,
     pub max_length: usize,
@@ -69,9 +103,19 @@ impl From<RerankInitOptions> for RerankInitOptionsUserDefined {
 ///
 /// The onnx_file and tokenizer_files are expecting the files' bytes
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct UserDefinedRerankingModel {
     pub onnx_file: Vec<u8>,
     pub tokenizer_files: TokenizerFiles,
+}
+
+impl UserDefinedRerankingModel {
+    pub fn new(onnx_file: Vec<u8>, tokenizer_files: TokenizerFiles) -> Self {
+        Self {
+            onnx_file,
+            tokenizer_files,
+        }
+    }
 }
 
 /// Rerank result.
