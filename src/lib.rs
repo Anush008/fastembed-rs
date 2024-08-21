@@ -17,11 +17,9 @@
  dbg!(TextEmbedding::list_supported_models());
 
  // With custom InitOptions
- let model = TextEmbedding::try_new(InitOptions {
-     model_name: EmbeddingModel::BGEBaseENV15,
-     show_download_progress: false,
-     ..Default::default()
- })?;
+ let model = TextEmbedding::try_new(
+        InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true),
+ )?;
  # Ok(())
  # }
  ```
@@ -64,10 +62,6 @@ mod reranking;
 mod sparse_text_embedding;
 mod text_embedding;
 
-#[cfg(feature = "online")]
-#[cfg(test)]
-mod tests;
-
 pub use ort::ExecutionProviderDispatch;
 
 pub use crate::common::{
@@ -87,7 +81,9 @@ pub use crate::reranking::{
     RerankInitOptions, RerankInitOptionsUserDefined, RerankResult, TextRerank,
     UserDefinedRerankingModel,
 };
-pub use crate::sparse_text_embedding::{SparseInitOptions, SparseTextEmbedding};
+pub use crate::sparse_text_embedding::{
+    SparseInitOptions, SparseTextEmbedding, UserDefinedSparseModel,
+};
 pub use crate::text_embedding::{
     InitOptions, InitOptionsUserDefined, TextEmbedding, UserDefinedEmbeddingModel,
 };

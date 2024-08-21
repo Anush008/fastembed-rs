@@ -4,7 +4,7 @@ use super::model_info::ModelInfo;
 
 use super::quantization::QuantizationMode;
 
-use std::{collections::HashMap, sync::OnceLock};
+use std::{collections::HashMap, fmt::Display, sync::OnceLock};
 
 /// Lazy static list of all available models.
 static MODEL_MAP: OnceLock<HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>>> = OnceLock::new();
@@ -357,5 +357,12 @@ impl EmbeddingModel {
             EmbeddingModel::GTELargeENV15Q => QuantizationMode::Dynamic,
             _ => QuantizationMode::None,
         }
+    }
+}
+
+impl Display for EmbeddingModel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let model_info = get_model_info(self).expect("Model not found.");
+        write!(f, "{}", model_info.model_code)
     }
 }

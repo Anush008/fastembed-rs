@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RerankerModel {
     /// BAAI/bge-reranker-base
@@ -39,4 +41,14 @@ pub struct RerankerModelInfo {
     pub description: String,
     pub model_code: String,
     pub model_file: String,
+}
+
+impl Display for RerankerModel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let model_info = reranker_model_list()
+            .into_iter()
+            .find(|model| model.model == *self)
+            .expect("Model not found in supported models list.");
+        write!(f, "{}", model_info.model_code)
+    }
 }

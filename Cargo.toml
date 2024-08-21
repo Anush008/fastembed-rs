@@ -1,6 +1,6 @@
 [package]
 name = "fastembed"
-version = "3.14.1"
+version = "4.0.0"
 edition = "2021"
 description = "Rust implementation of https://github.com/qdrant/fastembed"
 license = "Apache-2.0"
@@ -24,16 +24,13 @@ homepage = "https://crates.io/crates/fastembed"
 anyhow = { version = "1" }
 hf-hub = { version = "0.3", default-features = false }
 image = "0.25.2"
-ndarray = { version = "0.15", default-features = false }
-ort = { version = "=2.0.0-rc.4", default-features = false, features = [
+ndarray = { version = "0.16", default-features = false }
+ort = { version = "=2.0.0-rc.5", default-features = false, features = [
     "ndarray",
 ] }
 rayon = { version = "1.10", default-features = false }
 serde_json = { version = "1" }
 tokenizers = { version = "0.19", default-features = false, features = ["onig"] }
-
-[dev-dependencies]
-criterion = "0.5.1"
 
 [features]
 default = ["ort-download-binaries", "online"]
@@ -43,7 +40,3 @@ ort-load-dynamic = ["ort/load-dynamic"]
 # This feature does not change any code, but is used to limit tests if
 # the user does not have `optimum-cli` or even python installed.
 optimum-cli = []
-
-[[bench]]
-name = "embed"
-harness = false

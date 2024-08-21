@@ -1,104 +1,25 @@
 use anyhow::Result;
-use std::{
-    fmt::Display,
-    path::{Path, PathBuf},
-    thread::available_parallelism,
-};
+use std::thread::available_parallelism;
 
 #[cfg(feature = "online")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::{load_tokenizer, TokenizerFiles, DEFAULT_CACHE_DIR},
-    models::reranking::reranker_model_list,
-    RerankerModel, RerankerModelInfo,
+    common::load_tokenizer, models::reranking::reranker_model_list, RerankerModel,
+    RerankerModelInfo,
 };
 #[cfg(feature = "online")]
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::{s, Array};
-use ort::{ExecutionProviderDispatch, GraphOptimizationLevel, Session, Value};
+use ort::{GraphOptimizationLevel, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 use tokenizers::Tokenizer;
 
-const DEFAULT_RE_RANKER_MODEL: RerankerModel = RerankerModel::BGERerankerBase;
-const DEFAULT_MAX_LENGTH: usize = 512;
-const DEFAULT_BATCH_SIZE: usize = 256;
-
-pub struct TextRerank {
-    pub tokenizer: Tokenizer,
-    session: Session,
-    need_token_type_ids: bool,
-}
-
-/// Options for initializing the reranking model
-#[derive(Debug, Clone)]
-pub struct RerankInitOptions {
-    pub model_name: RerankerModel,
-    pub execution_providers: Vec<ExecutionProviderDispatch>,
-    pub max_length: usize,
-    pub cache_dir: PathBuf,
-    pub show_download_progress: bool,
-}
-
-impl Default for RerankInitOptions {
-    fn default() -> Self {
-        Self {
-            model_name: DEFAULT_RE_RANKER_MODEL,
-            execution_providers: Default::default(),
-            max_length: DEFAULT_MAX_LENGTH,
-            cache_dir: Path::new(DEFAULT_CACHE_DIR).to_path_buf(),
-            show_download_progress: true,
-        }
-    }
-}
-
-/// Options for initializing UserDefinedRerankerModel
-///
-/// Model files are held by the UserDefinedRerankerModel struct
-/// #[derive(Debug, Clone)]
-pub struct RerankInitOptionsUserDefined {
-    pub execution_providers: Vec<ExecutionProviderDispatch>,
-    pub max_length: usize,
-}
-
-impl Default for RerankInitOptionsUserDefined {
-    fn default() -> Self {
-        Self {
-            execution_providers: Default::default(),
-            max_length: DEFAULT_MAX_LENGTH,
-        }
-    }
-}
-
-/// Convert RerankInitOptions to RerankInitOptionsUserDefined
-///
-/// This is useful for when the user wants to use the same options for both the default and user-defined models
-impl From<RerankInitOptions> for RerankInitOptionsUserDefined {
-    fn from(options: RerankInitOptions) -> Self {
-        RerankInitOptionsUserDefined {
-            execution_providers: options.execution_providers,
-            max_length: options.max_length,
-        }
-    }
-}
-
-/// Struct for "bring your own" reranking models
-///
-/// The onnx_file and tokenizer_files are expecting the files' bytes
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UserDefinedRerankingModel {
-    pub onnx_file: Vec<u8>,
-    pub tokenizer_files: TokenizerFiles,
-}
-
-impl Display for RerankerModel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let model_info = TextRerank::list_supported_models()
-            .into_iter()
-            .find(|model| model.model == *self)
-            .expect("Model not found in supported models list.");
-        write!(f, "{}", model_info.model_code)
-    }
-}
+#[cfg(feature = "online")]
+use super::RerankInitOptions;
+use super::{
+    RerankInitOptionsUserDefined, RerankResult, TextRerank, UserDefinedRerankingModel,
+    DEFAULT_BATCH_SIZE,
+};
 
 impl TextRerank {
     fn new(tokenizer: Tokenizer, session: Session) -> Self {
@@ -126,6 +47,8 @@ impl TextRerank {
 
     #[cfg(feature = "online")]
     pub fn try_new(options: RerankInitOptions) -> Result<TextRerank> {
+        use super::RerankInitOptions;
+
         let RerankInitOptions {
             model_name,
             execution_providers,
@@ -277,12 +200,4 @@ impl TextRerank {
 
         Ok(top_n_result.to_vec())
     }
-}
-
-/// Rerank result.
-#[derive(Debug, PartialEq, Clone)]
-pub struct RerankResult {
-    pub document: Option<String>,
-    pub score: f32,
-    pub index: usize,
 }

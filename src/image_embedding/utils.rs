@@ -141,10 +141,10 @@ impl Transform for Normalize {
     fn transform(&self, data: TransformData) -> anyhow::Result<TransformData> {
         let array = data.array()?;
         let mean = Array::from_vec(self.mean.clone())
-            .into_shape((3, 1, 1))
+            .into_shape_with_order((3, 1, 1))
             .unwrap();
         let std = Array::from_vec(self.std.clone())
-            .into_shape((3, 1, 1))
+            .into_shape_with_order((3, 1, 1))
             .unwrap();
 
         let shape = array.shape().to_vec();

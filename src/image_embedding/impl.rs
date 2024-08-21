@@ -7,38 +7,22 @@ use ndarray::{Array3, ArrayView3};
 use ort::{GraphOptimizationLevel, Session, Value};
 #[cfg(feature = "online")]
 use std::path::PathBuf;
-use std::{fmt::Display, path::Path, thread::available_parallelism};
+use std::{path::Path, thread::available_parallelism};
 
 use crate::{
     common::normalize, models::image_embedding::models_list, Embedding, ImageEmbeddingModel,
     ModelInfo,
 };
 use anyhow::anyhow;
-use rayon::prelude::*;
 
 #[cfg(feature = "online")]
 use super::ImageInitOptions;
 use super::{
     init::{ImageInitOptionsUserDefined, UserDefinedImageEmbeddingModel},
     utils::{Compose, Transform, TransformData},
-    DEFAULT_BATCH_SIZE,
+    ImageEmbedding, DEFAULT_BATCH_SIZE,
 };
-
-/// Rust representation of the ImageEmbedding model
-pub struct ImageEmbedding {
-    preprocessor: Compose,
-    session: Session,
-}
-
-impl Display for ImageEmbeddingModel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let model_info = ImageEmbedding::list_supported_models()
-            .into_iter()
-            .find(|model| model.model == *self)
-            .unwrap();
-        write!(f, "{}", model_info.model_code)
-    }
-}
+use rayon::prelude::*;
 
 impl ImageEmbedding {
     /// Try to generate a new ImageEmbedding Instance

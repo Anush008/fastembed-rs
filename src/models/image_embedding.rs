@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use super::model_info::ModelInfo;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,4 +54,14 @@ pub fn models_list() -> Vec<ModelInfo<ImageEmbeddingModel>> {
     // );
 
     models_list
+}
+
+impl Display for ImageEmbeddingModel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let model_info = models_list()
+            .into_iter()
+            .find(|model| model.model == *self)
+            .unwrap();
+        write!(f, "{}", model_info.model_code)
+    }
 }

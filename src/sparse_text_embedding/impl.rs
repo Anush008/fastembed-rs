@@ -1,7 +1,6 @@
 #[cfg(feature = "online")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::{TokenizerFiles, DEFAULT_CACHE_DIR},
     models::sparse::{models_list, SparseModel},
     ModelInfo, SparseEmbedding,
 };
@@ -14,68 +13,18 @@ use hf_hub::{
 use ndarray::{Array, CowArray};
 #[cfg_attr(not(feature = "online"), allow(unused_imports))]
 use ort::GraphOptimizationLevel;
-use ort::{ExecutionProviderDispatch, Session, Value};
+use ort::{Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
-use std::{
-    fmt::Display,
-    path::{Path, PathBuf},
-};
+#[cfg(feature = "online")]
+use std::path::PathBuf;
 use tokenizers::Tokenizer;
 
 #[cfg_attr(not(feature = "online"), allow(unused_imports))]
 use std::thread::available_parallelism;
-const DEFAULT_BATCH_SIZE: usize = 256;
-const DEFAULT_MAX_LENGTH: usize = 512;
-const DEFAULT_EMBEDDING_MODEL: SparseModel = SparseModel::SPLADEPPV1;
 
-/// Options for initializing the SparseTextEmbedding model
-#[derive(Debug, Clone)]
-pub struct SparseInitOptions {
-    pub model_name: SparseModel,
-    pub execution_providers: Vec<ExecutionProviderDispatch>,
-    pub max_length: usize,
-    pub cache_dir: PathBuf,
-    pub show_download_progress: bool,
-}
-
-impl Default for SparseInitOptions {
-    fn default() -> Self {
-        Self {
-            model_name: DEFAULT_EMBEDDING_MODEL,
-            execution_providers: Default::default(),
-            max_length: DEFAULT_MAX_LENGTH,
-            cache_dir: Path::new(DEFAULT_CACHE_DIR).to_path_buf(),
-            show_download_progress: true,
-        }
-    }
-}
-
-/// Struct for "bring your own" embedding models
-///
-/// The onnx_file and tokenizer_files are expecting the files' bytes
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UserDefinedSparseModel {
-    pub onnx_file: Vec<u8>,
-    pub tokenizer_files: TokenizerFiles,
-}
-
-/// Rust representation of the SparseTextEmbedding model
-pub struct SparseTextEmbedding {
-    pub tokenizer: Tokenizer,
-    session: Session,
-    need_token_type_ids: bool,
-    model: SparseModel,
-}
-
-impl Display for SparseModel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let model_info = SparseTextEmbedding::list_supported_models()
-            .into_iter()
-            .find(|model| model.model == *self)
-            .unwrap();
-        write!(f, "{}", model_info.model_code)
-    }
-}
+#[cfg(feature = "online")]
+use super::SparseInitOptions;
+use super::{SparseTextEmbedding, DEFAULT_BATCH_SIZE};
 
 impl SparseTextEmbedding {
     /// Try to generate a new SparseTextEmbedding Instance
@@ -85,6 +34,8 @@ impl SparseTextEmbedding {
     /// Uses the total number of CPUs available as the number of intra-threads
     #[cfg(feature = "online")]
     pub fn try_new(options: SparseInitOptions) -> Result<Self> {
+        use super::SparseInitOptions;
+
         let SparseInitOptions {
             model_name,
             execution_providers,
