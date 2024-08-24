@@ -23,7 +23,7 @@ homepage = "https://crates.io/crates/fastembed"
 [dependencies]
 anyhow = { version = "1" }
 hf-hub = { version = "0.3", default-features = false }
-image = "0.25.2"
+image = { version = "0.25.2", default-features = false, features = ["jpeg", "png", "webp"] }
 ndarray = { version = "0.16", default-features = false }
 ort = { version = "=2.0.0-rc.5", default-features = false, features = [
     "ndarray",

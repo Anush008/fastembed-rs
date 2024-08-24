@@ -113,6 +113,8 @@ let documents = vec![
 
 ### Image Embeddings
 
+Supports `.jpeg`, `.png`,  and `.webp` file formats.
+
 ```rust
 use fastembed::{ImageEmbedding, ImageInitOptions, ImageEmbeddingModel};
 
