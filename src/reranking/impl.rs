@@ -66,7 +66,15 @@ impl TextRerank {
             .expect("Failed to build API from cache");
         let model_repo = api.model(model_name.to_string());
 
-        let model_file_name = TextRerank::get_model_info(&model_name).model_file;
+        let model_info = TextRerank::get_model_info(&model_name);
+
+        for additional_file in &model_info.additional_files {
+            model_repo
+                .get(additional_file)
+                .unwrap_or_else(|_| panic!("Failed to retrieve {}", additional_file));
+        }
+
+        let model_file_name = model_info.model_file;
         let model_file_reference = model_repo
             .get(&model_file_name)
             .unwrap_or_else(|_| panic!("Failed to retrieve model file: {}", model_file_name));
