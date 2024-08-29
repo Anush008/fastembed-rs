@@ -47,12 +47,20 @@ impl ImageEmbedding {
             show_download_progress,
         )?;
 
+        let model_info = ImageEmbedding::get_model_info(&model_name);
+
+        for additional_file in &model_info.additional_files {
+            model_repo
+                .get(additional_file)
+                .unwrap_or_else(|_| panic!("Failed to retrieve {}", additional_file));
+        }
+
         let preprocessor_file = model_repo
             .get("preprocessor_config.json")
             .unwrap_or_else(|_| panic!("Failed to retrieve preprocessor_config.json"));
         let preprocessor = Compose::from_file(preprocessor_file)?;
 
-        let model_file_name = ImageEmbedding::get_model_info(&model_name).model_file;
+        let model_file_name = model_info.model_file;
         let model_file_reference = model_repo
             .get(&model_file_name)
             .unwrap_or_else(|_| panic!("Failed to retrieve {} ", model_file_name));

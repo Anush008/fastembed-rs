@@ -52,7 +52,15 @@ impl SparseTextEmbedding {
             show_download_progress,
         )?;
 
-        let model_file_name = SparseTextEmbedding::get_model_info(&model_name).model_file;
+        let model_info = SparseTextEmbedding::get_model_info(&model_name);
+
+        for additional_file in &model_info.additional_files {
+            model_repo
+                .get(additional_file)
+                .unwrap_or_else(|_| panic!("Failed to retrieve {}", additional_file));
+        }
+
+        let model_file_name = model_info.model_file;
         let model_file_reference = model_repo
             .get(&model_file_name)
             .unwrap_or_else(|_| panic!("Failed to retrieve {} ", model_file_name));
