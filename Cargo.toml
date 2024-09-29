@@ -12,7 +12,8 @@ authors = [
   "Timon Vonk <mail@timonv.nl>",
   "Luya Wang <luya.wang@qq.com>",
   "Tri <tri@triandco.com>",
-  "Denny Wong <denwong47@hotmail.com>"
+  "Denny Wong <denwong47@hotmail.com>",
+  "Alex Rozgo <alex.rozgo@gmail.com>"
 ]
 documentation = "https://docs.rs/fastembed"
 repository = "https://github.com/Anush008/fastembed-rs"

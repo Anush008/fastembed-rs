@@ -62,6 +62,7 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 ### Reranking
 
 - [**BAAI/bge-reranker-base**](https://huggingface.co/BAAI/bge-reranker-base)
+- [**BAAI/bge-reranker-v2-m3**](https://huggingface.co/BAAI/bge-reranker-v2-m3)
 - [**jinaai/jina-reranker-v1-turbo-en**](https://huggingface.co/jinaai/jina-reranker-v1-turbo-en)
 - [**jinaai/jina-reranker-v2-base-multiligual**](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual)
 
