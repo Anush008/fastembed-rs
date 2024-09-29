@@ -99,20 +99,29 @@ impl From<RerankInitOptions> for RerankInitOptionsUserDefined {
     }
 }
 
+/// Enum for the source of the onnx file
+///
+/// User-defined models can either be in memory or on disk
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OnnxSource {
+    Memory(Vec<u8>),
+    File(PathBuf),
+}
+
 /// Struct for "bring your own" reranking models
 ///
 /// The onnx_file and tokenizer_files are expecting the files' bytes
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct UserDefinedRerankingModel {
-    pub onnx_file: Vec<u8>,
+    pub onnx_source: OnnxSource,
     pub tokenizer_files: TokenizerFiles,
 }
 
 impl UserDefinedRerankingModel {
-    pub fn new(onnx_file: Vec<u8>, tokenizer_files: TokenizerFiles) -> Self {
+    pub fn new(onnx_source: OnnxSource, tokenizer_files: TokenizerFiles) -> Self {
         Self {
-            onnx_file,
+            onnx_source,
             tokenizer_files,
         }
     }

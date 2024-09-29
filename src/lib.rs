@@ -78,7 +78,7 @@ pub use crate::models::{
 pub use crate::output::{EmbeddingOutput, OutputKey, OutputPrecedence, SingleBatchOutput};
 pub use crate::pooling::Pooling;
 pub use crate::reranking::{
-    RerankInitOptions, RerankInitOptionsUserDefined, RerankResult, TextRerank,
+    OnnxSource, RerankInitOptions, RerankInitOptionsUserDefined, RerankResult, TextRerank,
     UserDefinedRerankingModel,
 };
 pub use crate::sparse_text_embedding::{
