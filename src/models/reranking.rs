@@ -4,6 +4,8 @@ use std::fmt::Display;
 pub enum RerankerModel {
     /// BAAI/bge-reranker-base
     BGERerankerBase,
+    /// rozgo/bge-reranker-v2-m3
+    BGERerankerV2M3,
     /// jinaai/jina-reranker-v1-turbo-en
     JINARerankerV1TurboEn,
     /// jinaai/jina-reranker-v2-base-multilingual
@@ -17,18 +19,28 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             description: String::from("reranker model for English and Chinese"),
             model_code: String::from("BAAI/bge-reranker-base"),
             model_file: String::from("onnx/model.onnx"),
+            additional_files: vec![],
+        },
+        RerankerModelInfo {
+            model: RerankerModel::BGERerankerV2M3,
+            description: String::from("reranker model for multilingual"),
+            model_code: String::from("rozgo/bge-reranker-v2-m3"),
+            model_file: String::from("model.onnx"),
+            additional_files: vec![String::from("model.onnx.data")],
         },
         RerankerModelInfo {
             model: RerankerModel::JINARerankerV1TurboEn,
             description: String::from("reranker model for English"),
             model_code: String::from("jinaai/jina-reranker-v1-turbo-en"),
             model_file: String::from("onnx/model.onnx"),
+            additional_files: vec![],
         },
         RerankerModelInfo {
             model: RerankerModel::JINARerankerV2BaseMultiligual,
             description: String::from("reranker model for multilingual"),
             model_code: String::from("jinaai/jina-reranker-v2-base-multilingual"),
             model_file: String::from("onnx/model.onnx"),
+            additional_files: vec![],
         },
     ];
     reranker_model_list
@@ -41,6 +53,7 @@ pub struct RerankerModelInfo {
     pub description: String,
     pub model_code: String,
     pub model_file: String,
+    pub additional_files: Vec<String>,
 }
 
 impl Display for RerankerModel {

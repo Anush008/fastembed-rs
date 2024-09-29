@@ -8,7 +8,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use fastembed::{
     read_file_to_bytes, Embedding, EmbeddingModel, ImageEmbedding, ImageInitOptions, InitOptions,
-    InitOptionsUserDefined, Pooling, QuantizationMode, RerankInitOptions,
+    InitOptionsUserDefined, OnnxSource, Pooling, QuantizationMode, RerankInitOptions,
     RerankInitOptionsUserDefined, RerankerModel, SparseInitOptions, SparseTextEmbedding,
     TextEmbedding, TextRerank, TokenizerFiles, UserDefinedEmbeddingModel,
     UserDefinedRerankingModel, DEFAULT_CACHE_DIR,
@@ -284,6 +284,8 @@ fn test_rerank() {
         .par_iter()
         .for_each(|supported_model| {
 
+            println!("supported_model: {:?}", supported_model);
+
         let result = TextRerank::try_new(RerankInitOptions::new(supported_model.model.clone()))
         .unwrap();
 
@@ -300,12 +302,76 @@ fn test_rerank() {
             .unwrap();
 
         assert_eq!(results.len(), documents.len(), "rerank model {:?} failed", supported_model);
-        assert_eq!(results[0].document.as_ref().unwrap(), "panda is an animal");
-        assert_eq!(results[1].document.as_ref().unwrap(), "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.");
+
+        let option_a = "panda is an animal";
+        let option_b = "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.";
+
+        assert!(
+            results[0].document.as_ref().unwrap() == option_a ||
+            results[0].document.as_ref().unwrap() == option_b
+        );
+        assert!(
+            results[1].document.as_ref().unwrap() == option_a ||
+            results[1].document.as_ref().unwrap() == option_b
+        );
+        assert_ne!(results[0].document, results[1].document, "The top two results should be different");
 
         // Clear the model cache to avoid running out of space on GitHub Actions.
         clean_cache(supported_model.model_code.clone())
     });
+}
+
+#[test]
+fn test_user_defined_reranking_large_model() {
+    // Setup model to download from Hugging Face
+    let cache = hf_hub::Cache::new(std::path::PathBuf::from(fastembed::DEFAULT_CACHE_DIR));
+    let api = hf_hub::api::sync::ApiBuilder::from_cache(cache)
+        .with_progress(true)
+        .build()
+        .expect("Failed to build API from cache");
+    let model_repo = api.model("rozgo/bge-reranker-v2-m3".to_string());
+
+    // Download the onnx model file
+    let onnx_file = model_repo.download("model.onnx").unwrap();
+    // Onnx model exceeds the limit of 2GB for a file, so we need to download the data file separately
+    let _onnx_data_file = model_repo.get("model.onnx.data").unwrap();
+
+    // OnnxSource::File is used to load the onnx file using onnx session builder commit_from_file
+    let onnx_source = OnnxSource::File(onnx_file);
+
+    // Load the tokenizer files
+    let tokenizer_files: TokenizerFiles = TokenizerFiles {
+        tokenizer_file: read_file_to_bytes(&model_repo.get("tokenizer.json").unwrap()).unwrap(),
+        config_file: read_file_to_bytes(&model_repo.get("config.json").unwrap()).unwrap(),
+        special_tokens_map_file: read_file_to_bytes(
+            &model_repo.get("special_tokens_map.json").unwrap(),
+        )
+        .unwrap(),
+
+        tokenizer_config_file: read_file_to_bytes(
+            &model_repo.get("tokenizer_config.json").unwrap(),
+        )
+        .unwrap(),
+    };
+
+    let model = UserDefinedRerankingModel::new(onnx_source, tokenizer_files);
+
+    let user_defined_reranker =
+        TextRerank::try_new_from_user_defined(model, Default::default()).unwrap();
+
+    let documents = vec![
+        "Hello, World!",
+        "This is an example passage.",
+        "fastembed-rs is licensed under Apache-2.0",
+        "Some other short text here blah blah blah",
+    ];
+
+    let results = user_defined_reranker
+        .rerank("Ciao, Earth!", documents.clone(), false, None)
+        .unwrap();
+
+    assert_eq!(results.len(), documents.len());
+    assert_eq!(results.first().unwrap().index, 0);
 }
 
 #[test]

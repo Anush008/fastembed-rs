@@ -17,7 +17,7 @@ use tokenizers::Tokenizer;
 #[cfg(feature = "online")]
 use super::RerankInitOptions;
 use super::{
-    RerankInitOptionsUserDefined, RerankResult, TextRerank, UserDefinedRerankingModel,
+    OnnxSource, RerankInitOptionsUserDefined, RerankResult, TextRerank, UserDefinedRerankingModel,
     DEFAULT_BATCH_SIZE,
 };
 
@@ -70,6 +70,13 @@ impl TextRerank {
         let model_file_reference = model_repo
             .get(&model_file_name)
             .unwrap_or_else(|_| panic!("Failed to retrieve model file: {}", model_file_name));
+        let additional_files = TextRerank::get_model_info(&model_name).additional_files;
+        for additional_file in additional_files {
+            let _additional_file_reference =
+                model_repo.get(&additional_file).unwrap_or_else(|_| {
+                    panic!("Failed to retrieve additional file: {}", additional_file)
+                });
+        }
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
@@ -98,8 +105,12 @@ impl TextRerank {
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
-            .commit_from_memory(&model.onnx_file)?;
+            .with_intra_threads(threads)?;
+
+        let session = match &model.onnx_source {
+            OnnxSource::Memory(bytes) => session.commit_from_memory(bytes)?,
+            OnnxSource::File(path) => session.commit_from_file(path)?,
+        };
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
         Ok(Self::new(tokenizer, session))
