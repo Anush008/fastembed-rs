@@ -108,6 +108,18 @@ pub enum OnnxSource {
     File(PathBuf),
 }
 
+impl From<Vec<u8>> for OnnxSource {
+    fn from(bytes: Vec<u8>) -> Self {
+        OnnxSource::Memory(bytes)
+    }
+}
+
+impl From<PathBuf> for OnnxSource {
+    fn from(path: PathBuf) -> Self {
+        OnnxSource::File(path)
+    }
+}
+
 /// Struct for "bring your own" reranking models
 ///
 /// The onnx_file and tokenizer_files are expecting the files' bytes
@@ -119,9 +131,9 @@ pub struct UserDefinedRerankingModel {
 }
 
 impl UserDefinedRerankingModel {
-    pub fn new(onnx_source: OnnxSource, tokenizer_files: TokenizerFiles) -> Self {
+    pub fn new(onnx_source: impl Into<OnnxSource>, tokenizer_files: TokenizerFiles) -> Self {
         Self {
-            onnx_source,
+            onnx_source: onnx_source.into(),
             tokenizer_files,
         }
     }

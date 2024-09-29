@@ -421,8 +421,6 @@ fn test_user_defined_reranking_model() {
     )
     .expect("Could not read onnx file");
 
-    let onnx_source = OnnxSource::Memory(onnx_file);
-
     // Load the tokenizer files
     let tokenizer_files = TokenizerFiles {
         tokenizer_file: read_file_to_bytes(&model_files_dir.join("tokenizer.json"))
@@ -437,7 +435,7 @@ fn test_user_defined_reranking_model() {
             .expect("Could not read tokenizer_config.json"),
     };
     // Create a UserDefinedEmbeddingModel
-    let user_defined_model = UserDefinedRerankingModel::new(onnx_source, tokenizer_files);
+    let user_defined_model = UserDefinedRerankingModel::new(onnx_file, tokenizer_files);
 
     // Try creating a TextEmbedding instance from the user-defined model
     let user_defined_reranker = TextRerank::try_new_from_user_defined(
