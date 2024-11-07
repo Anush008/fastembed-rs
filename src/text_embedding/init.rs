@@ -7,7 +7,10 @@ use crate::{
     EmbeddingModel, QuantizationMode,
 };
 use ort::{ExecutionProviderDispatch, Session};
-use std::path::{Path, PathBuf};
+use std::{
+    num::NonZero,
+    path::{Path, PathBuf},
+};
 use tokenizers::Tokenizer;
 
 use super::{DEFAULT_EMBEDDING_MODEL, DEFAULT_MAX_LENGTH};
@@ -21,6 +24,9 @@ pub struct InitOptions {
     pub max_length: usize,
     pub cache_dir: PathBuf,
     pub show_download_progress: bool,
+    /// parallel execution maximum number of threads, only active when parallel_execution is true
+    pub thread_nums: NonZero<usize>,
+    pub parallel_execution: bool,
 }
 
 impl InitOptions {
@@ -58,16 +64,34 @@ impl InitOptions {
         self.show_download_progress = show_download_progress;
         self
     }
+
+    /// Set the number of threads for parallel execution
+    pub fn with_thread_nums(mut self, thread_nums: NonZero<usize>) -> Self {
+        self.thread_nums = thread_nums;
+        self
+    }
+
+    /// Set whether to use parallel execution
+    pub fn with_parallel_execution(mut self, parallel_execution: bool) -> Self {
+        self.parallel_execution = parallel_execution;
+        if !parallel_execution {
+            self.thread_nums = NonZero::new(1).unwrap();
+        }
+        self
+    }
 }
 
 impl Default for InitOptions {
     fn default() -> Self {
+        let thread_nums = std::thread::available_parallelism().unwrap_or(NonZero::new(1).unwrap());
         Self {
             model_name: DEFAULT_EMBEDDING_MODEL,
             execution_providers: Default::default(),
             max_length: DEFAULT_MAX_LENGTH,
             cache_dir: Path::new(DEFAULT_CACHE_DIR).to_path_buf(),
             show_download_progress: true,
+            thread_nums,
+            parallel_execution: true,
         }
     }
 }
@@ -80,6 +104,9 @@ impl Default for InitOptions {
 pub struct InitOptionsUserDefined {
     pub execution_providers: Vec<ExecutionProviderDispatch>,
     pub max_length: usize,
+    /// parallel execution maximum number of threads, only active when parallel_execution is true
+    pub thread_nums: NonZero<usize>,
+    pub parallel_execution: bool,
 }
 
 impl InitOptionsUserDefined {
@@ -101,13 +128,29 @@ impl InitOptionsUserDefined {
         self.max_length = max_length;
         self
     }
+
+    pub fn with_thread_nums(mut self, thread_nums: NonZero<usize>) -> Self {
+        self.thread_nums = thread_nums;
+        self
+    }
+
+    pub fn with_parallel_execution(mut self, parallel_execution: bool) -> Self {
+        self.parallel_execution = parallel_execution;
+        if !parallel_execution {
+            self.thread_nums = NonZero::new(1).unwrap();
+        }
+        self
+    }
 }
 
 impl Default for InitOptionsUserDefined {
     fn default() -> Self {
+        let thread_nums = std::thread::available_parallelism().unwrap_or(NonZero::new(1).unwrap());
         Self {
             execution_providers: Default::default(),
             max_length: DEFAULT_MAX_LENGTH,
+            thread_nums,
+            parallel_execution: true,
         }
     }
 }
@@ -120,6 +163,8 @@ impl From<InitOptions> for InitOptionsUserDefined {
         InitOptionsUserDefined {
             execution_providers: options.execution_providers,
             max_length: options.max_length,
+            thread_nums: options.thread_nums,
+            parallel_execution: options.parallel_execution,
         }
     }
 }
