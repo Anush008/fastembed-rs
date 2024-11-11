@@ -26,7 +26,7 @@ anyhow = { version = "1" }
 hf-hub = { version = "0.3", default-features = false }
 image = "0.25.2"
 ndarray = { version = "0.16", default-features = false }
-ort = { git = "https://github.com/pykeio/ort", rev = "8a16adbb6b2a8ff721152e6a27ac50b920214737", default-features = false, features = [
+ort = { git = "https://github.com/pykeio/ort", rev = "2a9f66d", default-features = false, features = [
   "ndarray",
 ] }
 rayon = { version = "1.10", default-features = false }
