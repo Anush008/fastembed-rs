@@ -1,4 +1,5 @@
 use ndarray::{Array2, ArrayView, Dim, IxDynImpl};
+use ort::Value;
 
 use crate::pooling;
 
@@ -14,22 +15,23 @@ pub struct SingleBatchOutput<'r, 's> {
     pub attention_mask_array: Array2<i64>,
 }
 
-impl<'r, 's> SingleBatchOutput<'r, 's> {
+impl SingleBatchOutput<'_, '_> {
     /// Select the output from the session outputs based on the given precedence.
     ///
     /// This returns a view into the tensor, which can be used to perform further
     /// operations.
-    pub fn select_output(
-        &self,
+    pub fn select_output<'a>(
+        &'a self,
         precedence: &impl OutputPrecedence,
-    ) -> anyhow::Result<ArrayView<f32, Dim<IxDynImpl>>> {
-        let ort_output = precedence
+    ) -> anyhow::Result<ArrayView<'a, f32, Dim<IxDynImpl>>> {
+        let ort_output: &Value = precedence
             .key_precedence()
             .find_map(|key| match key {
                 OutputKey::OnlyOne => {
                     // Only export the value if there is only one output available.
                     if self.session_outputs.len() == 1 {
-                        self.session_outputs.values().next()
+                        let key = self.session_outputs.keys().next().unwrap();
+                        self.session_outputs.get(key)
                     } else {
                         None
                     }

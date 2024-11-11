@@ -21,7 +21,6 @@ use rayon::{
 };
 #[cfg(feature = "online")]
 use std::path::PathBuf;
-use std::thread::available_parallelism;
 use tokenizers::Tokenizer;
 
 #[cfg(feature = "online")]
@@ -44,9 +43,10 @@ impl TextEmbedding {
             max_length,
             cache_dir,
             show_download_progress,
+            node_thread_nums,
+            graph_thread_nums,
+            parallel_execution,
         } = options;
-
-        let threads = available_parallelism()?.get();
 
         let model_repo = TextEmbedding::retrieve_model(
             model_name.clone(),
@@ -74,7 +74,9 @@ impl TextEmbedding {
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
+            .with_intra_threads(node_thread_nums.get())?
+            .with_inter_threads(graph_thread_nums.get())?
+            .with_parallel_execution(parallel_execution)?
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
@@ -96,14 +98,17 @@ impl TextEmbedding {
         let InitOptionsUserDefined {
             execution_providers,
             max_length,
+            node_thread_nums,
+            graph_thread_nums,
+            parallel_execution,
         } = options;
-
-        let threads = available_parallelism()?.get();
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
+            .with_intra_threads(node_thread_nums.get())?
+            .with_inter_threads(graph_thread_nums.get())?
+            .with_parallel_execution(parallel_execution)?
             .commit_from_memory(&model.onnx_file)?;
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
@@ -221,7 +226,8 @@ impl TextEmbedding {
         }?;
 
         let batches =
-            anyhow::Result::<Vec<_>>::from_par_iter(texts.par_chunks(batch_size).map(|batch| {
+            // anyhow::Result::<Vec<_>>::from_par_iter(texts.par_chunks(batch_size).map(|batch| {
+                anyhow::Result::<Vec<_>>::from_iter(texts.chunks(batch_size).map(|batch| {
                 // Encode the texts in the batch
                 let inputs = batch.iter().map(|text| text.as_ref()).collect();
                 let encodings = self.tokenizer.encode_batch(inputs, true).map_err(|e| {
