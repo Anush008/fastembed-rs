@@ -158,6 +158,10 @@ println!("Rerank result: {:?}", results);
 
 Alternatively, local model files can be used for inference via the `try_new_from_user_defined(...)` methods of respective structs.
 
+## Support ✊
+
+If you're interested in supporting this library, please consider donating to our primary upstream dependency, [`ort`](https://github.com/pykeio/ort?tab=readme-ov-file#-sponsor-ort) - The Rust wrapper for the ONNX runtime.
+
 ## 🚒 Under the hood
 
 ### Why fast?
