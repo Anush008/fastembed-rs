@@ -158,23 +158,17 @@ println!("Rerank result: {:?}", results);
 
 Alternatively, local model files can be used for inference via the `try_new_from_user_defined(...)` methods of respective structs.
 
-## 🚒 Under the hood
+## ✊ Support
 
-### Why fast?
+To support the library, please consider donating to our primary upstream dependency, [`ort`](https://github.com/pykeio/ort?tab=readme-ov-file#-sponsor-ort) - The Rust wrapper for the ONNX runtime.
 
-It's important we justify the "fast" in FastEmbed. FastEmbed is fast because:
+## ⚙️ Under the hood
 
-1. Quantized model weights
-2. ONNX Runtime which allows for inference on CPU, GPU, and other dedicated runtimes
+It's important we justify the "fast" in FastEmbed. FastEmbed is fast because of:
 
-### Why light?
-
-1. No hidden dependencies via Huggingface Transformers
-
-### Why accurate?
-
-1. Better than OpenAI Ada-002
-2. Top of the Embedding leaderboards e.g. [MTEB](https://huggingface.co/spaces/mteb/leaderboard)
+1. Quantized model weights.
+2. ONNX Runtime which allows for inference on CPU, GPU, and other dedicated runtimes.
+3. No hidden dependencies via Huggingface Transformers.
 
 ## 📄 LICENSE
 

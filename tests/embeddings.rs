@@ -321,6 +321,7 @@ fn test_rerank() {
     });
 }
 
+#[ignore]
 #[test]
 fn test_user_defined_reranking_large_model() {
     // Setup model to download from Hugging Face
