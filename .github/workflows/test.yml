@@ -1,11 +1,6 @@
 name: "Cargo Tests"
 on:
   pull_request:
-    types:
-      - opened
-      - edited
-      - synchronize
-      - reopened
   schedule:
     - cron: 0 0 * * *
 
