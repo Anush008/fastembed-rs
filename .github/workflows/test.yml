@@ -1,17 +1,13 @@
 name: "Cargo Tests"
 on:
-    pull_request:
-      types:
-        - opened
-        - edited
-        - synchronize
-        - reopened
-    schedule:
-      - cron: 0 0 * * *
-  
+  pull_request:
+  schedule:
+    - cron: 0 0 * * *
+
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-Dwarnings"
+  ONNX_VERSION: v1.20.1
 
 jobs:
   test:
@@ -24,7 +20,7 @@ jobs:
         id: cache-build-restore
         uses: actions/cache/restore@v4
         with:
-          key: '${{ runner.os }}-cargox-${{ hashFiles(''**/Cargo.toml'') }}'
+          key: '${{ runner.os }}-onnxruntime-${{ env.ONNX_VERSION }}'
           path: |
             onnxruntime/build/Linux/Release/
 
@@ -32,7 +28,7 @@ jobs:
         if: steps.cache-build-restore.outputs.cache-hit != 'true'
         run: |
           echo Cloning ONNX Runtime repository...
-          git clone https://github.com/microsoft/onnxruntime --recursive --branch v1.20.1 --single-branch --depth 1
+          git clone https://github.com/microsoft/onnxruntime --recursive --branch $ONNX_VERSION --single-branch --depth 1
           cd onnxruntime
           ./build.sh --update --build --config Release --parallel --compile_no_warning_as_error --skip_submodule_sync
           cd ..
