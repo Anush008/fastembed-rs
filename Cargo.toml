@@ -27,7 +27,6 @@ hf-hub = { version = "0.3", default-features = false }
 image = "0.25.2"
 ndarray = { version = "0.16", default-features = false }
 ort = { version = "=2.0.0-rc.9", default-features = false, features = [
-  "half",
   "ndarray",
 ] }
 rayon = { version = "1.10", default-features = false }
