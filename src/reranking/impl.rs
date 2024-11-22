@@ -1,4 +1,8 @@
 use anyhow::Result;
+use ort::{
+    session::{builder::GraphOptimizationLevel, Session},
+    value::Value,
+};
 use std::thread::available_parallelism;
 
 #[cfg(feature = "online")]
@@ -10,7 +14,6 @@ use crate::{
 #[cfg(feature = "online")]
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::{s, Array};
-use ort::{GraphOptimizationLevel, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 use tokenizers::Tokenizer;
 
@@ -47,6 +50,8 @@ impl TextRerank {
 
     #[cfg(feature = "online")]
     pub fn try_new(options: RerankInitOptions) -> Result<TextRerank> {
+        use ort::session::{builder::GraphOptimizationLevel, Session};
+
         use super::RerankInitOptions;
 
         let RerankInitOptions {

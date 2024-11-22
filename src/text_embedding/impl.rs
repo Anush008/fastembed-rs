@@ -14,7 +14,10 @@ use hf_hub::{
     Cache,
 };
 use ndarray::Array;
-use ort::{GraphOptimizationLevel, Session, Value};
+use ort::{
+    session::{builder::GraphOptimizationLevel, Session},
+    value::Value,
+};
 use rayon::{
     iter::{FromParallelIterator, ParallelIterator},
     slice::ParallelSlice,
@@ -38,6 +41,8 @@ impl TextEmbedding {
     /// Uses the total number of CPUs available as the number of intra-threads
     #[cfg(feature = "online")]
     pub fn try_new(options: InitOptions) -> anyhow::Result<Self> {
+        use ort::session::{builder::GraphOptimizationLevel, Session};
+
         let InitOptions {
             model_name,
             execution_providers,

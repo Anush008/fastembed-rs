@@ -4,7 +4,10 @@ use hf_hub::{
     Cache,
 };
 use ndarray::{Array3, ArrayView3};
-use ort::{GraphOptimizationLevel, Session, Value};
+use ort::{
+    session::{builder::GraphOptimizationLevel, Session},
+    value::Value,
+};
 #[cfg(feature = "online")]
 use std::path::PathBuf;
 use std::{path::Path, thread::available_parallelism};
@@ -32,6 +35,8 @@ impl ImageEmbedding {
     /// Uses the total number of CPUs available as the number of intra-threads
     #[cfg(feature = "online")]
     pub fn try_new(options: ImageInitOptions) -> anyhow::Result<Self> {
+        use ort::session::{builder::GraphOptimizationLevel, Session};
+
         let ImageInitOptions {
             model_name,
             execution_providers,

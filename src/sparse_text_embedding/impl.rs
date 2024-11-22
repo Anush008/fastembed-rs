@@ -11,9 +11,8 @@ use hf_hub::{
     Cache,
 };
 use ndarray::{Array, CowArray};
+use ort::{session::Session, value::Value};
 #[cfg_attr(not(feature = "online"), allow(unused_imports))]
-use ort::GraphOptimizationLevel;
-use ort::{Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 #[cfg(feature = "online")]
 use std::path::PathBuf;
@@ -34,6 +33,8 @@ impl SparseTextEmbedding {
     /// Uses the total number of CPUs available as the number of intra-threads
     #[cfg(feature = "online")]
     pub fn try_new(options: SparseInitOptions) -> Result<Self> {
+        use ort::session::{builder::GraphOptimizationLevel, Session};
+
         use super::SparseInitOptions;
 
         let SparseInitOptions {

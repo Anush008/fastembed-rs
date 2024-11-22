@@ -13,7 +13,7 @@ authors = [
   "Luya Wang <luya.wang@qq.com>",
   "Tri <tri@triandco.com>",
   "Denny Wong <denwong47@hotmail.com>",
-  "Alex Rozgo <alex.rozgo@gmail.com>"
+  "Alex Rozgo <alex.rozgo@gmail.com>",
 ]
 documentation = "https://docs.rs/fastembed"
 repository = "https://github.com/Anush008/fastembed-rs"
@@ -26,8 +26,9 @@ anyhow = { version = "1" }
 hf-hub = { version = "0.3", default-features = false }
 image = "0.25.2"
 ndarray = { version = "0.16", default-features = false }
-ort = { version = "=2.0.0-rc.8", default-features = false, features = [
-    "half", "ndarray",
+ort = { version = "=2.0.0-rc.9", default-features = false, features = [
+  "half",
+  "ndarray",
 ] }
 rayon = { version = "1.10", default-features = false }
 serde_json = { version = "1" }
