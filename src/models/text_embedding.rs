@@ -63,6 +63,8 @@ pub enum EmbeddingModel {
     GTELargeENV15,
     /// Quantized Alibaba-NLP/gte-large-en-v1.5
     GTELargeENV15Q,
+    /// Qdrant/clip-ViT-B-32-text
+    ClipVitB32,
 }
 
 /// Centralized function to initialize the models map.
@@ -256,6 +258,13 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model_code: String::from("Alibaba-NLP/gte-large-en-v1.5"),
             model_file: String::from("onnx/model_quantized.onnx"),
         },
+        ModelInfo {
+            model: EmbeddingModel::ClipVitB32,
+            dim: 512,
+            description: String::from("CLIP text encoder based on ViT-B/32"),
+            model_code: String::from("Qdrant/clip-ViT-B-32-text"),
+            model_file: String::from("model.onnx"),
+        },
     ];
 
     // TODO: Use when out in stable
@@ -327,6 +336,8 @@ impl EmbeddingModel {
             EmbeddingModel::GTEBaseENV15Q => Some(Pooling::Cls),
             EmbeddingModel::GTELargeENV15 => Some(Pooling::Cls),
             EmbeddingModel::GTELargeENV15Q => Some(Pooling::Cls),
+
+            EmbeddingModel::ClipVitB32 => Some(Pooling::Mean),
         }
     }
 
