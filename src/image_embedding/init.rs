@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use ort::{ExecutionProviderDispatch, Session};
+use ort::{execution_providers::ExecutionProviderDispatch, session::Session};
 
 use crate::{ImageEmbeddingModel, DEFAULT_CACHE_DIR};
 

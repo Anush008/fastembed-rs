@@ -1,4 +1,5 @@
 use ndarray::{Array2, ArrayView, Dim, IxDynImpl};
+use ort::session::SessionOutputs;
 
 use crate::pooling;
 
@@ -10,7 +11,7 @@ use super::{OutputKey, OutputPrecedence};
 /// pooling etc. This struct should contain all the necessary information for the
 /// post-processing to be performed.
 pub struct SingleBatchOutput<'r, 's> {
-    pub session_outputs: ort::SessionOutputs<'r, 's>,
+    pub session_outputs: SessionOutputs<'r, 's>,
     pub attention_mask_array: Array2<i64>,
 }
 
@@ -23,17 +24,12 @@ impl<'r, 's> SingleBatchOutput<'r, 's> {
         &self,
         precedence: &impl OutputPrecedence,
     ) -> anyhow::Result<ArrayView<f32, Dim<IxDynImpl>>> {
-        let ort_output = precedence
+        let ort_output: &ort::value::Value = precedence
             .key_precedence()
             .find_map(|key| match key {
-                OutputKey::OnlyOne => {
-                    // Only export the value if there is only one output available.
-                    if self.session_outputs.len() == 1 {
-                        self.session_outputs.values().next()
-                    } else {
-                        None
-                    }
-                }
+                OutputKey::OnlyOne => self
+                    .session_outputs
+                    .get(self.session_outputs.keys().nth(0)?),
                 OutputKey::ByOrder(idx) => {
                     let x = self
                         .session_outputs

@@ -62,7 +62,7 @@ mod reranking;
 mod sparse_text_embedding;
 mod text_embedding;
 
-pub use ort::ExecutionProviderDispatch;
+pub use ort::execution_providers::ExecutionProviderDispatch;
 
 pub use crate::common::{
     read_file_to_bytes, Embedding, Error, SparseEmbedding, TokenizerFiles, DEFAULT_CACHE_DIR,

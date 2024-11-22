@@ -14,7 +14,10 @@ use hf_hub::{
     Cache,
 };
 use ndarray::Array;
-use ort::{GraphOptimizationLevel, Session, Value};
+use ort::{
+    session::{builder::GraphOptimizationLevel, Session},
+    value::Value,
+};
 use rayon::{
     iter::{FromParallelIterator, ParallelIterator},
     slice::ParallelSlice,

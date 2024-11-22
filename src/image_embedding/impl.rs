@@ -4,7 +4,10 @@ use hf_hub::{
     Cache,
 };
 use ndarray::{Array3, ArrayView3};
-use ort::{GraphOptimizationLevel, Session, Value};
+use ort::{
+    session::{builder::GraphOptimizationLevel, Session},
+    value::Value,
+};
 #[cfg(feature = "online")]
 use std::path::PathBuf;
 use std::{path::Path, thread::available_parallelism};
