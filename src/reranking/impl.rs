@@ -50,8 +50,6 @@ impl TextRerank {
 
     #[cfg(feature = "online")]
     pub fn try_new(options: RerankInitOptions) -> Result<TextRerank> {
-        use ort::session::{builder::GraphOptimizationLevel, Session};
-
         use super::RerankInitOptions;
 
         let RerankInitOptions {
