@@ -11,7 +11,7 @@ use hf_hub::{
     Cache,
 };
 use ndarray::{Array, CowArray};
-use ort::{session::builder::GraphOptimizationLevel, session::Session, value::Value};
+use ort::{session::Session, value::Value};
 #[cfg_attr(not(feature = "online"), allow(unused_imports))]
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 #[cfg(feature = "online")]
@@ -34,6 +34,7 @@ impl SparseTextEmbedding {
     #[cfg(feature = "online")]
     pub fn try_new(options: SparseInitOptions) -> Result<Self> {
         use super::SparseInitOptions;
+        use ort::{session::builder::GraphOptimizationLevel, session::Session};
 
         let SparseInitOptions {
             model_name,

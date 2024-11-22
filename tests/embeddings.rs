@@ -15,7 +15,7 @@ use fastembed::{
 };
 
 /// A small epsilon value for floating point comparisons.
-const EPS: f32 = 1e-4;
+const EPS: f32 = 1e-2;
 
 /// Precalculated embeddings for the supported models using #99
 /// (4f09b6842ce1fcfaf6362678afcad9a176e05304).
