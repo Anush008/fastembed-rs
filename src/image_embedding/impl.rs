@@ -111,8 +111,7 @@ impl ImageEmbedding {
         let cache = Cache::new(cache_dir);
         let api = ApiBuilder::from_cache(cache)
             .with_progress(show_download_progress)
-            .build()
-            .unwrap();
+            .build()?;
 
         let repo = api.model(model.to_string());
         Ok(repo)
