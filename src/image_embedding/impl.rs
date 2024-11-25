@@ -16,7 +16,7 @@ use crate::{
     common::normalize, models::image_embedding::models_list, Embedding, ImageEmbeddingModel,
     ModelInfo,
 };
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 
 #[cfg(feature = "online")]
 use super::ImageInitOptions;
@@ -52,13 +52,13 @@ impl ImageEmbedding {
 
         let preprocessor_file = model_repo
             .get("preprocessor_config.json")
-            .unwrap_or_else(|_| panic!("Failed to retrieve preprocessor_config.json"));
+            .context("Failed to retrieve preprocessor_config.json")?;
         let preprocessor = Compose::from_file(preprocessor_file)?;
 
         let model_file_name = ImageEmbedding::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo
             .get(&model_file_name)
-            .unwrap_or_else(|_| panic!("Failed to retrieve {} ", model_file_name));
+            .context(format!("Failed to retrieve {}", model_file_name))?;
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
@@ -141,7 +141,7 @@ impl ImageEmbedding {
         // Determine the batch size, default if not specified
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
 
-        let output = images
+        images
             .par_chunks(batch_size)
             .map(|batch| {
                 // Encode the texts in the batch
@@ -189,9 +189,21 @@ impl ImageEmbedding {
 
                 Ok(embeddings)
             })
-            .flat_map(|result: Result<Vec<Vec<f32>>, anyhow::Error>| result.unwrap())
-            .collect();
-
-        Ok(output)
+            .try_fold(
+                || vec![],
+                |mut a, result| {
+                    result.map(|mut es| {
+                        a.append(&mut es);
+                        a
+                    })
+                },
+            )
+            .try_reduce(
+                || vec![],
+                |mut a, mut b| {
+                    a.append(&mut b);
+                    Ok(a)
+                },
+            )
     }
 }
