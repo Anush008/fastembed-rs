@@ -188,21 +188,9 @@ impl ImageEmbedding {
 
                 Ok(embeddings)
             })
-            .try_fold(
-                || vec![],
-                |mut a, result| {
-                    result.map(|mut es| {
-                        a.append(&mut es);
-                        a
-                    })
-                },
-            )
-            .try_reduce(
-                || vec![],
-                |mut a, mut b| {
-                    a.append(&mut b);
-                    Ok(a)
-                },
-            )
+            .collect::<Result<Vec<_>, Error>>()?
+            .into_iter()
+            .flatten()
+            .collect();
     }
 }
