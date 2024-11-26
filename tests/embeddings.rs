@@ -463,7 +463,6 @@ fn test_user_defined_reranking_model() {
 }
 
 #[test]
-#[ignore]
 fn test_image_embedding_model() {
     ImageEmbedding::list_supported_models()
         .par_iter()
@@ -488,6 +487,7 @@ fn test_image_embedding_model() {
 }
 
 #[test]
+#[ignore]
 fn test_nomic_embed_vision_v1_5() {
     fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
         let dot_product = a.iter().zip(b).map(|(x, y)| x * y).sum::<f32>();
