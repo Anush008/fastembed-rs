@@ -16,9 +16,9 @@ use crate::{
     common::normalize, models::image_embedding::models_list, Embedding, ImageEmbeddingModel,
     ModelInfo,
 };
+use anyhow::anyhow;
 #[cfg(feature = "online")]
 use anyhow::Context;
-use anyhow::anyhow;
 
 #[cfg(feature = "online")]
 use super::ImageInitOptions;
