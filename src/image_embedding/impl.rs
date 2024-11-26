@@ -140,7 +140,7 @@ impl ImageEmbedding {
         // Determine the batch size, default if not specified
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
 
-        images
+        let output = images
             .par_chunks(batch_size)
             .map(|batch| {
                 // Encode the texts in the batch
@@ -188,9 +188,11 @@ impl ImageEmbedding {
 
                 Ok(embeddings)
             })
-            .collect::<Result<Vec<_>, Error>>()?
+            .collect::<anyhow::Result<Vec<_>>>()?
             .into_iter()
             .flatten()
             .collect();
+
+        Ok(output)
     }
 }

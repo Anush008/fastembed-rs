@@ -188,7 +188,9 @@ impl SparseTextEmbedding {
 
                 Ok(embeddings)
             })
-            .flat_map(|result: Result<Vec<SparseEmbedding>, anyhow::Error>| result.unwrap())
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
             .collect();
 
         Ok(output)

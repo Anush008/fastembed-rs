@@ -197,7 +197,9 @@ impl TextRerank {
 
                 Ok(scores)
             })
-            .flat_map(|result: Result<Vec<f32>, anyhow::Error>| result.unwrap())
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
             .collect();
 
         // Return top_n_result of type Vec<RerankResult> ordered by score in descending order, don't use binary heap
