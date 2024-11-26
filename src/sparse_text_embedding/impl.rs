@@ -4,6 +4,8 @@ use crate::{
     models::sparse::{models_list, SparseModel},
     ModelInfo, SparseEmbedding,
 };
+#[cfg(feature = "online")]
+use anyhow::Context;
 use anyhow::Result;
 #[cfg(feature = "online")]
 use hf_hub::{
@@ -55,7 +57,7 @@ impl SparseTextEmbedding {
         let model_file_name = SparseTextEmbedding::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo
             .get(&model_file_name)
-            .unwrap_or_else(|_| panic!("Failed to retrieve {} ", model_file_name));
+            .context(format!("Failed to retrieve {} ", model_file_name))?;
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
@@ -91,8 +93,7 @@ impl SparseTextEmbedding {
         let cache = Cache::new(cache_dir);
         let api = ApiBuilder::from_cache(cache)
             .with_progress(show_download_progress)
-            .build()
-            .unwrap();
+            .build()?;
 
         let repo = api.model(model.to_string());
         Ok(repo)
@@ -189,7 +190,9 @@ impl SparseTextEmbedding {
 
                 Ok(embeddings)
             })
-            .flat_map(|result: Result<Vec<SparseEmbedding>, anyhow::Error>| result.unwrap())
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
             .collect();
 
         Ok(output)

@@ -17,6 +17,8 @@ use crate::{
     ModelInfo,
 };
 use anyhow::anyhow;
+#[cfg(feature = "online")]
+use anyhow::Context;
 
 #[cfg(feature = "online")]
 use super::ImageInitOptions;
@@ -52,13 +54,13 @@ impl ImageEmbedding {
 
         let preprocessor_file = model_repo
             .get("preprocessor_config.json")
-            .unwrap_or_else(|_| panic!("Failed to retrieve preprocessor_config.json"));
+            .context("Failed to retrieve preprocessor_config.json")?;
         let preprocessor = Compose::from_file(preprocessor_file)?;
 
         let model_file_name = ImageEmbedding::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo
             .get(&model_file_name)
-            .unwrap_or_else(|_| panic!("Failed to retrieve {} ", model_file_name));
+            .context(format!("Failed to retrieve {}", model_file_name))?;
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
@@ -111,8 +113,7 @@ impl ImageEmbedding {
         let cache = Cache::new(cache_dir);
         let api = ApiBuilder::from_cache(cache)
             .with_progress(show_download_progress)
-            .build()
-            .unwrap();
+            .build()?;
 
         let repo = api.model(model.to_string());
         Ok(repo)
@@ -189,7 +190,9 @@ impl ImageEmbedding {
 
                 Ok(embeddings)
             })
-            .flat_map(|result: Result<Vec<Vec<f32>>, anyhow::Error>| result.unwrap())
+            .collect::<anyhow::Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
             .collect();
 
         Ok(output)
