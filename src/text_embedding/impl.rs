@@ -8,7 +8,9 @@ use crate::{
     pooling::Pooling,
     Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, QuantizationMode, SingleBatchOutput,
 };
-use anyhow::{Context, Result};
+#[cfg(feature = "online")]
+use anyhow::Context;
+use anyhow::Result;
 #[cfg(feature = "online")]
 use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},

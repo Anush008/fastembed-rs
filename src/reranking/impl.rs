@@ -1,4 +1,6 @@
-use anyhow::{Context, Result};
+#[cfg(feature = "online")]
+use anyhow::Context;
+use anyhow::Result;
 use ort::{
     session::{builder::GraphOptimizationLevel, Session},
     value::Value,
