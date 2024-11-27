@@ -173,20 +173,46 @@ impl ImageEmbedding {
                 let outputs = self.session.run(session_inputs)?;
 
                 // Try to get the only output key
-                // If multiple, then default to `image_embeds`
+                // If multiple, then default to few known keys `image_embeds` and `last_hidden_state`
                 let last_hidden_state_key = match outputs.len() {
-                    1 => outputs.keys().next().unwrap(),
-                    _ => "image_embeds",
+                    1 => vec![outputs.keys().next().unwrap()],
+                    _ => vec!["image_embeds", "last_hidden_state"],
                 };
 
-                // Extract and normalize embeddings
-                let output_data = outputs[last_hidden_state_key].try_extract_tensor::<f32>()?;
+                // Extract tensor and handle different dimensionalities
+                let output_data = last_hidden_state_key
+                    .iter()
+                    .find_map(|&key| {
+                        outputs
+                            .get(key)
+                            .and_then(|v| v.try_extract_tensor::<f32>().ok())
+                    })
+                    .ok_or_else(|| anyhow!("Could not extract tensor from any known output key"))?;
+                let shape = output_data.shape();
 
-                let embeddings: Vec<Vec<f32>> = output_data
-                    .rows()
-                    .into_iter()
-                    .map(|row| normalize(row.as_slice().unwrap()))
-                    .collect();
+                let embeddings: Vec<Vec<f32>> = match shape.len() {
+                    3 => {
+                        // For 3D output [batch_size, sequence_length, hidden_size]
+                        // Take only the first token, sequence_length[0] (CLS token), embedding
+                        // and return [batch_size, hidden_size]
+                        (0..shape[0])
+                            .map(|batch_idx| {
+                                let cls_embedding =
+                                    output_data.slice(ndarray::s![batch_idx, 0, ..]).to_vec();
+                                normalize(&cls_embedding)
+                            })
+                            .collect()
+                    }
+                    2 => {
+                        // For 2D output [batch_size, hidden_size]
+                        output_data
+                            .rows()
+                            .into_iter()
+                            .map(|row| normalize(row.as_slice().unwrap()))
+                            .collect()
+                    }
+                    _ => return Err(anyhow!("Unexpected output tensor shape: {:?}", shape)),
+                };
 
                 Ok(embeddings)
             })
