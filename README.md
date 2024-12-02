@@ -28,6 +28,7 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 - [**BAAI/bge-small-en-v1.5**](https://huggingface.co/BAAI/bge-small-en-v1.5) - Default
 - [**sentence-transformers/all-MiniLM-L6-v2**](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
 - [**mixedbread-ai/mxbai-embed-large-v1**](https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1)
+- [**Qdrant/clip-ViT-B-32-text**](https://huggingface.co/Qdrant/clip-ViT-B-32-text) - pairs with the image model clip-ViT-B-32-vision for image-to-text search
   
 <details>
   <summary>Click to see full List</summary>
@@ -39,7 +40,7 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 - [**sentence-transformers/paraphrase-MiniLM-L12-v2**](https://huggingface.co/sentence-transformers/paraphrase-MiniLM-L12-v2)
 - [**sentence-transformers/paraphrase-multilingual-mpnet-base-v2**](https://huggingface.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2)
 - [**nomic-ai/nomic-embed-text-v1**](https://huggingface.co/nomic-ai/nomic-embed-text-v1)
-- [**nomic-ai/nomic-embed-text-v1.5**](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5)
+- [**nomic-ai/nomic-embed-text-v1.5**](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5) - pairs with the image model nomic-embed-vision-v1.5 for image-to-text search
 - [**intfloat/multilingual-e5-small**](https://huggingface.co/intfloat/multilingual-e5-small)
 - [**intfloat/multilingual-e5-base**](https://huggingface.co/intfloat/multilingual-e5-base)
 - [**intfloat/multilingual-e5-large**](https://huggingface.co/intfloat/multilingual-e5-large)
@@ -58,6 +59,7 @@ The default model is Flag Embedding, which is top of the [MTEB](https://huggingf
 - [**Qdrant/resnet50-onnx**](https://huggingface.co/Qdrant/resnet50-onnx)
 - [**Qdrant/Unicom-ViT-B-16**](https://huggingface.co/Qdrant/Unicom-ViT-B-16)
 - [**Qdrant/Unicom-ViT-B-32**](https://huggingface.co/Qdrant/Unicom-ViT-B-32)
+- [**nomic-ai/nomic-embed-vision-v1.5**](https://huggingface.co/nomic-ai/nomic-embed-vision-v1.5)
 
 ### Reranking
 
@@ -158,23 +160,17 @@ println!("Rerank result: {:?}", results);
 
 Alternatively, local model files can be used for inference via the `try_new_from_user_defined(...)` methods of respective structs.
 
-## 🚒 Under the hood
+## ✊ Support
 
-### Why fast?
+To support the library, please consider donating to our primary upstream dependency, [`ort`](https://github.com/pykeio/ort?tab=readme-ov-file#-sponsor-ort) - The Rust wrapper for the ONNX runtime.
 
-It's important we justify the "fast" in FastEmbed. FastEmbed is fast because:
+## ⚙️ Under the hood
 
-1. Quantized model weights
-2. ONNX Runtime which allows for inference on CPU, GPU, and other dedicated runtimes
+It's important we justify the "fast" in FastEmbed. FastEmbed is fast because of:
 
-### Why light?
-
-1. No hidden dependencies via Huggingface Transformers
-
-### Why accurate?
-
-1. Better than OpenAI Ada-002
-2. Top of the Embedding leaderboards e.g. [MTEB](https://huggingface.co/spaces/mteb/leaderboard)
+1. Quantized model weights.
+2. ONNX Runtime which allows for inference on CPU, GPU, and other dedicated runtimes.
+3. No hidden dependencies via Huggingface Transformers.
 
 ## 📄 LICENSE
 

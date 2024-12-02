@@ -1,17 +1,13 @@
 name: "Cargo Tests"
 on:
-    pull_request:
-      types:
-        - opened
-        - edited
-        - synchronize
-        - reopened
-    schedule:
-      - cron: 0 0 * * *
-  
+  pull_request:
+  schedule:
+    - cron: 0 0 * * *
+
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-Dwarnings"
+  ONNX_VERSION: v1.20.1
 
 jobs:
   test:
@@ -20,14 +16,40 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Restore Builds
+        id: cache-build-restore
+        uses: actions/cache/restore@v4
+        with:
+          key: '${{ runner.os }}-onnxruntime-${{ env.ONNX_VERSION }}'
+          path: |
+            onnxruntime/build/Linux/Release/
+
+      - name: Compile ONNX Runtime for Linux
+        if: steps.cache-build-restore.outputs.cache-hit != 'true'
+        run: |
+          echo Cloning ONNX Runtime repository...
+          git clone https://github.com/microsoft/onnxruntime --recursive --branch $ONNX_VERSION --single-branch --depth 1
+          cd onnxruntime
+          ./build.sh --update --build --config Release --parallel --compile_no_warning_as_error --skip_submodule_sync
+          cd ..
+
       - name: Cargo Test With Release Build
-        run: cargo test --release
+        run: ORT_LIB_LOCATION="$(pwd)/onnxruntime/build/Linux/Release" cargo test --release --no-default-features --features online
 
       - name: Cargo Test Offline
-        run: cargo test --no-default-features --features ort-download-binaries
+        run: ORT_LIB_LOCATION="$(pwd)/onnxruntime/build/Linux/Release" cargo test --no-default-features
 
       - name: Cargo Clippy
         run: cargo clippy
 
       - name: Cargo FMT
         run: cargo fmt --all -- --check
+
+      - name: Always Save Cache
+        id: cache-build-save
+        if: always() && steps.cache-build-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: '${{ steps.cache-build-restore.outputs.cache-primary-key }}'
+          path: |
+            onnxruntime/build/Linux/Release/

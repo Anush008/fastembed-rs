@@ -12,6 +12,8 @@ pub enum ImageEmbeddingModel {
     UnicomVitB16,
     /// Qdrant/Unicom-ViT-B-32
     UnicomVitB32,
+    /// nomic-ai/nomic-embed-vision-v1.5
+    NomicEmbedVisionV15,
 }
 
 pub fn models_list() -> Vec<ModelInfo<ImageEmbeddingModel>> {
@@ -43,7 +45,14 @@ pub fn models_list() -> Vec<ModelInfo<ImageEmbeddingModel>> {
             description: String::from("Unicom Unicom-ViT-B-32 from open-metric-learning"),
             model_code: String::from("Qdrant/Unicom-ViT-B-32"),
             model_file: String::from("model.onnx"),
-        }
+        },
+        ModelInfo {
+            model: ImageEmbeddingModel::NomicEmbedVisionV15,
+            dim: 768,
+            description: String::from("Nomic NomicEmbedVisionV15"),
+            model_code: String::from("nomic-ai/nomic-embed-vision-v1.5"),
+            model_file: String::from("onnx/model.onnx"),
+        },
     ];
 
     // TODO: Use when out in stable

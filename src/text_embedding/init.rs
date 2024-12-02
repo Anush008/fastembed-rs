@@ -6,7 +6,7 @@ use crate::{
     pooling::Pooling,
     EmbeddingModel, QuantizationMode,
 };
-use ort::{ExecutionProviderDispatch, Session};
+use ort::{execution_providers::ExecutionProviderDispatch, session::Session};
 use std::{
     num::NonZero,
     path::{Path, PathBuf},

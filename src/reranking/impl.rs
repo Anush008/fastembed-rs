@@ -1,4 +1,10 @@
+#[cfg(feature = "online")]
+use anyhow::Context;
 use anyhow::Result;
+use ort::{
+    session::{builder::GraphOptimizationLevel, Session},
+    value::Value,
+};
 use std::thread::available_parallelism;
 
 #[cfg(feature = "online")]
@@ -10,7 +16,6 @@ use crate::{
 #[cfg(feature = "online")]
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::{s, Array};
-use ort::{GraphOptimizationLevel, Session, Value};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 use tokenizers::Tokenizer;
 
@@ -67,15 +72,16 @@ impl TextRerank {
         let model_repo = api.model(model_name.to_string());
 
         let model_file_name = TextRerank::get_model_info(&model_name).model_file;
-        let model_file_reference = model_repo
-            .get(&model_file_name)
-            .unwrap_or_else(|_| panic!("Failed to retrieve model file: {}", model_file_name));
+        let model_file_reference = model_repo.get(&model_file_name).context(format!(
+            "Failed to retrieve model file: {}",
+            model_file_name
+        ))?;
         let additional_files = TextRerank::get_model_info(&model_name).additional_files;
         for additional_file in additional_files {
-            let _additional_file_reference =
-                model_repo.get(&additional_file).unwrap_or_else(|_| {
-                    panic!("Failed to retrieve additional file: {}", additional_file)
-                });
+            let _additional_file_reference = model_repo.get(&additional_file).context(format!(
+                "Failed to retrieve additional file: {}",
+                additional_file
+            ))?;
         }
 
         let session = Session::builder()?
@@ -193,7 +199,9 @@ impl TextRerank {
 
                 Ok(scores)
             })
-            .flat_map(|result: Result<Vec<f32>, anyhow::Error>| result.unwrap())
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
             .collect();
 
         // Return top_n_result of type Vec<RerankResult> ordered by score in descending order, don't use binary heap
