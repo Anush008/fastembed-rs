@@ -26,12 +26,12 @@ anyhow = { version = "1" }
 hf-hub = { version = "0.3", default-features = false }
 image = "0.25.2"
 ndarray = { version = "0.16", default-features = false }
-ort = { version = "=2.0.0-rc.9", default-features = false, features = [
+ort = { git = "https://github.com/pykeio/ort", recv = "5637d5f", default-features = false, features = [
   "ndarray",
 ] }
 rayon = { version = "1.10", default-features = false }
 serde_json = { version = "1" }
-tokenizers = { version = "0.19", default-features = false, features = ["onig"] }
+tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
 
 [features]
 default = ["ort-download-binaries", "online"]
