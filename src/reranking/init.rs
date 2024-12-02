@@ -7,6 +7,7 @@ use crate::{RerankerModel, TokenizerFiles, DEFAULT_CACHE_DIR};
 
 use super::{DEFAULT_MAX_LENGTH, DEFAULT_RE_RANKER_MODEL};
 
+#[derive(Debug)]
 pub struct TextRerank {
     pub tokenizer: Tokenizer,
     pub(crate) session: Session,
