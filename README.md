@@ -93,8 +93,8 @@ let model = TextEmbedding::try_new(Default::default())?;
 
 // With custom InitOptions
 let model = TextEmbedding::try_new(
-        InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true),
-    )?;
+    InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true),
+)?;
 
 let documents = vec![
     "passage: Hello, World!",
@@ -149,9 +149,9 @@ let documents = vec![
     "panda is animal",
     "i dont know",
     "kind of mammal",
-];
+    ];
 
-// Rerank with the default batch size
+// Rerank with the default batch size, 256 and return document contents
 let results = model.rerank("what is panda?", documents, true, None)?;
 println!("Rerank result: {:?}", results);
 ```
