@@ -15,7 +15,7 @@ pub struct SingleBatchOutput<'r, 's> {
     pub attention_mask_array: Array2<i64>,
 }
 
-impl<'r, 's> SingleBatchOutput<'r, 's> {
+impl SingleBatchOutput<'_, '_> {
     /// Select the output from the session outputs based on the given precedence.
     ///
     /// This returns a view into the tensor, which can be used to perform further
