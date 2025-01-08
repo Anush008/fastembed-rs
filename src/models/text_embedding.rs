@@ -65,6 +65,10 @@ pub enum EmbeddingModel {
     GTELargeENV15Q,
     /// Qdrant/clip-ViT-B-32-text
     ClipVitB32,
+    /// jinaai/jina-embeddings-v2-base-code
+    JinaEmbeddingsV2BaseCode,
+    /// jinaai/jina-embeddings-v3
+    JinaEmbeddingsV3,
 }
 
 /// Centralized function to initialize the models map.
@@ -265,6 +269,20 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model_code: String::from("Qdrant/clip-ViT-B-32-text"),
             model_file: String::from("model.onnx"),
         },
+        ModelInfo {
+            model: EmbeddingModel::JinaEmbeddingsV2BaseCode,
+            dim: 768,
+            description: String::from("Jina embeddings v2 base code"),
+            model_code: String::from("jinaai/jina-embeddings-v2-base-code"),
+            model_file: String::from("onnx/model.onnx"),
+        },
+        ModelInfo {
+            model: EmbeddingModel::JinaEmbeddingsV3,
+            dim: 1024,
+            description: String::from("Jina embeddings v3"),
+            model_code: String::from("jinaai/jina-embeddings-v3"),
+            model_file: String::from("onnx/model.onnx"),
+        },
     ];
 
     // TODO: Use when out in stable
@@ -338,6 +356,9 @@ impl EmbeddingModel {
             EmbeddingModel::GTELargeENV15Q => Some(Pooling::Cls),
 
             EmbeddingModel::ClipVitB32 => Some(Pooling::Mean),
+
+            EmbeddingModel::JinaEmbeddingsV2BaseCode => Some(Pooling::Mean),
+            EmbeddingModel::JinaEmbeddingsV3 => Some(Pooling::Mean),
         }
     }
 
