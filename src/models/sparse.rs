@@ -16,6 +16,7 @@ pub fn models_list() -> Vec<ModelInfo<SparseModel>> {
         description: String::from("Splade sparse vector model for commercial use, v1"),
         model_code: String::from("Qdrant/Splade_PP_en_v1"),
         model_file: String::from("model.onnx"),
+        additional_files: Vec::new(),
     }]
 }
 
