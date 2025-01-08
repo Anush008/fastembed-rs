@@ -65,6 +65,8 @@ pub enum EmbeddingModel {
     ClipVitB32,
     /// jinaai/jina-embeddings-v2-base-code
     JinaEmbeddingsV2BaseCode,
+    /// jinaai/jina-embeddings-v3
+    JinaEmbeddingsV3,
 }
 
 /// Centralized function to initialize the models map.
@@ -307,6 +309,22 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model_code: String::from("jinaai/jina-embeddings-v2-base-code"),
             model_file: String::from("onnx/model.onnx"),
             additional_files: Vec::new(),
+        },
+        ModelInfo {
+            model: EmbeddingModel::JinaEmbeddingsV2BaseCode,
+            dim: 768,
+            description: String::from("Jina embeddings v2 base code"),
+            model_code: String::from("jinaai/jina-embeddings-v2-base-code"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: Vec::new(),
+        },
+        ModelInfo {
+            model: EmbeddingModel::JinaEmbeddingsV3,
+            dim: 1024,
+            description: String::from("Jina embeddings v3"),
+            model_code: String::from("jinaai/jina-embeddings-v3"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: vec!["onnx/model.onnx_data".to_string()],
         },
     ];
 
