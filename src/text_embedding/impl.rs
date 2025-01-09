@@ -285,7 +285,8 @@ impl TextEmbedding {
             // the fly. Might be interesting to add later. From their docs, you can also select no
             // task, so we just input 0 for now.
             if self.needs_task_id {
-                let task_id_array = Array::from_shape_vec((batch_size, 1), vec![0; batch_size])?;
+                let task_id_array =
+                    Array::from_shape_vec((batch_size, 1), vec![0_i64; batch_size])?;
                 session_inputs.push(("task_id".into(), Value::from_array(task_id_array)?.into()));
             }
 
