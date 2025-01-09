@@ -132,10 +132,14 @@ impl TextEmbedding {
             .inputs
             .iter()
             .any(|input| input.name == "token_type_ids");
+
+        let needs_task_id = session.inputs.iter().any(|input| input.name == "task_id");
+
         Self {
             tokenizer,
             session,
             need_token_type_ids,
+            needs_task_id,
             pooling: post_process,
             quantization,
         }
@@ -275,6 +279,14 @@ impl TextEmbedding {
                     "token_type_ids".into(),
                     Value::from_array(token_type_ids_array)?.into(),
                 ));
+            }
+
+            // jina v3 uses a lora adapter for a `task`, used for different kinds of embeddings on
+            // the fly. Might be interesting to add later. From their docs, you can also select no
+            // task, so we just input 0 for now.
+            if self.needs_task_id {
+                let task_id_array = Array::from_shape_vec((batch_size, 1), vec![0; batch_size])?;
+                session_inputs.push(("task_id".into(), Value::from_array(task_id_array)?.into()));
             }
 
             Ok(
