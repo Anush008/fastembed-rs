@@ -238,7 +238,7 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             description: String::from("Large model of multilingual E5 Text Embeddings"),
             model_code: String::from("Qdrant/multilingual-e5-large-onnx"),
             model_file: String::from("model.onnx"),
-            additional_files: Vec::new(),
+            additional_files: vec!["model.onnx_data".to_string()],
         },
         ModelInfo {
             model: EmbeddingModel::MxbaiEmbedLargeV1,
@@ -286,7 +286,7 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             description: String::from("Quantized Large multilingual embedding model from Alibaba"),
             model_code: String::from("Alibaba-NLP/gte-large-en-v1.5"),
             model_file: String::from("onnx/model_quantized.onnx"),
-            additional_files: vec!["model.onnx_data".to_string()],
+            additional_files: Vec::new(),
         },
         ModelInfo {
             model: EmbeddingModel::ClipVitB32,
@@ -310,7 +310,7 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             description: String::from("Jina embeddings v3"),
             model_code: String::from("jinaai/jina-embeddings-v3"),
             model_file: String::from("onnx/model.onnx"),
-            additional_files: vec!["onnx/model.onxx_data".to_string()],
+            additional_files: vec!["onnx/model.onnx_data".to_string()],
         },
     ];
 
