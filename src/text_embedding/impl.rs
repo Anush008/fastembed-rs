@@ -66,12 +66,12 @@ impl TextEmbedding {
             .get(model_file_name)
             .context(format!("Failed to retrieve {}", model_file_name))?;
 
-        // TODO: If more models need .onnx_data, implement a better way to handle this
-        // Probably by adding `additional_files` field in the `ModelInfo` struct
-        if model_name == EmbeddingModel::MultilingualE5Large {
-            model_repo
-                .get("model.onnx_data")
-                .expect("Failed to retrieve model.onnx_data.");
+        if !model_info.additional_files.is_empty() {
+            for file in &model_info.additional_files {
+                model_repo
+                    .get(file)
+                    .context(format!("Failed to retrieve {}", file))?;
+            }
         }
 
         // prioritise loading pooling config if available, if not (thanks qdrant!), look for it in hardcoded
@@ -132,6 +132,7 @@ impl TextEmbedding {
             .inputs
             .iter()
             .any(|input| input.name == "token_type_ids");
+
         Self {
             tokenizer,
             session,
