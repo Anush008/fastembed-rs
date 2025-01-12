@@ -1,29 +1,29 @@
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
     models::sparse::{models_list, SparseModel},
     ModelInfo, SparseEmbedding,
 };
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use anyhow::Context;
 use anyhow::Result;
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},
     Cache,
 };
 use ndarray::{Array, ArrayViewD, Axis, CowArray, Dim};
 use ort::{session::Session, value::Value};
-#[cfg_attr(not(feature = "online"), allow(unused_imports))]
+#[cfg_attr(not(feature = "hf-hub"), allow(unused_imports))]
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use std::path::PathBuf;
 use tokenizers::Tokenizer;
 
-#[cfg_attr(not(feature = "online"), allow(unused_imports))]
+#[cfg_attr(not(feature = "hf-hub"), allow(unused_imports))]
 use std::thread::available_parallelism;
 
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use super::SparseInitOptions;
 use super::{SparseTextEmbedding, DEFAULT_BATCH_SIZE};
 
@@ -33,7 +33,7 @@ impl SparseTextEmbedding {
     /// Uses the highest level of Graph optimization
     ///
     /// Uses the total number of CPUs available as the number of intra-threads
-    #[cfg(feature = "online")]
+    #[cfg(feature = "hf-hub")]
     pub fn try_new(options: SparseInitOptions) -> Result<Self> {
         use super::SparseInitOptions;
         use ort::{session::builder::GraphOptimizationLevel, session::Session};
@@ -70,7 +70,7 @@ impl SparseTextEmbedding {
     }
 
     /// Private method to return an instance
-    #[cfg_attr(not(feature = "online"), allow(dead_code))]
+    #[cfg_attr(not(feature = "hf-hub"), allow(dead_code))]
     fn new(tokenizer: Tokenizer, session: Session, model: SparseModel) -> Self {
         let need_token_type_ids = session
             .inputs
@@ -84,7 +84,7 @@ impl SparseTextEmbedding {
         }
     }
     /// Return the SparseTextEmbedding model's directory from cache or remote retrieval
-    #[cfg(feature = "online")]
+    #[cfg(feature = "hf-hub")]
     fn retrieve_model(
         model: SparseModel,
         cache_dir: PathBuf,

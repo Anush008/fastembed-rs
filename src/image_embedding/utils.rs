@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use image::{imageops::FilterType, DynamicImage, GenericImageView};
 use ndarray::{Array, Array3};
 use std::ops::{Div, Sub};
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use std::{fs::read_to_string, path::Path};
 
 pub enum TransformData {
@@ -171,7 +171,7 @@ impl Compose {
         Self { transforms }
     }
 
-    #[cfg(feature = "online")]
+    #[cfg(feature = "hf-hub")]
     pub fn from_file<P: AsRef<Path>>(file: P) -> anyhow::Result<Self> {
         let content = read_to_string(file)?;
         let config = serde_json::from_str(&content)?;

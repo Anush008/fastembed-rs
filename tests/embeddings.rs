@@ -1,4 +1,4 @@
-#![cfg(feature = "online")]
+#![cfg(feature = "hf-hub")]
 
 use std::fs;
 use std::path::Path;

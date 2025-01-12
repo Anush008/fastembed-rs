@@ -1,6 +1,6 @@
 //! The definition of the main struct for text embeddings - [`TextEmbedding`].
 
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
     common::load_tokenizer,
@@ -8,10 +8,10 @@ use crate::{
     pooling::Pooling,
     Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, QuantizationMode, SingleBatchOutput,
 };
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use anyhow::Context;
 use anyhow::Result;
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},
     Cache,
@@ -25,12 +25,12 @@ use rayon::{
     iter::{FromParallelIterator, ParallelIterator},
     slice::ParallelSlice,
 };
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use std::path::PathBuf;
 use std::thread::available_parallelism;
 use tokenizers::Tokenizer;
 
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use super::InitOptions;
 use super::{
     output, InitOptionsUserDefined, TextEmbedding, UserDefinedEmbeddingModel, DEFAULT_BATCH_SIZE,
@@ -42,7 +42,7 @@ impl TextEmbedding {
     /// Uses the highest level of Graph optimization
     ///
     /// Uses the total number of CPUs available as the number of intra-threads
-    #[cfg(feature = "online")]
+    #[cfg(feature = "hf-hub")]
     pub fn try_new(options: InitOptions) -> Result<Self> {
         let InitOptions {
             model_name,
@@ -142,7 +142,7 @@ impl TextEmbedding {
         }
     }
     /// Return the TextEmbedding model's directory from cache or remote retrieval
-    #[cfg(feature = "online")]
+    #[cfg(feature = "hf-hub")]
     fn retrieve_model(
         model: EmbeddingModel,
         cache_dir: PathBuf,

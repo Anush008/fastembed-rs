@@ -3,7 +3,7 @@
 //! The library provides the TextEmbedding struct to interface with text embedding models.
 //!
 #![cfg_attr(
-    feature = "online",
+    feature = "hf-hub",
     doc = r#"
  ### Instantiating [TextEmbedding](crate::TextEmbedding)
  ```
@@ -28,7 +28,7 @@
 //! Find more info about the available options in the [InitOptions](crate::InitOptions) documentation.
 //!
 #![cfg_attr(
-    feature = "online",
+    feature = "hf-hub",
     doc = r#"
  ### Embeddings generation
 ```

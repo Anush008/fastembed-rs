@@ -1,4 +1,4 @@
-#![cfg(feature = "online")]
+#![cfg(feature = "hf-hub")]
 #![cfg(feature = "optimum-cli")]
 //! Test the use of the ``optimum-cli`` to pull models from the Hugging Face Hub,
 //! and generate embeddings successfully with the pulled model.
