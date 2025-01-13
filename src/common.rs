@@ -88,7 +88,7 @@ pub fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Res
     let pad_id = config["pad_token_id"].as_u64().unwrap_or(0) as u32;
     let pad_token = tokenizer_config["pad_token"]
         .as_str()
-        .expect("Error reading pad_token from tokenier_config.json")
+        .expect("Error reading pad_token from tokenizer_config.json")
         .into();
 
     let mut tokenizer = tokenizer

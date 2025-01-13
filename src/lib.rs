@@ -67,7 +67,9 @@ pub use ort::execution_providers::ExecutionProviderDispatch;
 pub use crate::common::{
     read_file_to_bytes, Embedding, Error, SparseEmbedding, TokenizerFiles, DEFAULT_CACHE_DIR,
 };
-pub use crate::models::{model_info::ModelInfo, quantization::QuantizationMode};
+pub use crate::models::{
+    model_info::ModelInfo, model_info::RerankerModelInfo, quantization::QuantizationMode,
+};
 pub use crate::output::{EmbeddingOutput, OutputKey, OutputPrecedence, SingleBatchOutput};
 pub use crate::pooling::Pooling;
 
@@ -90,7 +92,7 @@ pub use crate::image_embedding::{
 pub use crate::models::image_embedding::ImageEmbeddingModel;
 
 // For Reranking
-pub use crate::models::reranking::{RerankerModel, RerankerModelInfo};
+pub use crate::models::reranking::RerankerModel;
 pub use crate::reranking::{
     OnnxSource, RerankInitOptions, RerankInitOptionsUserDefined, RerankResult, TextRerank,
     UserDefinedRerankingModel,

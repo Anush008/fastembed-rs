@@ -12,7 +12,7 @@ use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},
     Cache,
 };
-use ndarray::{Array, CowArray};
+use ndarray::{Array, ArrayViewD, Axis, CowArray, Dim};
 use ort::{session::Session, value::Value};
 #[cfg_attr(not(feature = "online"), allow(unused_imports))]
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
@@ -138,19 +138,19 @@ impl SparseTextEmbedding {
                 // Preallocate arrays with the maximum size
                 let mut ids_array = Vec::with_capacity(max_size);
                 let mut mask_array = Vec::with_capacity(max_size);
-                let mut typeids_array = Vec::with_capacity(max_size);
+                let mut type_ids_array = Vec::with_capacity(max_size);
 
                 // Not using par_iter because the closure needs to be FnMut
                 encodings.iter().for_each(|encoding| {
                     let ids = encoding.get_ids();
                     let mask = encoding.get_attention_mask();
-                    let typeids = encoding.get_type_ids();
+                    let type_ids = encoding.get_type_ids();
 
                     // Extend the preallocated arrays with the current encoding
                     // Requires the closure to be FnMut
                     ids_array.extend(ids.iter().map(|x| *x as i64));
                     mask_array.extend(mask.iter().map(|x| *x as i64));
-                    typeids_array.extend(typeids.iter().map(|x| *x as i64));
+                    type_ids_array.extend(type_ids.iter().map(|x| *x as i64));
                 });
 
                 // Create CowArrays from vectors
@@ -161,7 +161,7 @@ impl SparseTextEmbedding {
                 let attention_mask_array = CowArray::from(&owned_attention_mask);
 
                 let token_type_ids_array =
-                    Array::from_shape_vec((batch_size, encoding_length), typeids_array)?;
+                    Array::from_shape_vec((batch_size, encoding_length), type_ids_array)?;
 
                 let mut session_inputs = ort::inputs![
                     "input_ids" => Value::from_array(inputs_ids_array)?,
@@ -186,7 +186,11 @@ impl SparseTextEmbedding {
 
                 let output_data = outputs[last_hidden_state_key].try_extract_tensor::<f32>()?;
 
-                let embeddings = self.model.post_process(&output_data, &attention_mask_array);
+                let embeddings = SparseTextEmbedding::post_process(
+                    &self.model,
+                    &output_data,
+                    &attention_mask_array,
+                );
 
                 Ok(embeddings)
             })
@@ -196,5 +200,45 @@ impl SparseTextEmbedding {
             .collect();
 
         Ok(output)
+    }
+
+    fn post_process(
+        model_name: &SparseModel,
+        model_output: &ArrayViewD<f32>,
+        attention_mask: &CowArray<i64, Dim<[usize; 2]>>,
+    ) -> Vec<SparseEmbedding> {
+        match model_name {
+            SparseModel::SPLADEPPV1 => {
+                // Apply ReLU and logarithm transformation
+                let relu_log = model_output.mapv(|x| (1.0 + x.max(0.0)).ln());
+
+                // Convert to f32 and expand the dimensions
+                let attention_mask = attention_mask.mapv(|x| x as f32).insert_axis(Axis(2));
+
+                // Weight the transformed values by the attention mask
+                let weighted_log = relu_log * attention_mask;
+
+                // Get the max scores
+                let scores = weighted_log.fold_axis(Axis(1), f32::NEG_INFINITY, |r, &v| r.max(v));
+
+                scores
+                    .rows()
+                    .into_iter()
+                    .map(|row_scores| {
+                        let mut values: Vec<f32> = Vec::with_capacity(scores.len());
+                        let mut indices: Vec<usize> = Vec::with_capacity(scores.len());
+
+                        row_scores.into_iter().enumerate().for_each(|(idx, f)| {
+                            if *f > 0.0 {
+                                values.push(*f);
+                                indices.push(idx);
+                            }
+                        });
+
+                        SparseEmbedding { values, indices }
+                    })
+                    .collect()
+            }
+        }
     }
 }
