@@ -75,7 +75,7 @@ impl TextEmbedding {
         }
 
         // prioritise loading pooling config if available, if not (thanks qdrant!), look for it in hardcoded
-        let post_processing = model_name.get_default_pooling_method();
+        let post_processing = TextEmbedding::get_default_pooling_method(&model_name);
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
@@ -88,7 +88,7 @@ impl TextEmbedding {
             tokenizer,
             session,
             post_processing,
-            model_name.get_quantization_mode(),
+            TextEmbedding::get_quantization_mode(&model_name),
         ))
     }
 
@@ -157,6 +157,76 @@ impl TextEmbedding {
         Ok(repo)
     }
 
+    pub fn get_default_pooling_method(model_name: &EmbeddingModel) -> Option<Pooling> {
+        match model_name {
+            EmbeddingModel::AllMiniLML6V2 => Some(Pooling::Mean),
+            EmbeddingModel::AllMiniLML6V2Q => Some(Pooling::Mean),
+            EmbeddingModel::AllMiniLML12V2 => Some(Pooling::Mean),
+            EmbeddingModel::AllMiniLML12V2Q => Some(Pooling::Mean),
+
+            EmbeddingModel::BGEBaseENV15 => Some(Pooling::Cls),
+            EmbeddingModel::BGEBaseENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::BGELargeENV15 => Some(Pooling::Cls),
+            EmbeddingModel::BGELargeENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::BGESmallENV15 => Some(Pooling::Cls),
+            EmbeddingModel::BGESmallENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::BGESmallZHV15 => Some(Pooling::Cls),
+
+            EmbeddingModel::NomicEmbedTextV1 => Some(Pooling::Mean),
+            EmbeddingModel::NomicEmbedTextV15 => Some(Pooling::Mean),
+            EmbeddingModel::NomicEmbedTextV15Q => Some(Pooling::Mean),
+
+            EmbeddingModel::ParaphraseMLMiniLML12V2 => Some(Pooling::Mean),
+            EmbeddingModel::ParaphraseMLMiniLML12V2Q => Some(Pooling::Mean),
+            EmbeddingModel::ParaphraseMLMpnetBaseV2 => Some(Pooling::Mean),
+
+            EmbeddingModel::MultilingualE5Base => Some(Pooling::Mean),
+            EmbeddingModel::MultilingualE5Small => Some(Pooling::Mean),
+            EmbeddingModel::MultilingualE5Large => Some(Pooling::Mean),
+
+            EmbeddingModel::MxbaiEmbedLargeV1 => Some(Pooling::Cls),
+            EmbeddingModel::MxbaiEmbedLargeV1Q => Some(Pooling::Cls),
+
+            EmbeddingModel::GTEBaseENV15 => Some(Pooling::Cls),
+            EmbeddingModel::GTEBaseENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::GTELargeENV15 => Some(Pooling::Cls),
+            EmbeddingModel::GTELargeENV15Q => Some(Pooling::Cls),
+
+            EmbeddingModel::ClipVitB32 => Some(Pooling::Mean),
+
+            EmbeddingModel::JinaEmbeddingsV2BaseCode => Some(Pooling::Mean),
+        }
+    }
+
+    /// Get the quantization mode of the model.
+    ///
+    /// Any models with a `Q` suffix in their name are quantized models.
+    ///
+    /// Currently only 6 supported models have dynamic quantization:
+    /// - Alibaba-NLP/gte-base-en-v1.5
+    /// - Alibaba-NLP/gte-large-en-v1.5
+    /// - mixedbread-ai/mxbai-embed-large-v1
+    /// - nomic-ai/nomic-embed-text-v1.5
+    /// - Xenova/all-MiniLM-L12-v2
+    /// - Xenova/all-MiniLM-L6-v2
+    ///
+    // TODO: Update this list when more models are added
+    pub fn get_quantization_mode(model_name: &EmbeddingModel) -> QuantizationMode {
+        match model_name {
+            EmbeddingModel::AllMiniLML6V2Q => QuantizationMode::Dynamic,
+            EmbeddingModel::AllMiniLML12V2Q => QuantizationMode::Dynamic,
+            EmbeddingModel::BGEBaseENV15Q => QuantizationMode::Static,
+            EmbeddingModel::BGELargeENV15Q => QuantizationMode::Static,
+            EmbeddingModel::BGESmallENV15Q => QuantizationMode::Static,
+            EmbeddingModel::NomicEmbedTextV15Q => QuantizationMode::Dynamic,
+            EmbeddingModel::ParaphraseMLMiniLML12V2Q => QuantizationMode::Static,
+            EmbeddingModel::MxbaiEmbedLargeV1Q => QuantizationMode::Dynamic,
+            EmbeddingModel::GTEBaseENV15Q => QuantizationMode::Dynamic,
+            EmbeddingModel::GTELargeENV15Q => QuantizationMode::Dynamic,
+            _ => QuantizationMode::None,
+        }
+    }
+
     /// Retrieve a list of supported models
     pub fn list_supported_models() -> Vec<ModelInfo<EmbeddingModel>> {
         models_list()
@@ -190,7 +260,7 @@ impl TextEmbedding {
     /// If you want to use the raw session outputs, use [`EmbeddingOutput::into_raw`]
     /// on the output of this method.
     ///
-    /// If you want to choose a different export key or customise the way the batch
+    /// If you want to choose a different export key or customize the way the batch
     /// arrays are aggregated, you can define your own array transformer
     /// and use it on [`EmbeddingOutput::export_with_transformer`] to extract the
     /// embeddings with your custom output type.
@@ -242,19 +312,19 @@ impl TextEmbedding {
             // Preallocate arrays with the maximum size
             let mut ids_array = Vec::with_capacity(max_size);
             let mut mask_array = Vec::with_capacity(max_size);
-            let mut typeids_array = Vec::with_capacity(max_size);
+            let mut type_ids_array = Vec::with_capacity(max_size);
 
             // Not using par_iter because the closure needs to be FnMut
             encodings.iter().for_each(|encoding| {
                 let ids = encoding.get_ids();
                 let mask = encoding.get_attention_mask();
-                let typeids = encoding.get_type_ids();
+                let type_ids = encoding.get_type_ids();
 
                 // Extend the preallocated arrays with the current encoding
                 // Requires the closure to be FnMut
                 ids_array.extend(ids.iter().map(|x| *x as i64));
                 mask_array.extend(mask.iter().map(|x| *x as i64));
-                typeids_array.extend(typeids.iter().map(|x| *x as i64));
+                type_ids_array.extend(type_ids.iter().map(|x| *x as i64));
             });
 
             // Create CowArrays from vectors
@@ -264,7 +334,7 @@ impl TextEmbedding {
                 Array::from_shape_vec((batch_size, encoding_length), mask_array)?;
 
             let token_type_ids_array =
-                Array::from_shape_vec((batch_size, encoding_length), typeids_array)?;
+                Array::from_shape_vec((batch_size, encoding_length), type_ids_array)?;
 
             let mut session_inputs = ort::inputs![
                 "input_ids" => Value::from_array(inputs_ids_array)?,
@@ -313,7 +383,7 @@ impl TextEmbedding {
         let batches = self.transform(texts, batch_size)?;
 
         batches.export_with_transformer(output::transformer_with_precedence(
-            output::OUTPUT_TYPE_PRECENDENCE,
+            output::OUTPUT_TYPE_PRECEDENCE,
             self.pooling.clone(),
         ))
     }
