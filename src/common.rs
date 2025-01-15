@@ -1,5 +1,5 @@
 use anyhow::Result;
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use hf_hub::api::sync::ApiRepo;
 use std::io::Read;
 use std::{fs::File, path::PathBuf};
@@ -29,7 +29,7 @@ pub struct TokenizerFiles {
 
 /// The procedure for loading tokenizer files from the hugging face hub is separated
 /// from the main load_tokenizer function (which is expecting bytes, from any source).
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 pub fn load_tokenizer_hf_hub(model_repo: ApiRepo, max_length: usize) -> Result<Tokenizer> {
     let tokenizer_files: TokenizerFiles = TokenizerFiles {
         tokenizer_file: read_file_to_bytes(&model_repo.get("tokenizer.json")?)?,
@@ -49,7 +49,7 @@ pub fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Res
     let base_error_message =
         "Error building TokenizerFiles for UserDefinedEmbeddingModel. Could not read {} file.";
 
-    // Serialise each tokenizer file
+    // Deserialize each tokenizer file
     let config: serde_json::Value =
         serde_json::from_slice(&tokenizer_files.config_file).map_err(|_| {
             std::io::Error::new(

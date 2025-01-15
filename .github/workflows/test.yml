@@ -34,7 +34,7 @@ jobs:
           cd ..
 
       - name: Cargo Test With Release Build
-        run: ORT_LIB_LOCATION="$(pwd)/onnxruntime/build/Linux/Release" cargo test --release --no-default-features --features online
+        run: ORT_LIB_LOCATION="$(pwd)/onnxruntime/build/Linux/Release" cargo test --release --no-default-features --features hf-hub-native-tls
 
       - name: Cargo Test Offline
         run: ORT_LIB_LOCATION="$(pwd)/onnxruntime/build/Linux/Release" cargo test --no-default-features

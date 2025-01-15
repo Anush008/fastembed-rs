@@ -23,7 +23,7 @@ homepage = "https://crates.io/crates/fastembed"
 
 [dependencies]
 anyhow = { version = "1" }
-hf-hub = { version = "0.3", default-features = false }
+hf-hub = { version = "0.4.1", default-features = false, optional = true }
 image = "0.25.2"
 ndarray = { version = "0.16", default-features = false }
 ort = { version = "=2.0.0-rc.9", default-features = false, features = [
@@ -31,13 +31,21 @@ ort = { version = "=2.0.0-rc.9", default-features = false, features = [
 ] }
 rayon = { version = "1.10", default-features = false }
 serde_json = { version = "1" }
-tokenizers = { version = "0.19", default-features = false, features = ["onig"] }
+tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
 
 [features]
-default = ["ort-download-binaries", "online"]
-online = ["hf-hub/online"]
+default = ["ort-download-binaries", "hf-hub-native-tls"]
+
+hf-hub = ["dep:hf-hub", "hf-hub?/ureq"]
+hf-hub-native-tls = ["hf-hub", "hf-hub?/native-tls"]
+hf-hub-rustls-tls = ["hf-hub", "hf-hub?/rustls-tls"]
+
 ort-download-binaries = ["ort/download-binaries"]
 ort-load-dynamic = ["ort/load-dynamic"]
+
 # This feature does not change any code, but is used to limit tests if
 # the user does not have `optimum-cli` or even python installed.
 optimum-cli = []
+
+# For compatibility recommend using hf-hub-native-tls
+online = ["hf-hub-native-tls"]

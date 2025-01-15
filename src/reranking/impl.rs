@@ -1,4 +1,4 @@
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use anyhow::Context;
 use anyhow::Result;
 use ort::{
@@ -7,19 +7,19 @@ use ort::{
 };
 use std::thread::available_parallelism;
 
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
     common::load_tokenizer, models::reranking::reranker_model_list, RerankerModel,
     RerankerModelInfo,
 };
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::{s, Array};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 use tokenizers::Tokenizer;
 
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use super::RerankInitOptions;
 use super::{
     OnnxSource, RerankInitOptionsUserDefined, RerankResult, TextRerank, UserDefinedRerankingModel,
@@ -50,7 +50,7 @@ impl TextRerank {
         reranker_model_list()
     }
 
-    #[cfg(feature = "online")]
+    #[cfg(feature = "hf-hub")]
     pub fn try_new(options: RerankInitOptions) -> Result<TextRerank> {
         use super::RerankInitOptions;
 
