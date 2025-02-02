@@ -1,4 +1,4 @@
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},
     Cache,
@@ -8,7 +8,7 @@ use ort::{
     session::{builder::GraphOptimizationLevel, Session},
     value::Value,
 };
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use std::path::PathBuf;
 use std::{path::Path, thread::available_parallelism};
 
@@ -17,10 +17,10 @@ use crate::{
     ModelInfo,
 };
 use anyhow::anyhow;
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use anyhow::Context;
 
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use super::ImageInitOptions;
 use super::{
     init::{ImageInitOptionsUserDefined, UserDefinedImageEmbeddingModel},
@@ -35,7 +35,7 @@ impl ImageEmbedding {
     /// Uses the highest level of Graph optimization
     ///
     /// Uses the total number of CPUs available as the number of intra-threads
-    #[cfg(feature = "online")]
+    #[cfg(feature = "hf-hub")]
     pub fn try_new(options: ImageInitOptions) -> anyhow::Result<Self> {
         let ImageInitOptions {
             model_name,
@@ -104,7 +104,7 @@ impl ImageEmbedding {
     }
 
     /// Return the ImageEmbedding model's directory from cache or remote retrieval
-    #[cfg(feature = "online")]
+    #[cfg(feature = "hf-hub")]
     fn retrieve_model(
         model: ImageEmbeddingModel,
         cache_dir: PathBuf,

@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
+use crate::RerankerModelInfo;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RerankerModel {
@@ -46,16 +47,6 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
         },
     ];
     reranker_model_list
-}
-
-/// Data struct about the available reanker models
-#[derive(Debug, Clone)]
-pub struct RerankerModelInfo {
-    pub model: RerankerModel,
-    pub description: String,
-    pub model_code: String,
-    pub model_file: String,
-    pub additional_files: Vec<String>,
 }
 
 impl Display for RerankerModel {

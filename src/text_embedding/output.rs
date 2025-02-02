@@ -10,7 +10,7 @@ use crate::{
 use super::TextEmbedding;
 
 /// The default output precedence for the TextEmbedding model.
-pub const OUTPUT_TYPE_PRECENDENCE: &[OutputKey] = &[
+pub const OUTPUT_TYPE_PRECEDENCE: &[OutputKey] = &[
     OutputKey::OnlyOne,
     OutputKey::ByName("last_hidden_state"),
     OutputKey::ByName("sentence_embedding"),

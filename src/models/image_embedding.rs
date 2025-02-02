@@ -24,6 +24,7 @@ pub fn models_list() -> Vec<ModelInfo<ImageEmbeddingModel>> {
             description: String::from("CLIP vision encoder based on ViT-B/32"),
             model_code: String::from("Qdrant/clip-ViT-B-32-vision"),
             model_file: String::from("model.onnx"),
+            additional_files: Vec::new(),
         },
         ModelInfo {
             model: ImageEmbeddingModel::Resnet50,
@@ -31,6 +32,7 @@ pub fn models_list() -> Vec<ModelInfo<ImageEmbeddingModel>> {
             description: String::from("ResNet-50 from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`__."),
             model_code: String::from("Qdrant/resnet50-onnx"),
             model_file: String::from("model.onnx"),
+            additional_files: Vec::new(),
         },
         ModelInfo {
             model: ImageEmbeddingModel::UnicomVitB16,
@@ -38,6 +40,7 @@ pub fn models_list() -> Vec<ModelInfo<ImageEmbeddingModel>> {
             description: String::from("Unicom Unicom-ViT-B-16 from open-metric-learning"),
             model_code: String::from("Qdrant/Unicom-ViT-B-16"),
             model_file: String::from("model.onnx"),
+            additional_files: Vec::new(),
         },
         ModelInfo {
             model: ImageEmbeddingModel::UnicomVitB32,
@@ -45,6 +48,7 @@ pub fn models_list() -> Vec<ModelInfo<ImageEmbeddingModel>> {
             description: String::from("Unicom Unicom-ViT-B-32 from open-metric-learning"),
             model_code: String::from("Qdrant/Unicom-ViT-B-32"),
             model_file: String::from("model.onnx"),
+            additional_files: Vec::new(),
         },
         ModelInfo {
             model: ImageEmbeddingModel::NomicEmbedVisionV15,
@@ -52,6 +56,7 @@ pub fn models_list() -> Vec<ModelInfo<ImageEmbeddingModel>> {
             description: String::from("Nomic NomicEmbedVisionV15"),
             model_code: String::from("nomic-ai/nomic-embed-vision-v1.5"),
             model_file: String::from("onnx/model.onnx"),
+            additional_files: Vec::new(),
         },
     ];
 

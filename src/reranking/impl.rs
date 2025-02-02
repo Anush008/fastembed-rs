@@ -1,4 +1,4 @@
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use anyhow::Context;
 use anyhow::Result;
 use ort::{
@@ -7,19 +7,19 @@ use ort::{
 };
 use std::thread::available_parallelism;
 
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
     common::load_tokenizer, models::reranking::reranker_model_list, RerankerModel,
     RerankerModelInfo,
 };
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::{s, Array};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 use tokenizers::Tokenizer;
 
-#[cfg(feature = "online")]
+#[cfg(feature = "hf-hub")]
 use super::RerankInitOptions;
 use super::{
     OnnxSource, RerankInitOptionsUserDefined, RerankResult, TextRerank, UserDefinedRerankingModel,
@@ -50,7 +50,7 @@ impl TextRerank {
         reranker_model_list()
     }
 
-    #[cfg(feature = "online")]
+    #[cfg(feature = "hf-hub")]
     pub fn try_new(options: RerankInitOptions) -> Result<TextRerank> {
         use super::RerankInitOptions;
 
@@ -122,7 +122,7 @@ impl TextRerank {
         Ok(Self::new(tokenizer, session))
     }
 
-    /// Reranks documents using the reranker model and returns the results sorted by score in descending order.
+    /// Rerank documents using the reranker model and returns the results sorted by score in descending order.
     pub fn rerank<S: AsRef<str> + Send + Sync>(
         &self,
         query: S,
@@ -151,16 +151,16 @@ impl TextRerank {
 
                 let mut ids_array = Vec::with_capacity(max_size);
                 let mut mask_array = Vec::with_capacity(max_size);
-                let mut typeids_array = Vec::with_capacity(max_size);
+                let mut type_ids_array = Vec::with_capacity(max_size);
 
                 encodings.iter().for_each(|encoding| {
                     let ids = encoding.get_ids();
                     let mask = encoding.get_attention_mask();
-                    let typeids = encoding.get_type_ids();
+                    let type_ids = encoding.get_type_ids();
 
                     ids_array.extend(ids.iter().map(|x| *x as i64));
                     mask_array.extend(mask.iter().map(|x| *x as i64));
-                    typeids_array.extend(typeids.iter().map(|x| *x as i64));
+                    type_ids_array.extend(type_ids.iter().map(|x| *x as i64));
                 });
 
                 let inputs_ids_array =
@@ -170,7 +170,7 @@ impl TextRerank {
                     Array::from_shape_vec((batch_size, encoding_length), mask_array)?;
 
                 let token_type_ids_array =
-                    Array::from_shape_vec((batch_size, encoding_length), typeids_array)?;
+                    Array::from_shape_vec((batch_size, encoding_length), type_ids_array)?;
 
                 let mut session_inputs = ort::inputs![
                     "input_ids" => Value::from_array(inputs_ids_array)?,

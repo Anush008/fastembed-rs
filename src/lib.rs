@@ -3,7 +3,7 @@
 //! The library provides the TextEmbedding struct to interface with text embedding models.
 //!
 #![cfg_attr(
-    feature = "online",
+    feature = "hf-hub",
     doc = r#"
  ### Instantiating [TextEmbedding](crate::TextEmbedding)
  ```
@@ -28,7 +28,7 @@
 //! Find more info about the available options in the [InitOptions](crate::InitOptions) documentation.
 //!
 #![cfg_attr(
-    feature = "online",
+    feature = "hf-hub",
     doc = r#"
  ### Embeddings generation
 ```
@@ -67,23 +67,33 @@ pub use ort::execution_providers::ExecutionProviderDispatch;
 pub use crate::common::{
     read_file_to_bytes, Embedding, Error, SparseEmbedding, TokenizerFiles, DEFAULT_CACHE_DIR,
 };
+pub use crate::models::{
+    model_info::ModelInfo, model_info::RerankerModelInfo, quantization::QuantizationMode,
+};
+pub use crate::output::{EmbeddingOutput, OutputKey, OutputPrecedence, SingleBatchOutput};
+pub use crate::pooling::Pooling;
+
+// For Text Embedding
+pub use crate::models::text_embedding::EmbeddingModel;
+pub use crate::text_embedding::{
+    InitOptions, InitOptionsUserDefined, TextEmbedding, UserDefinedEmbeddingModel,
+};
+
+// For Sparse Text Embedding
+pub use crate::models::sparse::SparseModel;
+pub use crate::sparse_text_embedding::{
+    SparseInitOptions, SparseTextEmbedding, UserDefinedSparseModel,
+};
+
+// For Image Embedding
 pub use crate::image_embedding::{
     ImageEmbedding, ImageInitOptions, ImageInitOptionsUserDefined, UserDefinedImageEmbeddingModel,
 };
 pub use crate::models::image_embedding::ImageEmbeddingModel;
-pub use crate::models::reranking::{RerankerModel, RerankerModelInfo};
-pub use crate::models::{
-    model_info::ModelInfo, quantization::QuantizationMode, text_embedding::EmbeddingModel,
-};
-pub use crate::output::{EmbeddingOutput, OutputKey, OutputPrecedence, SingleBatchOutput};
-pub use crate::pooling::Pooling;
+
+// For Reranking
+pub use crate::models::reranking::RerankerModel;
 pub use crate::reranking::{
     OnnxSource, RerankInitOptions, RerankInitOptionsUserDefined, RerankResult, TextRerank,
     UserDefinedRerankingModel,
-};
-pub use crate::sparse_text_embedding::{
-    SparseInitOptions, SparseTextEmbedding, UserDefinedSparseModel,
-};
-pub use crate::text_embedding::{
-    InitOptions, InitOptionsUserDefined, TextEmbedding, UserDefinedEmbeddingModel,
 };

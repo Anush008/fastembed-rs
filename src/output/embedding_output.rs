@@ -62,7 +62,7 @@ impl SingleBatchOutput<'_, '_> {
 
         // If there is none pooling, default to cls so as not to break the existing implementations
         // TODO: Consider return output as is to support custom model that has built-in pooling layer:
-        // - [] Add model with built-in pooling to the list of supported model in ``models::text_embdding::models_list``
+        // - [] Add model with built-in pooling to the list of supported model in ``models::text_embedding::models_list``
         // - [] Write unit test for new model
         // - [] Update ``pooling::Pooling`` to include None type
         // - [] Change the line below to return output as is
