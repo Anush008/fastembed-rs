@@ -2,8 +2,9 @@ use std::fmt::Display;
 
 use crate::{common::SparseEmbedding, ModelInfo};
 use ndarray::{ArrayViewD, Axis, CowArray, Dim};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SparseModel {
     /// prithivida/Splade_PP_en_v1
     SPLADEPPV1,

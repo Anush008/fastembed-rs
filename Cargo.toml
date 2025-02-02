@@ -30,6 +30,7 @@ ort = { version = "=2.0.0-rc.9", default-features = false, features = [
   "ndarray",
 ] }
 rayon = { version = "1.10", default-features = false }
+serde = { version = "1" }
 serde_json = { version = "1" }
 tokenizers = { version = "0.19", default-features = false, features = ["onig"] }
 
