@@ -1,8 +1,9 @@
 use std::fmt::Display;
 
+use serde::{Deserialize, Serialize};
 use crate::RerankerModelInfo;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RerankerModel {
     /// BAAI/bge-reranker-base
     BGERerankerBase,
