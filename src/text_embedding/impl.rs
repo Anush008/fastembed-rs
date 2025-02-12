@@ -180,6 +180,8 @@ impl TextEmbedding {
             EmbeddingModel::ParaphraseMLMiniLML12V2Q => Some(Pooling::Mean),
             EmbeddingModel::ParaphraseMLMpnetBaseV2 => Some(Pooling::Mean),
 
+            EmbeddingModel::ModernBertEmbedLarge => Some(Pooling::Mean),
+
             EmbeddingModel::MultilingualE5Base => Some(Pooling::Mean),
             EmbeddingModel::MultilingualE5Small => Some(Pooling::Mean),
             EmbeddingModel::MultilingualE5Large => Some(Pooling::Mean),
