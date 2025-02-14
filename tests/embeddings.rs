@@ -50,6 +50,7 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         EmbeddingModel::GTEBaseENV15Q => [-1.7032102, -1.7076654, -1.729326, -1.5317788],
         EmbeddingModel::GTELargeENV15 => [-1.6457459, -1.6582386, -1.6809471, -1.6070237],
         EmbeddingModel::GTELargeENV15Q => [-1.6044945, -1.6469251, -1.6828246, -1.6265479],
+        EmbeddingModel::ModernBertEmbedLarge => [ 0.24799639, 0.32174295, 0.17255782, 0.32919246],
         EmbeddingModel::MultilingualE5Base => [-0.057211064, -0.14287914, -0.071678676, -0.17549144],
         EmbeddingModel::MultilingualE5Large => [-0.7473163, -0.76040405, -0.7537941, -0.72920954],
         EmbeddingModel::MultilingualE5Small => [-0.2640718, -0.13929011, -0.08091972, -0.12388548],
@@ -669,5 +670,43 @@ fn test_allminilml6v2_match_python_counterpart() {
         .zip(baseline.into_iter())
     {
         assert!((expected - actual).abs() < tolerance);
+    }
+}
+
+#[test]
+fn test_modernbert_embeddings() {
+    let supported_model = TextEmbedding::list_supported_models()
+        .into_iter()
+        .find(|model| matches!(model.model, EmbeddingModel::ModernBertEmbedLarge))
+        .expect("ModernBERT model not found in supported models");
+
+    let model: TextEmbedding =
+        TextEmbedding::try_new(InitOptions::new(supported_model.model.clone())).unwrap();
+
+    let documents = vec![
+        "Hello, World!",
+        "This is an example passage.",
+        "fastembed-rs is licensed under Apache-2.0",
+        "Some other short text here blah blah blah",
+    ];
+
+    let embeddings = model.embed(documents.clone(), None).unwrap();
+    assert_eq!(embeddings.len(), documents.len());
+
+    for embedding in &embeddings {
+        assert_eq!(embedding.len(), supported_model.dim);
+    }
+
+    match verify_embeddings(&supported_model.model, &embeddings) {
+        Ok(_) => {}
+        Err(mismatched_indices) => {
+            panic!(
+                "Mismatched embeddings for ModernBERT: {sentences:?}",
+                sentences = &mismatched_indices
+                    .iter()
+                    .map(|&i| documents[i])
+                    .collect::<Vec<_>>()
+            );
+        }
     }
 }
