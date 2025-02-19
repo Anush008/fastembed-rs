@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display, sync::OnceLock};
 
 use super::model_info::ModelInfo;
@@ -5,7 +6,7 @@ use super::model_info::ModelInfo;
 /// Lazy static list of all available models.
 static MODEL_MAP: OnceLock<HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>>> = OnceLock::new();
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum EmbeddingModel {
     /// sentence-transformers/all-MiniLM-L6-v2
     AllMiniLML6V2,

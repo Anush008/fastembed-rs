@@ -1,8 +1,9 @@
 use std::fmt::Display;
 
+use serde::{Deserialize, Serialize};
 use crate::ModelInfo;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SparseModel {
     /// prithivida/Splade_PP_en_v1
     SPLADEPPV1,
