@@ -3,6 +3,7 @@ use hf_hub::{
     api::sync::{ApiBuilder, ApiRepo},
     Cache,
 };
+use image::DynamicImage;
 use ndarray::{Array3, ArrayView3};
 use ort::{
     session::{builder::GraphOptimizationLevel, Session},
@@ -147,73 +148,14 @@ impl ImageEmbedding {
                 let inputs = batch
                     .iter()
                     .map(|img| {
-                        let img = image::ImageReader::new(Cursor::new(img))
+                        image::ImageReader::new(Cursor::new(img))
                             .with_guessed_format()?
                             .decode()
-                            .map_err(|err| anyhow!("image decode: {}", err))?;
-                        let pixels = self.preprocessor.transform(TransformData::Image(img))?;
-                        match pixels {
-                            TransformData::NdArray(array) => Ok(array),
-                            _ => Err(anyhow!("Preprocessor configuration error!")),
-                        }
+                            .map_err(|err| anyhow!("image decode: {}", err))
                     })
-                    .collect::<anyhow::Result<Vec<Array3<f32>>>>()?;
+                    .collect::<Result<_, _>>()?;
 
-                // Extract the batch size
-                let inputs_view: Vec<ArrayView3<f32>> =
-                    inputs.iter().map(|img| img.view()).collect();
-                let pixel_values_array = ndarray::stack(ndarray::Axis(0), &inputs_view)?;
-
-                let input_name = self.session.inputs[0].name.clone();
-                let session_inputs = ort::inputs![
-                    input_name => Value::from_array(pixel_values_array)?,
-                ]?;
-
-                let outputs = self.session.run(session_inputs)?;
-
-                // Try to get the only output key
-                // If multiple, then default to few known keys `image_embeds` and `last_hidden_state`
-                let last_hidden_state_key = match outputs.len() {
-                    1 => vec![outputs.keys().next().unwrap()],
-                    _ => vec!["image_embeds", "last_hidden_state"],
-                };
-
-                // Extract tensor and handle different dimensionalities
-                let output_data = last_hidden_state_key
-                    .iter()
-                    .find_map(|&key| {
-                        outputs
-                            .get(key)
-                            .and_then(|v| v.try_extract_tensor::<f32>().ok())
-                    })
-                    .ok_or_else(|| anyhow!("Could not extract tensor from any known output key"))?;
-                let shape = output_data.shape();
-
-                let embeddings: Vec<Vec<f32>> = match shape.len() {
-                    3 => {
-                        // For 3D output [batch_size, sequence_length, hidden_size]
-                        // Take only the first token, sequence_length[0] (CLS token), embedding
-                        // and return [batch_size, hidden_size]
-                        (0..shape[0])
-                            .map(|batch_idx| {
-                                let cls_embedding =
-                                    output_data.slice(ndarray::s![batch_idx, 0, ..]).to_vec();
-                                normalize(&cls_embedding)
-                            })
-                            .collect()
-                    }
-                    2 => {
-                        // For 2D output [batch_size, hidden_size]
-                        output_data
-                            .rows()
-                            .into_iter()
-                            .map(|row| normalize(row.as_slice().unwrap()))
-                            .collect()
-                    }
-                    _ => return Err(anyhow!("Unexpected output tensor shape: {:?}", shape)),
-                };
-
-                Ok(embeddings)
+                self.embed_images(inputs)
             })
             .collect::<anyhow::Result<Vec<_>>>()?
             .into_iter()
@@ -240,72 +182,13 @@ impl ImageEmbedding {
                 let inputs = batch
                     .iter()
                     .map(|img| {
-                        let img = image::ImageReader::open(img)?
+                        image::ImageReader::open(img)?
                             .decode()
-                            .map_err(|err| anyhow!("image decode: {}", err))?;
-                        let pixels = self.preprocessor.transform(TransformData::Image(img))?;
-                        match pixels {
-                            TransformData::NdArray(array) => Ok(array),
-                            _ => Err(anyhow!("Preprocessor configuration error!")),
-                        }
+                            .map_err(|err| anyhow!("image decode: {}", err))
                     })
-                    .collect::<anyhow::Result<Vec<Array3<f32>>>>()?;
+                    .collect::<Result<_, _>>()?;
 
-                // Extract the batch size
-                let inputs_view: Vec<ArrayView3<f32>> =
-                    inputs.iter().map(|img| img.view()).collect();
-                let pixel_values_array = ndarray::stack(ndarray::Axis(0), &inputs_view)?;
-
-                let input_name = self.session.inputs[0].name.clone();
-                let session_inputs = ort::inputs![
-                    input_name => Value::from_array(pixel_values_array)?,
-                ]?;
-
-                let outputs = self.session.run(session_inputs)?;
-
-                // Try to get the only output key
-                // If multiple, then default to few known keys `image_embeds` and `last_hidden_state`
-                let last_hidden_state_key = match outputs.len() {
-                    1 => vec![outputs.keys().next().unwrap()],
-                    _ => vec!["image_embeds", "last_hidden_state"],
-                };
-
-                // Extract tensor and handle different dimensionalities
-                let output_data = last_hidden_state_key
-                    .iter()
-                    .find_map(|&key| {
-                        outputs
-                            .get(key)
-                            .and_then(|v| v.try_extract_tensor::<f32>().ok())
-                    })
-                    .ok_or_else(|| anyhow!("Could not extract tensor from any known output key"))?;
-                let shape = output_data.shape();
-
-                let embeddings: Vec<Vec<f32>> = match shape.len() {
-                    3 => {
-                        // For 3D output [batch_size, sequence_length, hidden_size]
-                        // Take only the first token, sequence_length[0] (CLS token), embedding
-                        // and return [batch_size, hidden_size]
-                        (0..shape[0])
-                            .map(|batch_idx| {
-                                let cls_embedding =
-                                    output_data.slice(ndarray::s![batch_idx, 0, ..]).to_vec();
-                                normalize(&cls_embedding)
-                            })
-                            .collect()
-                    }
-                    2 => {
-                        // For 2D output [batch_size, hidden_size]
-                        output_data
-                            .rows()
-                            .into_iter()
-                            .map(|row| normalize(row.as_slice().unwrap()))
-                            .collect()
-                    }
-                    _ => return Err(anyhow!("Unexpected output tensor shape: {:?}", shape)),
-                };
-
-                Ok(embeddings)
+                self.embed_images(inputs)
             })
             .collect::<anyhow::Result<Vec<_>>>()?
             .into_iter()
@@ -313,5 +196,74 @@ impl ImageEmbedding {
             .collect();
 
         Ok(output)
+    }
+
+    /// Embed DynamicImages
+    pub fn embed_images(&self, imgs: Vec<DynamicImage>) -> anyhow::Result<Vec<Embedding>> {
+        let inputs = imgs
+            .into_iter()
+            .map(|img| {
+                let pixels = self.preprocessor.transform(TransformData::Image(img))?;
+                match pixels {
+                    TransformData::NdArray(array) => Ok(array),
+                    _ => Err(anyhow!("Preprocessor configuration error!")),
+                }
+            })
+            .collect::<anyhow::Result<Vec<Array3<f32>>>>()?;
+
+        // Extract the batch size
+        let inputs_view: Vec<ArrayView3<f32>> = inputs.iter().map(|img| img.view()).collect();
+        let pixel_values_array = ndarray::stack(ndarray::Axis(0), &inputs_view)?;
+
+        let input_name = self.session.inputs[0].name.clone();
+        let session_inputs = ort::inputs![
+            input_name => Value::from_array(pixel_values_array)?,
+        ]?;
+
+        let outputs = self.session.run(session_inputs)?;
+
+        // Try to get the only output key
+        // If multiple, then default to few known keys `image_embeds` and `last_hidden_state`
+        let last_hidden_state_key = match outputs.len() {
+            1 => vec![outputs.keys().next().unwrap()],
+            _ => vec!["image_embeds", "last_hidden_state"],
+        };
+
+        // Extract tensor and handle different dimensionalities
+        let output_data = last_hidden_state_key
+            .iter()
+            .find_map(|&key| {
+                outputs
+                    .get(key)
+                    .and_then(|v| v.try_extract_tensor::<f32>().ok())
+            })
+            .ok_or_else(|| anyhow!("Could not extract tensor from any known output key"))?;
+        let shape = output_data.shape();
+
+        let embeddings = match shape.len() {
+            3 => {
+                // For 3D output [batch_size, sequence_length, hidden_size]
+                // Take only the first token, sequence_length[0] (CLS token), embedding
+                // and return [batch_size, hidden_size]
+                (0..shape[0])
+                    .map(|batch_idx| {
+                        let cls_embedding =
+                            output_data.slice(ndarray::s![batch_idx, 0, ..]).to_vec();
+                        normalize(&cls_embedding)
+                    })
+                    .collect()
+            }
+            2 => {
+                // For 2D output [batch_size, hidden_size]
+                output_data
+                    .rows()
+                    .into_iter()
+                    .map(|row| normalize(row.as_slice().unwrap()))
+                    .collect()
+            }
+            _ => return Err(anyhow!("Unexpected output tensor shape: {:?}", shape)),
+        };
+
+        Ok(embeddings)
     }
 }
