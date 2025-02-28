@@ -75,3 +75,6 @@ tests/rustdoc-gui/src/**.lock
 ## Rust files
 main.rs
 Cargo.lock
+
+## Nix
+/.direnv
