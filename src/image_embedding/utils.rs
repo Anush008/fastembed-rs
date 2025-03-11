@@ -273,6 +273,58 @@ fn load_preprocessor(config: serde_json::Value) -> anyhow::Result<Compose> {
                 }));
             }
         }
+        "BitImageProcessor" => {
+            if config["do_convert_rgb"].as_bool().unwrap_or(false) {
+                transformers.push(Box::new(ConvertToRGB));
+            }
+            if config["do_resize"].as_bool().unwrap_or(false) {
+                let size = config["size"].clone();
+                let shortest_edge = size["shortest_edge"].as_u64();
+                let (height, width) = (size["height"].as_u64(), size["width"].as_u64());
+
+                if let Some(shortest_edge) = shortest_edge {
+                    let size = (shortest_edge as u32, shortest_edge as u32);
+                    transformers.push(Box::new(Resize {
+                        size,
+                        resample: FilterType::CatmullRom,
+                    }));
+                } else if let (Some(height), Some(width)) = (height, width) {
+                    let size = (height as u32, width as u32);
+                    transformers.push(Box::new(Resize {
+                        size,
+                        resample: FilterType::CatmullRom,
+                    }));
+                } else {
+                    return Err(anyhow!(
+                        "Size must contain either 'shortest_edge' or 'height' and 'width'."
+                    ));
+                }
+            }
+
+            if config["do_center_crop"].as_bool().unwrap_or(false) {
+                let crop_size = config["crop_size"].clone();
+                let (height, width) = if crop_size.is_u64() {
+                    let size = crop_size.as_u64().unwrap() as u32;
+                    (size, size)
+                } else if crop_size.is_object() {
+                    (
+                        crop_size["height"]
+                            .as_u64()
+                            .map(|height| height as u32)
+                            .ok_or(anyhow!("crop_size height must be contained"))?,
+                        crop_size["width"]
+                            .as_u64()
+                            .map(|width| width as u32)
+                            .ok_or(anyhow!("crop_size width must be contained"))?,
+                    )
+                } else {
+                    return Err(anyhow!("Invalid crop size: {:?}", crop_size));
+                };
+                transformers.push(Box::new(CenterCrop {
+                    size: (width, height),
+                }));
+            }
+        }
         mode => return Err(anyhow!("Preprocessror {} is not supported", mode)),
     }
 
