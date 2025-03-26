@@ -5,15 +5,15 @@ edition = "2021"
 description = "Library for generating vector embeddings, reranking locally."
 license = "Apache-2.0"
 authors = [
-  "Anush008 <anushshetty90@gmail.com>",
-  "Josh Niemelä <josh@jniemela.dk>",
-  "GrisiaEvy <a115020115@gmail.com>",
-  "George MacKerron <georgemackerron@neon.tech>",
-  "Timon Vonk <mail@timonv.nl>",
-  "Luya Wang <luya.wang@qq.com>",
-  "Tri <tri@triandco.com>",
-  "Denny Wong <denwong47@hotmail.com>",
-  "Alex Rozgo <alex.rozgo@gmail.com>",
+    "Anush008 <anushshetty90@gmail.com>",
+    "Josh Niemelä <josh@jniemela.dk>",
+    "GrisiaEvy <a115020115@gmail.com>",
+    "George MacKerron <georgemackerron@neon.tech>",
+    "Timon Vonk <mail@timonv.nl>",
+    "Luya Wang <luya.wang@qq.com>",
+    "Tri <tri@triandco.com>",
+    "Denny Wong <denwong47@hotmail.com>",
+    "Alex Rozgo <alex.rozgo@gmail.com>",
 ]
 documentation = "https://docs.rs/fastembed"
 repository = "https://github.com/Anush008/fastembed-rs"
@@ -27,7 +27,7 @@ hf-hub = { version = "0.4.1", default-features = false, optional = true }
 image = "0.25.2"
 ndarray = { version = "0.16", default-features = false }
 ort = { version = "=2.0.0-rc.9", default-features = false, features = [
-  "ndarray",
+    "ndarray",
 ] }
 rayon = { version = "1.10", default-features = false }
 serde_json = { version = "1" }

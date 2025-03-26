@@ -351,7 +351,7 @@ impl TextEmbedding {
             // the fly. Might be interesting to add later. From their docs, you can also select no
             // task, so we just input 0 for now.
             if self.needs_task_id {
-                session_inputs.push(("task_id".into(), Value::from_array(arr0(0))?.into()));
+                session_inputs.push(("task_id".into(), Value::from_array(arr0(0_i64))?.into()));
             }
 
             Ok(
