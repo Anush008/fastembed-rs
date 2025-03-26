@@ -13,7 +13,7 @@ use anyhow::Context;
 use anyhow::Result;
 #[cfg(feature = "hf-hub")]
 use hf_hub::api::sync::ApiRepo;
-use ndarray::Array;
+use ndarray::{arr0, Array};
 use ort::{
     session::{builder::GraphOptimizationLevel, Session},
     value::Value,
@@ -351,11 +351,7 @@ impl TextEmbedding {
             // the fly. Might be interesting to add later. From their docs, you can also select no
             // task, so we just input 0 for now.
             if self.needs_task_id {
-                let task_id_array = Array::from_shape_vec(
-                    (batch_size, encoding_length),
-                    vec![0_i64; batch_size * encoding_length],
-                )?;
-                session_inputs.push(("task_id".into(), Value::from_array(task_id_array)?.into()));
+                session_inputs.push(("task_id".into(), Value::from_array(arr0(0))?.into()));
             }
 
             Ok(
