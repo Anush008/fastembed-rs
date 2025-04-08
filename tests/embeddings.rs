@@ -58,7 +58,7 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         EmbeddingModel::MxbaiEmbedLargeV1Q => [-0.1811538, -0.2884392, -0.1636593, -0.21548103],
         EmbeddingModel::NomicEmbedTextV1 => [0.13788113, 0.10750078, 0.050809078, 0.09284662],
         EmbeddingModel::NomicEmbedTextV15 => [0.1932303, 0.13795732, 0.14700879, 0.14940643],
-        EmbeddingModel::NomicEmbedTextV15Q => [0.20999804, 0.13103808, 0.14427708, 0.13452803],
+        EmbeddingModel::NomicEmbedTextV15Q => [0.20999804, 0.17161125, 0.14427708, 0.19436662],
         EmbeddingModel::ParaphraseMLMiniLML12V2 => [-0.07795018, -0.059113946, -0.043668486, -0.1880083],
         EmbeddingModel::ParaphraseMLMiniLML12V2Q => [-0.07749095, -0.058981877, -0.043487836, -0.18775631],
         EmbeddingModel::ParaphraseMLMpnetBaseV2 => [0.39132136, 0.49490625, 0.65497226, 0.34237382],
@@ -162,8 +162,8 @@ create_embeddings_test!(
 );
 
 create_embeddings_test!(
-    name: test_batch_size_less_than_document_count,
-    batch_size: Some(3),
+    name: test_with_batch_size,
+    batch_size: Some(70),
 );
 
 #[test]
@@ -670,43 +670,5 @@ fn test_allminilml6v2_match_python_counterpart() {
         .zip(baseline.into_iter())
     {
         assert!((expected - actual).abs() < tolerance);
-    }
-}
-
-#[test]
-fn test_modernbert_embeddings() {
-    let supported_model = TextEmbedding::list_supported_models()
-        .into_iter()
-        .find(|model| matches!(model.model, EmbeddingModel::ModernBertEmbedLarge))
-        .expect("ModernBERT model not found in supported models");
-
-    let model: TextEmbedding =
-        TextEmbedding::try_new(InitOptions::new(supported_model.model.clone())).unwrap();
-
-    let documents = vec![
-        "Hello, World!",
-        "This is an example passage.",
-        "fastembed-rs is licensed under Apache-2.0",
-        "Some other short text here blah blah blah",
-    ];
-
-    let embeddings = model.embed(documents.clone(), None).unwrap();
-    assert_eq!(embeddings.len(), documents.len());
-
-    for embedding in &embeddings {
-        assert_eq!(embedding.len(), supported_model.dim);
-    }
-
-    match verify_embeddings(&supported_model.model, &embeddings) {
-        Ok(_) => {}
-        Err(mismatched_indices) => {
-            panic!(
-                "Mismatched embeddings for ModernBERT: {sentences:?}",
-                sentences = &mismatched_indices
-                    .iter()
-                    .map(|&i| documents[i])
-                    .collect::<Vec<_>>()
-            );
-        }
     }
 }

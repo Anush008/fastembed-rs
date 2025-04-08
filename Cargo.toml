@@ -2,7 +2,7 @@
 name = "fastembed"
 version = "4.6.0"
 edition = "2021"
-description = "Rust implementation of https://github.com/qdrant/fastembed"
+description = "Library for generating vector embeddings, reranking locally."
 license = "Apache-2.0"
 authors = [
   "Anush008 <anushshetty90@gmail.com>",
