@@ -1,8 +1,5 @@
 #[cfg(feature = "hf-hub")]
-use hf_hub::{
-    api::sync::{ApiBuilder, ApiRepo},
-    Cache,
-};
+use hf_hub::api::sync::ApiRepo;
 use image::DynamicImage;
 use ndarray::{Array3, ArrayView3};
 use ort::{
@@ -111,13 +108,9 @@ impl ImageEmbedding {
         cache_dir: PathBuf,
         show_download_progress: bool,
     ) -> anyhow::Result<ApiRepo> {
-        let cache = Cache::new(cache_dir);
-        let api = ApiBuilder::from_cache(cache)
-            .with_progress(show_download_progress)
-            .build()?;
+        use crate::common::pull_from_hf;
 
-        let repo = api.model(model.to_string());
-        Ok(repo)
+        pull_from_hf(model.to_string(), cache_dir, show_download_progress)
     }
 
     /// Retrieve a list of supported models
