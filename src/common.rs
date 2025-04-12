@@ -1,8 +1,6 @@
 use anyhow::Result;
-use hf_hub::api::sync::ApiBuilder;
 #[cfg(feature = "hf-hub")]
-use hf_hub::api::sync::ApiRepo;
-use std::env;
+use hf_hub::api::sync::{ApiBuilder, ApiRepo};
 use std::io::Read;
 use std::{fs::File, path::PathBuf};
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, Tokenizer, TruncationParams};
@@ -159,11 +157,11 @@ pub fn pull_from_hf(
     default_cache_dir: PathBuf,
     show_download_progress: bool,
 ) -> anyhow::Result<ApiRepo> {
-    
+    use std::env;
+
     let cache_dir = env::var("HF_HOME")
         .map(PathBuf::from)
         .unwrap_or(default_cache_dir);
-
 
     let endpoint = env::var("HF_ENDPOINT").unwrap_or_else(|_| "https://huggingface.co".to_string());
 
