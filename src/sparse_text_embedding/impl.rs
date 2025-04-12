@@ -8,10 +8,7 @@ use crate::{
 use anyhow::Context;
 use anyhow::Result;
 #[cfg(feature = "hf-hub")]
-use hf_hub::{
-    api::sync::{ApiBuilder, ApiRepo},
-    Cache,
-};
+use hf_hub::api::sync::ApiRepo;
 use ndarray::{Array, ArrayViewD, Axis, CowArray, Dim};
 use ort::{session::Session, value::Value};
 #[cfg_attr(not(feature = "hf-hub"), allow(unused_imports))]
@@ -90,13 +87,9 @@ impl SparseTextEmbedding {
         cache_dir: PathBuf,
         show_download_progress: bool,
     ) -> Result<ApiRepo> {
-        let cache = Cache::new(cache_dir);
-        let api = ApiBuilder::from_cache(cache)
-            .with_progress(show_download_progress)
-            .build()?;
+        use crate::common::pull_from_hf;
 
-        let repo = api.model(model.to_string());
-        Ok(repo)
+        pull_from_hf(model.to_string(), cache_dir, show_download_progress)
     }
 
     /// Retrieve a list of supported models
