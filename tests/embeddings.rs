@@ -120,6 +120,9 @@ macro_rules! create_embeddings_test {
                     let batch_size = $batch_size;
                     let embeddings = model.embed(documents.clone(), batch_size);
 
+                    // Clear the model cache to avoid running out of space on GitHub Actions.
+                    clean_cache(supported_model.model_code.clone());
+
                     if matches!(
                         (batch_size, TextEmbedding::get_quantization_mode(&supported_model.model)),
                         (Some(n), QuantizationMode::Dynamic) if n < documents.len()
