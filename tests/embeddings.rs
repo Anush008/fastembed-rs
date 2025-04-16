@@ -63,7 +63,7 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         EmbeddingModel::ParaphraseMLMiniLML12V2Q => [-0.07749095, -0.058981877, -0.043487836, -0.18775631],
         EmbeddingModel::ParaphraseMLMpnetBaseV2 => [0.39132136, 0.49490625, 0.65497226, 0.34237382],
         EmbeddingModel::ClipVitB32 => [0.7057363, 1.3549932, 0.46823958, 0.52351093],
-        EmbeddingModel::JinaEmbeddingsV2BaseCode => [-0.31383067, -0.3758629, -0.24878195, -0.35373706],
+        EmbeddingModel::JinaEmbeddingsV3 => [0.18882399, 0.16626192, 0.06605322, 0.40536364],
         _ => panic!("Model {model} not found. If you have just inserted this `EmbeddingModel` variant, please update the expected embeddings."),
     };
 
@@ -118,6 +118,9 @@ macro_rules! create_embeddings_test {
                     // Generate embeddings with the default batch size, 256
                     let batch_size = $batch_size;
                     let embeddings = model.embed(documents.clone(), batch_size);
+
+                    // Clear the model cache to avoid running out of space on GitHub Actions.
+                    clean_cache(supported_model.model_code.clone());
 
                     if matches!(
                         (batch_size, TextEmbedding::get_quantization_mode(&supported_model.model)),

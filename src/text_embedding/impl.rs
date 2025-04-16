@@ -13,7 +13,7 @@ use anyhow::Context;
 use anyhow::Result;
 #[cfg(feature = "hf-hub")]
 use hf_hub::api::sync::ApiRepo;
-use ndarray::Array;
+use ndarray::{arr0, Array};
 use ort::{
     session::{builder::GraphOptimizationLevel, Session},
     value::Value,
@@ -130,10 +130,13 @@ impl TextEmbedding {
             .iter()
             .any(|input| input.name == "token_type_ids");
 
+        let needs_task_id = session.inputs.iter().any(|input| input.name == "task_id");
+
         Self {
             tokenizer,
             session,
             need_token_type_ids,
+            needs_task_id,
             pooling: post_process,
             quantization,
         }
@@ -189,7 +192,7 @@ impl TextEmbedding {
 
             EmbeddingModel::ClipVitB32 => Some(Pooling::Mean),
 
-            EmbeddingModel::JinaEmbeddingsV2BaseCode => Some(Pooling::Mean),
+            EmbeddingModel::JinaEmbeddingsV3 => Some(Pooling::Mean),
         }
     }
 
@@ -341,6 +344,13 @@ impl TextEmbedding {
                     "token_type_ids".into(),
                     Value::from_array(token_type_ids_array)?.into(),
                 ));
+            }
+
+            // jina v3 uses a lora adapter for a `task`, used for different kinds of embeddings on
+            // the fly. Might be interesting to add later. From their docs, you can also select no
+            // task, so we just input 0 for now.
+            if self.needs_task_id {
+                session_inputs.push(("task_id".into(), Value::from_array(arr0(0_i64))?.into()));
             }
 
             Ok(
