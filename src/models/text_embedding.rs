@@ -63,8 +63,6 @@ pub enum EmbeddingModel {
     GTELargeENV15Q,
     /// Qdrant/clip-ViT-B-32-text
     ClipVitB32,
-    /// jinaai/jina-embeddings-v2-base-code
-    JinaEmbeddingsV2BaseCode,
     /// jinaai/jina-embeddings-v3
     JinaEmbeddingsV3,
 }
@@ -300,22 +298,6 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             description: String::from("CLIP text encoder based on ViT-B/32"),
             model_code: String::from("Qdrant/clip-ViT-B-32-text"),
             model_file: String::from("model.onnx"),
-            additional_files: Vec::new(),
-        },
-        ModelInfo {
-            model: EmbeddingModel::JinaEmbeddingsV2BaseCode,
-            dim: 768,
-            description: String::from("Jina embeddings v2 base code"),
-            model_code: String::from("jinaai/jina-embeddings-v2-base-code"),
-            model_file: String::from("onnx/model.onnx"),
-            additional_files: Vec::new(),
-        },
-        ModelInfo {
-            model: EmbeddingModel::JinaEmbeddingsV2BaseCode,
-            dim: 768,
-            description: String::from("Jina embeddings v2 base code"),
-            model_code: String::from("jinaai/jina-embeddings-v2-base-code"),
-            model_file: String::from("onnx/model.onnx"),
             additional_files: Vec::new(),
         },
         ModelInfo {
