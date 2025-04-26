@@ -41,6 +41,8 @@ pub enum EmbeddingModel {
     ParaphraseMLMpnetBaseV2,
     /// BAAI/bge-small-zh-v1.5
     BGESmallZHV15,
+    /// BAAI/bge-large-zh-v1.5
+    BGELargeZHV15,
     /// lightonai/modernbert-embed-large
     ModernBertEmbedLarge,
     /// intfloat/multilingual-e5-small
@@ -209,6 +211,14 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             dim: 512,
             description: String::from("v1.5 release of the small Chinese model"),
             model_code: String::from("Xenova/bge-small-zh-v1.5"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: Vec::new(),
+        },
+        ModelInfo {
+            model: EmbeddingModel::BGELargeZHV15,
+            dim: 1024,
+            description: String::from("v1.5 release of the large Chinese model"),
+            model_code: String::from("Xenova/bge-large-zh-v1.5"),
             model_file: String::from("onnx/model.onnx"),
             additional_files: Vec::new(),
         },
