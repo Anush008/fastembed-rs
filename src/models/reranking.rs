@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 use crate::RerankerModelInfo;
 
@@ -55,5 +55,25 @@ impl Display for RerankerModel {
             .find(|model| model.model == *self)
             .expect("Model not found in supported models list.");
         write!(f, "{}", model_info.model_code)
+    }
+}
+
+impl FromStr for RerankerModel {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        reranker_model_list()
+            .into_iter()
+            .find(|m| m.model_code.eq_ignore_ascii_case(s))
+            .map(|m| m.model)
+            .ok_or_else(|| format!("Unknown reranker model: {s}"))
+    }
+}
+
+impl TryFrom<String> for RerankerModel {
+    type Error = String;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
     }
 }

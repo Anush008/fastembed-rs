@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Display, sync::OnceLock};
+use std::{collections::HashMap, convert::TryFrom, fmt::Display, str::FromStr, sync::OnceLock};
 
 use super::model_info::ModelInfo;
 
@@ -358,5 +358,25 @@ impl Display for EmbeddingModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let model_info = get_model_info(self).expect("Model not found.");
         write!(f, "{}", model_info.model_code)
+    }
+}
+
+impl FromStr for EmbeddingModel {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        models_list()
+            .into_iter()
+            .find(|m| m.model_code.eq_ignore_ascii_case(s))
+            .map(|m| m.model)
+            .ok_or_else(|| format!("Unknown embedding model: {s}"))
+    }
+}
+
+impl TryFrom<String> for EmbeddingModel {
+    type Error = String;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
     }
 }
