@@ -163,5 +163,6 @@ pub struct TextEmbedding {
     pub(crate) pooling: Option<Pooling>,
     pub(crate) session: Session,
     pub(crate) need_token_type_ids: bool,
+    pub(crate) needs_task_id: bool,
     pub(crate) quantization: QuantizationMode,
 }
