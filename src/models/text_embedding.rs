@@ -43,6 +43,8 @@ pub enum EmbeddingModel {
     BGESmallZHV15,
     /// BAAI/bge-large-zh-v1.5
     BGELargeZHV15,
+    /// BAAI/bge-m3
+    BGEM3FP16,
     /// lightonai/modernbert-embed-large
     ModernBertEmbedLarge,
     /// intfloat/multilingual-e5-small
@@ -223,6 +225,14 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             additional_files: Vec::new(),
         },
         ModelInfo {
+            model: EmbeddingModel::BGEM3FP16,
+            dim: 1024,
+            description: String::from("FP16 version of the BGE-M3 multilingual embedding model."),
+            model_code: String::from("Xenova/bge-m3"),
+            model_file: String::from("onnx/model_fp16.onnx"),
+            additional_files: Vec::new(),
+        },
+        ModelInfo {
             model: EmbeddingModel::ModernBertEmbedLarge,
             dim: 1024,
             description: String::from("Large model of ModernBert Text Embeddings"),
@@ -330,10 +340,10 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
     models_list
         .into_iter()
         .fold(HashMap::new(), |mut map, model| {
-            // Insert the model into the map
-            map.insert(model.model.clone(), model);
-            map
-        })
+        // Insert the model into the map
+        map.insert(model.model.clone(), model);
+        map
+    })
 }
 
 /// Get a map of all available models.
