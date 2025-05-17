@@ -44,6 +44,8 @@ pub enum EmbeddingModel {
     /// BAAI/bge-large-zh-v1.5
     BGELargeZHV15,
     /// BAAI/bge-m3
+    BGEM3,
+    /// FP16 BAAI/bge-m3
     BGEM3FP16,
     /// lightonai/modernbert-embed-large
     ModernBertEmbedLarge,
@@ -223,6 +225,14 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model_code: String::from("Xenova/bge-large-zh-v1.5"),
             model_file: String::from("onnx/model.onnx"),
             additional_files: Vec::new(),
+        },
+        ModelInfo {
+            model: EmbeddingModel::BGEM3,
+            dim: 1024,
+            description: String::from("BGE-M3 multilingual embedding model."),
+            model_code: String::from("BAAI/bge-m3"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: vec![String::from("onnx/model.onnx_data")],
         },
         ModelInfo {
             model: EmbeddingModel::BGEM3FP16,

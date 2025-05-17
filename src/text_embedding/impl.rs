@@ -165,6 +165,7 @@ impl TextEmbedding {
             EmbeddingModel::BGESmallENV15Q => Some(Pooling::Cls),
             EmbeddingModel::BGESmallZHV15 => Some(Pooling::Cls),
             EmbeddingModel::BGELargeZHV15 => Some(Pooling::Cls),
+            EmbeddingModel::BGEM3 => Some(Pooling::Cls),
             EmbeddingModel::BGEM3FP16 => Some(Pooling::Cls),
 
             EmbeddingModel::NomicEmbedTextV1 => Some(Pooling::Mean),
