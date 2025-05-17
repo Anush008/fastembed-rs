@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 use super::model_info::ModelInfo;
 
@@ -77,5 +77,25 @@ impl Display for ImageEmbeddingModel {
             .find(|model| model.model == *self)
             .unwrap();
         write!(f, "{}", model_info.model_code)
+    }
+}
+
+impl FromStr for ImageEmbeddingModel {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        models_list()
+            .into_iter()
+            .find(|m| m.model_code.eq_ignore_ascii_case(s))
+            .map(|m| m.model)
+            .ok_or_else(|| format!("Unknown embedding model: {s}"))
+    }
+}
+
+impl TryFrom<String> for ImageEmbeddingModel {
+    type Error = String;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
     }
 }
