@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use ort::{execution_providers::ExecutionProviderDispatch, session::Session};
 
-use crate::{ImageEmbeddingModel, DEFAULT_CACHE_DIR};
+use crate::{get_cache_dir, ImageEmbeddingModel};
 
 use super::{utils::Compose, DEFAULT_EMBEDDING_MODEL};
 
@@ -48,7 +48,7 @@ impl Default for ImageInitOptions {
         Self {
             model_name: DEFAULT_EMBEDDING_MODEL,
             execution_providers: Default::default(),
-            cache_dir: Path::new(DEFAULT_CACHE_DIR).to_path_buf(),
+            cache_dir: Path::new(&get_cache_dir()).to_path_buf(),
             show_download_progress: true,
         }
     }

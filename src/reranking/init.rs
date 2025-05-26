@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use ort::{execution_providers::ExecutionProviderDispatch, session::Session};
 use tokenizers::Tokenizer;
 
-use crate::{RerankerModel, TokenizerFiles, DEFAULT_CACHE_DIR};
+use crate::{common::get_cache_dir, RerankerModel, TokenizerFiles};
 
 use super::{DEFAULT_MAX_LENGTH, DEFAULT_RE_RANKER_MODEL};
 
@@ -63,7 +63,7 @@ impl Default for RerankInitOptions {
             model_name: DEFAULT_RE_RANKER_MODEL,
             execution_providers: Default::default(),
             max_length: DEFAULT_MAX_LENGTH,
-            cache_dir: Path::new(DEFAULT_CACHE_DIR).to_path_buf(),
+            cache_dir: Path::new(&get_cache_dir()).to_path_buf(),
             show_download_progress: true,
         }
     }

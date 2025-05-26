@@ -2,9 +2,7 @@
 //!
 
 use crate::{
-    common::{TokenizerFiles, DEFAULT_CACHE_DIR},
-    pooling::Pooling,
-    EmbeddingModel, QuantizationMode,
+    common::TokenizerFiles, get_cache_dir, pooling::Pooling, EmbeddingModel, QuantizationMode,
 };
 use ort::{execution_providers::ExecutionProviderDispatch, session::Session};
 use std::path::{Path, PathBuf};
@@ -66,7 +64,7 @@ impl Default for InitOptions {
             model_name: DEFAULT_EMBEDDING_MODEL,
             execution_providers: Default::default(),
             max_length: DEFAULT_MAX_LENGTH,
-            cache_dir: Path::new(DEFAULT_CACHE_DIR).to_path_buf(),
+            cache_dir: Path::new(&get_cache_dir()).to_path_buf(),
             show_download_progress: true,
         }
     }
