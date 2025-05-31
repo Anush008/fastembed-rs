@@ -5,7 +5,11 @@ use std::io::Read;
 use std::{fs::File, path::PathBuf};
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, Tokenizer, TruncationParams};
 
-pub const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
+const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
+
+pub fn get_cache_dir() -> String {
+    std::env::var("FASTEMBED_CACHE_DIR").unwrap_or(DEFAULT_CACHE_DIR.into())
+}
 
 pub struct SparseEmbedding {
     pub indices: Vec<usize>,

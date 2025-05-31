@@ -10,8 +10,8 @@
 use std::{path::PathBuf, process};
 
 use fastembed::{
-    Pooling, QuantizationMode, TextEmbedding, TokenizerFiles, UserDefinedEmbeddingModel,
-    DEFAULT_CACHE_DIR,
+    get_cache_dir, Pooling, QuantizationMode, TextEmbedding, TokenizerFiles,
+    UserDefinedEmbeddingModel,
 };
 
 const EPS: f32 = 1e-4;
@@ -87,8 +87,8 @@ macro_rules! create_test {
             let repo_name = $repo_name;
             let repo_owner = $repo_owner;
             let model_name = format!("{}/{}", repo_owner, repo_name);
-            let output_path =
-                format!("{DEFAULT_CACHE_DIR}/exported--{repo_owner}--{repo_name}-onnx");
+            let cache_dir = get_cache_dir();
+            let output_path = format!("{cache_dir}/exported--{repo_owner}--{repo_name}-onnx");
             let output = PathBuf::from(output_path);
 
             assert!(

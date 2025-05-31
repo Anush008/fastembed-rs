@@ -7,11 +7,11 @@ use hf_hub::Repo;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use fastembed::{
-    read_file_to_bytes, Embedding, EmbeddingModel, ImageEmbedding, ImageEmbeddingModel,
-    ImageInitOptions, InitOptions, InitOptionsUserDefined, ModelInfo, OnnxSource, Pooling,
-    QuantizationMode, RerankInitOptions, RerankInitOptionsUserDefined, RerankerModel,
-    RerankerModelInfo, SparseInitOptions, SparseTextEmbedding, TextEmbedding, TextRerank,
-    TokenizerFiles, UserDefinedEmbeddingModel, UserDefinedRerankingModel, DEFAULT_CACHE_DIR,
+    get_cache_dir, read_file_to_bytes, Embedding, EmbeddingModel, ImageEmbedding,
+    ImageEmbeddingModel, ImageInitOptions, InitOptions, InitOptionsUserDefined, ModelInfo,
+    OnnxSource, Pooling, QuantizationMode, RerankInitOptions, RerankInitOptionsUserDefined,
+    RerankerModel, RerankerModelInfo, SparseInitOptions, SparseTextEmbedding, TextEmbedding,
+    TextRerank, TokenizerFiles, UserDefinedEmbeddingModel, UserDefinedRerankingModel,
 };
 
 /// A small epsilon value for floating point comparisons.
@@ -209,7 +209,7 @@ fn test_user_defined_embedding_model() {
 
     // Get the directory of the model
     let model_name = test_model_info.model_code.replace('/', "--");
-    let model_dir = Path::new(DEFAULT_CACHE_DIR).join(format!("models--{}", model_name));
+    let model_dir = Path::new(&get_cache_dir()).join(format!("models--{}", model_name));
 
     // Find the "snapshots" sub-directory
     let snapshots_dir = model_dir.join("snapshots");
@@ -341,7 +341,7 @@ fn test_rerank() {
 #[test]
 fn test_user_defined_reranking_large_model() {
     // Setup model to download from Hugging Face
-    let cache = hf_hub::Cache::new(std::path::PathBuf::from(fastembed::DEFAULT_CACHE_DIR));
+    let cache = hf_hub::Cache::new(std::path::PathBuf::from(&fastembed::get_cache_dir()));
     let api = hf_hub::api::sync::ApiBuilder::from_cache(cache)
         .with_progress(true)
         .build()
@@ -401,7 +401,7 @@ fn test_user_defined_reranking_model() {
 
     // Get the directory of the model
     let model_name = test_model_info.model_code.replace('/', "--");
-    let model_dir = Path::new(DEFAULT_CACHE_DIR).join(format!("models--{}", model_name));
+    let model_dir = Path::new(&get_cache_dir()).join(format!("models--{}", model_name));
 
     // Find the "snapshots" sub-directory
     let snapshots_dir = model_dir.join("snapshots");
@@ -554,7 +554,7 @@ fn test_nomic_embed_vision_v1_5() {
 
 fn clean_cache(model_code: String) {
     let repo = Repo::model(model_code);
-    let cache_dir = format!("{}/{}", DEFAULT_CACHE_DIR, repo.folder_name());
+    let cache_dir = format!("{}/{}", &get_cache_dir(), repo.folder_name());
     fs::remove_dir_all(cache_dir).ok();
 }
 
