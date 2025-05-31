@@ -5,7 +5,7 @@ use ort::{
     session::{builder::GraphOptimizationLevel, Session},
     value::Value,
 };
-use std::thread::available_parallelism;
+use std::{path::PathBuf, thread::available_parallelism};
 
 #[cfg(feature = "hf-hub")]
 use crate::common::load_tokenizer_hf_hub;
@@ -14,7 +14,7 @@ use crate::{
     RerankerModelInfo,
 };
 #[cfg(feature = "hf-hub")]
-use hf_hub::{api::sync::ApiBuilder, Cache};
+use hf_hub::{api::sync::ApiRepo};
 use ndarray::{s, Array};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 use tokenizers::Tokenizer;
@@ -51,6 +51,17 @@ impl TextRerank {
     }
 
     #[cfg(feature = "hf-hub")]
+    fn retrieve_model(
+        model: &RerankerModel,
+        cache_dir: PathBuf,
+        show_download_progress: bool,
+    ) -> anyhow::Result<ApiRepo> {
+        use crate::common::pull_from_hf;
+
+        pull_from_hf(model.to_string(), cache_dir, show_download_progress)
+    }
+
+    #[cfg(feature = "hf-hub")]
     pub fn try_new(options: RerankInitOptions) -> Result<TextRerank> {
         use super::RerankInitOptions;
 
@@ -64,12 +75,7 @@ impl TextRerank {
 
         let threads = available_parallelism()?.get();
 
-        let cache = Cache::new(cache_dir);
-        let api = ApiBuilder::from_cache(cache)
-            .with_progress(show_download_progress)
-            .build()
-            .expect("Failed to build API from cache");
-        let model_repo = api.model(model_name.to_string());
+        let model_repo = Self::retrieve_model(&model_name, cache_dir, show_download_progress)?;
 
         let model_file_name = TextRerank::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo.get(&model_file_name).context(format!(
