@@ -32,6 +32,7 @@ ort = { version = "=2.0.0-rc.9", default-features = false, features = [
 rayon = { version = "1.10", default-features = false }
 serde_json = { version = "1" }
 tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
+ort-sys = { version = "=2.0.0-rc.9", default-features = false }
 
 [features]
 default = ["ort-download-binaries", "hf-hub-native-tls"]
