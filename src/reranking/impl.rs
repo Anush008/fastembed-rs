@@ -16,7 +16,6 @@ use crate::{
 #[cfg(feature = "hf-hub")]
 use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::{s, Array};
-use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 use tokenizers::Tokenizer;
 
 #[cfg(feature = "hf-hub")]
@@ -124,85 +123,70 @@ impl TextRerank {
 
     /// Rerank documents using the reranker model and returns the results sorted by score in descending order.
     pub fn rerank<S: AsRef<str> + Send + Sync>(
-        &self,
+        &mut self,
         query: S,
         documents: Vec<S>,
         return_documents: bool,
         batch_size: Option<usize>,
     ) -> Result<Vec<RerankResult>> {
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
-
         let q = query.as_ref();
 
-        let scores: Vec<f32> = documents
-            .par_chunks(batch_size)
-            .map(|batch| {
-                let inputs = batch.iter().map(|d| (q, d.as_ref())).collect();
+        let mut scores: Vec<f32> = Vec::with_capacity(documents.len());
+        for batch in documents.chunks(batch_size) {
+            let inputs = batch.iter().map(|d| (q, d.as_ref())).collect();
+            let encodings = self
+                .tokenizer
+                .encode_batch(inputs, true)
+                .expect("Failed to encode batch");
 
-                let encodings = self
-                    .tokenizer
-                    .encode_batch(inputs, true)
-                    .expect("Failed to encode batch");
+            let encoding_length = encodings[0].len();
+            let batch_size = batch.len();
+            let max_size = encoding_length * batch_size;
 
-                let encoding_length = encodings[0].len();
-                let batch_size = batch.len();
+            let mut ids_array = Vec::with_capacity(max_size);
+            let mut mask_array = Vec::with_capacity(max_size);
+            let mut type_ids_array = Vec::with_capacity(max_size);
 
-                let max_size = encoding_length * batch_size;
+            encodings.iter().for_each(|encoding| {
+                let ids = encoding.get_ids();
+                let mask = encoding.get_attention_mask();
+                let type_ids = encoding.get_type_ids();
 
-                let mut ids_array = Vec::with_capacity(max_size);
-                let mut mask_array = Vec::with_capacity(max_size);
-                let mut type_ids_array = Vec::with_capacity(max_size);
+                ids_array.extend(ids.iter().map(|x| *x as i64));
+                mask_array.extend(mask.iter().map(|x| *x as i64));
+                type_ids_array.extend(type_ids.iter().map(|x| *x as i64));
+            });
 
-                encodings.iter().for_each(|encoding| {
-                    let ids = encoding.get_ids();
-                    let mask = encoding.get_attention_mask();
-                    let type_ids = encoding.get_type_ids();
+            let inputs_ids_array = Array::from_shape_vec((batch_size, encoding_length), ids_array)?;
+            let attention_mask_array =
+                Array::from_shape_vec((batch_size, encoding_length), mask_array)?;
+            let token_type_ids_array =
+                Array::from_shape_vec((batch_size, encoding_length), type_ids_array)?;
 
-                    ids_array.extend(ids.iter().map(|x| *x as i64));
-                    mask_array.extend(mask.iter().map(|x| *x as i64));
-                    type_ids_array.extend(type_ids.iter().map(|x| *x as i64));
-                });
+            let mut session_inputs = ort::inputs![
+                "input_ids" => Value::from_array(inputs_ids_array)?,
+                "attention_mask" => Value::from_array(attention_mask_array)?,
+            ];
+            if self.need_token_type_ids {
+                session_inputs.push((
+                    "token_type_ids".into(),
+                    Value::from_array(token_type_ids_array)?.into(),
+                ));
+            }
 
-                let inputs_ids_array =
-                    Array::from_shape_vec((batch_size, encoding_length), ids_array)?;
-
-                let attention_mask_array =
-                    Array::from_shape_vec((batch_size, encoding_length), mask_array)?;
-
-                let token_type_ids_array =
-                    Array::from_shape_vec((batch_size, encoding_length), type_ids_array)?;
-
-                let mut session_inputs = ort::inputs![
-                    "input_ids" => Value::from_array(inputs_ids_array)?,
-                    "attention_mask" => Value::from_array(attention_mask_array)?,
-                ]?;
-
-                if self.need_token_type_ids {
-                    session_inputs.push((
-                        "token_type_ids".into(),
-                        Value::from_array(token_type_ids_array)?.into(),
-                    ));
-                }
-
-                let outputs = self.session.run(session_inputs)?;
-
-                let outputs = outputs["logits"]
-                    .try_extract_tensor::<f32>()
-                    .expect("Failed to extract logits tensor");
-
-                let scores: Vec<f32> = outputs
-                    .slice(s![.., 0])
-                    .rows()
-                    .into_iter()
-                    .flat_map(|row| row.to_vec())
-                    .collect();
-
-                Ok(scores)
-            })
-            .collect::<Result<Vec<_>>>()?
-            .into_iter()
-            .flatten()
-            .collect();
+            let outputs = self.session.run(session_inputs)?;
+            let outputs = outputs["logits"]
+                .try_extract_array()
+                .expect("Failed to extract logits tensor");
+            let batch_scores: Vec<f32> = outputs
+                .slice(s![.., 0])
+                .rows()
+                .into_iter()
+                .flat_map(|row| row.to_vec())
+                .collect();
+            scores.extend(batch_scores);
+        }
 
         // Return top_n_result of type Vec<RerankResult> ordered by score in descending order, don't use binary heap
         let mut top_n_result: Vec<RerankResult> = scores
@@ -214,9 +198,7 @@ impl TextRerank {
                 index,
             })
             .collect();
-
         top_n_result.sort_by(|a, b| a.score.total_cmp(&b.score).reverse());
-
         Ok(top_n_result.to_vec())
     }
 }

@@ -26,13 +26,11 @@ anyhow = { version = "1" }
 hf-hub = { version = "0.4.1", default-features = false, optional = true }
 image = "0.25.2"
 ndarray = { version = "0.16", default-features = false }
-ort = { version = "=2.0.0-rc.9", default-features = false, features = [
-  "ndarray",
+ort = { version = "=2.0.0-rc.10", default-features = false, features = [
+  "ndarray", "std"
 ] }
-rayon = { version = "1.10", default-features = false }
 serde_json = { version = "1" }
-tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
-ort-sys = { version = "=2.0.0-rc.9", default-features = false }
+tokenizers = { version = "0.21.2", default-features = false, features = ["onig"] }
 
 [features]
 default = ["ort-download-binaries", "hf-hub-native-tls"]

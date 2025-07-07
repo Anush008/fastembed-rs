@@ -11,7 +11,6 @@
 - Supports synchronous usage. No dependency on Tokio.
 - Uses [@pykeio/ort](https://github.com/pykeio/ort) for performant ONNX inference.
 - Uses [@huggingface/tokenizers](https://github.com/huggingface/tokenizers) for fast encodings.
-- Supports batch embeddings generation with parallelism using [@rayon-rs/rayon](https://github.com/rayon-rs/rayon).
 
 ## 🔍 Not looking for Rust?
 
@@ -85,10 +84,10 @@ fastembed = "4"
 use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
 
 // With default InitOptions
-let model = TextEmbedding::try_new(Default::default())?;
+let mut model = TextEmbedding::try_new(Default::default())?;
 
 // With custom InitOptions
-let model = TextEmbedding::try_new(
+let mut model = TextEmbedding::try_new(
     InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true),
 )?;
 
@@ -114,10 +113,10 @@ let documents = vec![
 use fastembed::{ImageEmbedding, ImageInitOptions, ImageEmbeddingModel};
 
 // With default InitOptions
-let model = ImageEmbedding::try_new(Default::default())?;
+let mut model = ImageEmbedding::try_new(Default::default())?;
 
 // With custom InitOptions
-let model = ImageEmbedding::try_new(
+let mut model = ImageEmbedding::try_new(
     ImageInitOptions::new(ImageEmbeddingModel::ClipVitB32).with_show_download_progress(true),
 )?;
 
@@ -135,7 +134,7 @@ println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimens
 ```rust
 use fastembed::{TextRerank, RerankInitOptions, RerankerModel};
 
-let model = TextRerank::try_new(
+let mut model = TextRerank::try_new(
     RerankInitOptions::new(RerankerModel::BGERerankerBase).with_show_download_progress(true),
 )?;
 

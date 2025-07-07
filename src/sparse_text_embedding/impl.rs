@@ -12,7 +12,6 @@ use hf_hub::api::sync::ApiRepo;
 use ndarray::{Array, ArrayViewD, Axis, CowArray, Dim};
 use ort::{session::Session, value::Value};
 #[cfg_attr(not(feature = "hf-hub"), allow(unused_imports))]
-use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 #[cfg(feature = "hf-hub")]
 use std::path::PathBuf;
 use tokenizers::Tokenizer;
@@ -108,7 +107,7 @@ impl SparseTextEmbedding {
     /// Method to generate sentence embeddings for a Vec of texts
     // Generic type to accept String, &str, OsString, &OsStr
     pub fn embed<S: AsRef<str> + Send + Sync>(
-        &self,
+        &mut self,
         texts: Vec<S>,
         batch_size: Option<usize>,
     ) -> Result<Vec<SparseEmbedding>> {
@@ -116,7 +115,7 @@ impl SparseTextEmbedding {
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
 
         let output = texts
-            .par_chunks(batch_size)
+            .chunks(batch_size)
             .map(|batch| {
                 // Encode the texts in the batch
                 let inputs = batch.iter().map(|text| text.as_ref()).collect();
@@ -133,33 +132,29 @@ impl SparseTextEmbedding {
                 let mut mask_array = Vec::with_capacity(max_size);
                 let mut type_ids_array = Vec::with_capacity(max_size);
 
-                // Not using par_iter because the closure needs to be FnMut
                 encodings.iter().for_each(|encoding| {
                     let ids = encoding.get_ids();
                     let mask = encoding.get_attention_mask();
                     let type_ids = encoding.get_type_ids();
 
-                    // Extend the preallocated arrays with the current encoding
-                    // Requires the closure to be FnMut
                     ids_array.extend(ids.iter().map(|x| *x as i64));
                     mask_array.extend(mask.iter().map(|x| *x as i64));
                     type_ids_array.extend(type_ids.iter().map(|x| *x as i64));
                 });
 
-                // Create CowArrays from vectors
                 let inputs_ids_array =
                     Array::from_shape_vec((batch_size, encoding_length), ids_array)?;
-                let owned_attention_mask =
+                let attention_mask_array =
                     Array::from_shape_vec((batch_size, encoding_length), mask_array)?;
-                let attention_mask_array = CowArray::from(&owned_attention_mask);
+                // removed CowArray usage, use owned array
 
                 let token_type_ids_array =
                     Array::from_shape_vec((batch_size, encoding_length), type_ids_array)?;
 
                 let mut session_inputs = ort::inputs![
                     "input_ids" => Value::from_array(inputs_ids_array)?,
-                    "attention_mask" => Value::from_array(&attention_mask_array)?,
-                ]?;
+                    "attention_mask" => Value::from_array(attention_mask_array.clone())?,
+                ];
 
                 if self.need_token_type_ids {
                     session_inputs.push((
@@ -177,12 +172,15 @@ impl SparseTextEmbedding {
                     _ => "last_hidden_state",
                 };
 
-                let output_data = outputs[last_hidden_state_key].try_extract_tensor::<f32>()?;
+                let (shape, data) = outputs[last_hidden_state_key].try_extract_tensor::<f32>()?;
+                let shape: Vec<usize> = shape.iter().map(|&d| d as usize).collect();
+                let output_array = ndarray::ArrayViewD::from_shape(shape.as_slice(), data)?;
+                let attention_mask_cow = ndarray::CowArray::from(&attention_mask_array);
 
                 let embeddings = SparseTextEmbedding::post_process(
                     &self.model,
-                    &output_data,
-                    &attention_mask_array,
+                    &output_array,
+                    &attention_mask_cow,
                 );
 
                 Ok(embeddings)
