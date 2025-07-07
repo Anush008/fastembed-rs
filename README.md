@@ -61,6 +61,10 @@
 - [**jinaai/jina-reranker-v1-turbo-en**](https://huggingface.co/jinaai/jina-reranker-v1-turbo-en)
 - [**jinaai/jina-reranker-v2-base-multiligual**](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual)
 
+## ✊ Support
+
+To support the library, please donate to our primary upstream dependency, [`ort`](https://github.com/pykeio/ort?tab=readme-ov-file#-sponsor-ort) - The Rust wrapper for the ONNX runtime.
+
 ## 🚀 Installation
 
 Run the following in your project directory:
@@ -180,10 +184,6 @@ println!("Rerank result: {:?}", results);
 
 Alternatively, local model files can be used for inference via the `try_new_from_user_defined(...)` methods of respective structs.
 
-## ✊ Support
-
-To support the library, please donate to our primary upstream dependency, [`ort`](https://github.com/pykeio/ort?tab=readme-ov-file#-sponsor-ort) - The Rust wrapper for the ONNX runtime.
-
 ## 📄 LICENSE
 
-Apache 2.0 © [2024](https://github.com/Anush008/fastembed-rs/blob/main/LICENSE)
+[Apache 2.0](https://github.com/Anush008/fastembed-rs/blob/main/LICENSE)
