@@ -64,9 +64,7 @@ mod text_embedding;
 
 pub use ort::execution_providers::ExecutionProviderDispatch;
 
-pub use crate::common::{
-    get_cache_dir, read_file_to_bytes, Embedding, Error, SparseEmbedding, TokenizerFiles,
-};
+pub use crate::common::{get_cache_dir, Embedding, Error, SparseEmbedding, TokenizerFiles};
 pub use crate::models::{
     model_info::ModelInfo, model_info::RerankerModelInfo, quantization::QuantizationMode,
 };

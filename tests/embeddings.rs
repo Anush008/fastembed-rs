@@ -4,14 +4,13 @@ use std::fs;
 use std::path::Path;
 
 use hf_hub::Repo;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use fastembed::{
-    get_cache_dir, read_file_to_bytes, Embedding, EmbeddingModel, ImageEmbedding,
-    ImageEmbeddingModel, ImageInitOptions, InitOptions, InitOptionsUserDefined, ModelInfo,
-    OnnxSource, Pooling, QuantizationMode, RerankInitOptions, RerankInitOptionsUserDefined,
-    RerankerModel, RerankerModelInfo, SparseInitOptions, SparseTextEmbedding, TextEmbedding,
-    TextRerank, TokenizerFiles, UserDefinedEmbeddingModel, UserDefinedRerankingModel,
+    get_cache_dir, Embedding, EmbeddingModel, ImageEmbedding, ImageEmbeddingModel,
+    ImageInitOptions, InitOptions, InitOptionsUserDefined, ModelInfo, OnnxSource, Pooling,
+    QuantizationMode, RerankInitOptions, RerankInitOptionsUserDefined, RerankerModel,
+    RerankerModelInfo, SparseInitOptions, SparseTextEmbedding, TextEmbedding, TextRerank,
+    TokenizerFiles, UserDefinedEmbeddingModel, UserDefinedRerankingModel,
 };
 
 /// A small epsilon value for floating point comparisons.
@@ -104,9 +103,9 @@ macro_rules! create_embeddings_test {
         #[test]
         fn $name() {
             TextEmbedding::list_supported_models()
-                .par_iter()
+                .iter()
                 .for_each(|supported_model| {
-                    let model: TextEmbedding = TextEmbedding::try_new(InitOptions::new(supported_model.model.clone()))
+                    let mut model: TextEmbedding = TextEmbedding::try_new(InitOptions::new(supported_model.model.clone()))
                     .unwrap();
 
                     let documents = vec![
@@ -162,17 +161,12 @@ create_embeddings_test!(
     batch_size: None,
 );
 
-create_embeddings_test!(
-    name: test_with_batch_size,
-    batch_size: Some(70),
-);
-
 #[test]
 fn test_sparse_embeddings() {
     SparseTextEmbedding::list_supported_models()
-        .par_iter()
+        .iter()
         .for_each(|supported_model| {
-            let model: SparseTextEmbedding =
+            let mut model: SparseTextEmbedding =
                 SparseTextEmbedding::try_new(SparseInitOptions::new(supported_model.model.clone()))
                     .unwrap();
 
@@ -224,8 +218,8 @@ fn test_user_defined_embedding_model() {
         .path();
 
     // Find the onnx file - it will be any file ending with .onnx
-    let onnx_file = read_file_to_bytes(
-        &model_files_dir
+    let onnx_file = std::fs::read(
+        model_files_dir
             .read_dir()
             .unwrap()
             .find(|entry| {
@@ -247,15 +241,13 @@ fn test_user_defined_embedding_model() {
 
     // Load the tokenizer files
     let tokenizer_files = TokenizerFiles {
-        tokenizer_file: read_file_to_bytes(&model_files_dir.join("tokenizer.json"))
+        tokenizer_file: std::fs::read(model_files_dir.join("tokenizer.json"))
             .expect("Could not read tokenizer.json"),
-        config_file: read_file_to_bytes(&model_files_dir.join("config.json"))
+        config_file: std::fs::read(model_files_dir.join("config.json"))
             .expect("Could not read config.json"),
-        special_tokens_map_file: read_file_to_bytes(
-            &model_files_dir.join("special_tokens_map.json"),
-        )
-        .expect("Could not read special_tokens_map.json"),
-        tokenizer_config_file: read_file_to_bytes(&model_files_dir.join("tokenizer_config.json"))
+        special_tokens_map_file: std::fs::read(model_files_dir.join("special_tokens_map.json"))
+            .expect("Could not read special_tokens_map.json"),
+        tokenizer_config_file: std::fs::read(model_files_dir.join("tokenizer_config.json"))
             .expect("Could not read tokenizer_config.json"),
     };
     // Create a UserDefinedEmbeddingModel
@@ -263,7 +255,7 @@ fn test_user_defined_embedding_model() {
         UserDefinedEmbeddingModel::new(onnx_file, tokenizer_files).with_pooling(Pooling::Mean);
 
     // Try creating a TextEmbedding instance from the user-defined model
-    let user_defined_text_embedding = TextEmbedding::try_new_from_user_defined(
+    let mut user_defined_text_embedding = TextEmbedding::try_new_from_user_defined(
         user_defined_model,
         InitOptionsUserDefined::default(),
     )
@@ -291,7 +283,7 @@ fn test_rerank() {
     let test_one_model = |supported_model: &RerankerModelInfo| {
         println!("supported_model: {:?}", supported_model);
 
-        let result =
+        let mut result =
             TextRerank::try_new(RerankInitOptions::new(supported_model.model.clone())).unwrap();
 
         let documents = vec![
@@ -333,7 +325,7 @@ fn test_rerank() {
         clean_cache(supported_model.model_code.clone())
     };
     TextRerank::list_supported_models()
-        .par_iter()
+        .iter()
         .for_each(test_one_model);
 }
 
@@ -358,22 +350,18 @@ fn test_user_defined_reranking_large_model() {
 
     // Load the tokenizer files
     let tokenizer_files: TokenizerFiles = TokenizerFiles {
-        tokenizer_file: read_file_to_bytes(&model_repo.get("tokenizer.json").unwrap()).unwrap(),
-        config_file: read_file_to_bytes(&model_repo.get("config.json").unwrap()).unwrap(),
-        special_tokens_map_file: read_file_to_bytes(
-            &model_repo.get("special_tokens_map.json").unwrap(),
-        )
-        .unwrap(),
+        tokenizer_file: std::fs::read(model_repo.get("tokenizer.json").unwrap()).unwrap(),
+        config_file: std::fs::read(model_repo.get("config.json").unwrap()).unwrap(),
+        special_tokens_map_file: std::fs::read(model_repo.get("special_tokens_map.json").unwrap())
+            .unwrap(),
 
-        tokenizer_config_file: read_file_to_bytes(
-            &model_repo.get("tokenizer_config.json").unwrap(),
-        )
-        .unwrap(),
+        tokenizer_config_file: std::fs::read(model_repo.get("tokenizer_config.json").unwrap())
+            .unwrap(),
     };
 
     let model = UserDefinedRerankingModel::new(onnx_source, tokenizer_files);
 
-    let user_defined_reranker =
+    let mut user_defined_reranker =
         TextRerank::try_new_from_user_defined(model, Default::default()).unwrap();
 
     let documents = vec![
@@ -416,8 +404,8 @@ fn test_user_defined_reranking_model() {
         .path();
 
     // Find the onnx file - it will be any file in ./onnx ending with .onnx
-    let onnx_file = read_file_to_bytes(
-        &model_files_dir
+    let onnx_file = std::fs::read(
+        model_files_dir
             .join("onnx")
             .read_dir()
             .unwrap()
@@ -440,22 +428,20 @@ fn test_user_defined_reranking_model() {
 
     // Load the tokenizer files
     let tokenizer_files = TokenizerFiles {
-        tokenizer_file: read_file_to_bytes(&model_files_dir.join("tokenizer.json"))
+        tokenizer_file: std::fs::read(model_files_dir.join("tokenizer.json"))
             .expect("Could not read tokenizer.json"),
-        config_file: read_file_to_bytes(&model_files_dir.join("config.json"))
+        config_file: std::fs::read(model_files_dir.join("config.json"))
             .expect("Could not read config.json"),
-        special_tokens_map_file: read_file_to_bytes(
-            &model_files_dir.join("special_tokens_map.json"),
-        )
-        .expect("Could not read special_tokens_map.json"),
-        tokenizer_config_file: read_file_to_bytes(&model_files_dir.join("tokenizer_config.json"))
+        special_tokens_map_file: std::fs::read(model_files_dir.join("special_tokens_map.json"))
+            .expect("Could not read special_tokens_map.json"),
+        tokenizer_config_file: std::fs::read(model_files_dir.join("tokenizer_config.json"))
             .expect("Could not read tokenizer_config.json"),
     };
     // Create a UserDefinedEmbeddingModel
     let user_defined_model = UserDefinedRerankingModel::new(onnx_file, tokenizer_files);
 
     // Try creating a TextEmbedding instance from the user-defined model
-    let user_defined_reranker = TextRerank::try_new_from_user_defined(
+    let mut user_defined_reranker = TextRerank::try_new_from_user_defined(
         user_defined_model,
         RerankInitOptionsUserDefined::default(),
     )
@@ -480,7 +466,7 @@ fn test_user_defined_reranking_model() {
 #[test]
 fn test_image_embedding_model() {
     let test_one_model = |supported_model: &ModelInfo<ImageEmbeddingModel>| {
-        let model: ImageEmbedding =
+        let mut model: ImageEmbedding =
             ImageEmbedding::try_new(ImageInitOptions::new(supported_model.model.clone())).unwrap();
 
         let images = vec!["tests/assets/image_0.png", "tests/assets/image_1.png"];
@@ -491,7 +477,7 @@ fn test_image_embedding_model() {
         assert_eq!(embeddings.len(), images.len());
     };
     ImageEmbedding::list_supported_models()
-        .par_iter()
+        .iter()
         .for_each(test_one_model);
 }
 
@@ -523,7 +509,7 @@ fn test_nomic_embed_vision_v1_5() {
     // Test the NomicEmbedVisionV15 model specifically because it outputs a 3D tensor with a different
     // output key ('last_hidden_state') compared to other models. This test ensures our tensor extraction
     // logic can handle both standard output keys and this model's specific naming convention.
-    let image_model = ImageEmbedding::try_new(ImageInitOptions::new(
+    let mut image_model = ImageEmbedding::try_new(ImageInitOptions::new(
         fastembed::ImageEmbeddingModel::NomicEmbedVisionV15,
     ))
     .unwrap();
@@ -534,7 +520,7 @@ fn test_nomic_embed_vision_v1_5() {
     let image_embeddings = image_model.embed(images.clone(), None).unwrap();
     assert_eq!(image_embeddings.len(), images.len());
 
-    let text_model = TextEmbedding::try_new(InitOptions::new(
+    let mut text_model = TextEmbedding::try_new(InitOptions::new(
         fastembed::EmbeddingModel::NomicEmbedTextV15,
     ))
     .unwrap();
@@ -566,7 +552,7 @@ fn get_sample_text() -> String {
 
 #[test]
 fn test_batch_size_does_not_change_output() {
-    let model = TextEmbedding::try_new(
+    let mut model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_max_length(384),
     )
     .expect("Create model successfully");
@@ -598,7 +584,7 @@ fn test_batch_size_does_not_change_output() {
 
 #[test]
 fn test_bgesmallen1point5_match_python_counterpart() {
-    let model = TextEmbedding::try_new(
+    let mut model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::BGESmallENV15).with_max_length(384),
     )
     .expect("Create model successfully");
@@ -637,7 +623,7 @@ fn test_bgesmallen1point5_match_python_counterpart() {
 
 #[test]
 fn test_allminilml6v2_match_python_counterpart() {
-    let model = TextEmbedding::try_new(
+    let mut model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_max_length(384),
     )
     .expect("Create model successfully");

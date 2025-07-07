@@ -1,8 +1,7 @@
 use anyhow::Result;
 #[cfg(feature = "hf-hub")]
 use hf_hub::api::sync::{ApiBuilder, ApiRepo};
-use std::io::Read;
-use std::{fs::File, path::PathBuf};
+use std::path::PathBuf;
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, Tokenizer, TruncationParams};
 
 const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
@@ -36,11 +35,11 @@ pub struct TokenizerFiles {
 #[cfg(feature = "hf-hub")]
 pub fn load_tokenizer_hf_hub(model_repo: ApiRepo, max_length: usize) -> Result<Tokenizer> {
     let tokenizer_files: TokenizerFiles = TokenizerFiles {
-        tokenizer_file: read_file_to_bytes(&model_repo.get("tokenizer.json")?)?,
-        config_file: read_file_to_bytes(&model_repo.get("config.json")?)?,
-        special_tokens_map_file: read_file_to_bytes(&model_repo.get("special_tokens_map.json")?)?,
+        tokenizer_file: std::fs::read(model_repo.get("tokenizer.json")?)?,
+        config_file: std::fs::read(&model_repo.get("config.json")?)?,
+        special_tokens_map_file: std::fs::read(&model_repo.get("special_tokens_map.json")?)?,
 
-        tokenizer_config_file: read_file_to_bytes(&model_repo.get("tokenizer_config.json")?)?,
+        tokenizer_config_file: std::fs::read(&model_repo.get("tokenizer_config.json")?)?,
     };
 
     load_tokenizer(tokenizer_files, max_length)
@@ -138,18 +137,6 @@ pub fn normalize(v: &[f32]) -> Vec<f32> {
 
     // We add the super-small epsilon to avoid dividing by zero
     v.iter().map(|&val| val / (norm + epsilon)).collect()
-}
-
-/// Public function to read a file to bytes.
-/// To be used when loading local model files.
-///
-/// Could be used to read the onnx file from a local cache in order to constitute a UserDefinedEmbeddingModel.
-pub fn read_file_to_bytes(file: &PathBuf) -> Result<Vec<u8>> {
-    let mut file = File::open(file)?;
-    let file_size = file.metadata()?.len() as usize;
-    let mut buffer = Vec::with_capacity(file_size);
-    file.read_to_end(&mut buffer)?;
-    Ok(buffer)
 }
 
 /// Pulls a model repo from HuggingFace..
