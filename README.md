@@ -63,7 +63,7 @@
 
 ## 🚀 Installation
 
-Run the following command in your project directory:
+Run the following in your project directory:
 
 ```bash
 cargo add fastembed
