@@ -1,6 +1,6 @@
 [package]
 name = "fastembed"
-version = "4.9.1"
+version = "5.0.0"
 edition = "2021"
 description = "Library for generating vector embeddings, reranking locally."
 license = "Apache-2.0"
