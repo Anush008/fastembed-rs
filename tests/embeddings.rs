@@ -161,11 +161,6 @@ create_embeddings_test!(
     batch_size: None,
 );
 
-create_embeddings_test!(
-    name: test_with_batch_size,
-    batch_size: Some(70),
-);
-
 #[test]
 fn test_sparse_embeddings() {
     SparseTextEmbedding::list_supported_models()

@@ -83,10 +83,10 @@ fastembed = "4"
 ```rust
 use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
 
-// With default InitOptions
+// With default options
 let mut model = TextEmbedding::try_new(Default::default())?;
 
-// With custom InitOptions
+// With custom options
 let mut model = TextEmbedding::try_new(
     InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true),
 )?;
@@ -104,7 +104,30 @@ let documents = vec![
 
  println!("Embeddings length: {}", embeddings.len()); // -> Embeddings length: 4
  println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 384
+```
 
+### Sparse Text Embeddings
+
+```rust
+use fastembed::{SparseEmbedding, SparseInitOptions, SparseModel, SparseTextEmbedding};
+
+// With default options
+let mut model = SparseTextEmbedding::try_new(Default::default())?;
+
+// With custom options
+let mut model = SparseTextEmbedding::try_new(
+    SparseInitOptions::new(SparseModel::SPLADEPPV1).with_show_download_progress(true),
+)?;
+
+let documents = vec![
+    "passage: Hello, World!",
+    "query: Hello, World!",
+    "passage: This is an example passage.",
+    "fastembed-rs is licensed under Apache  2.0"
+    ];
+
+// Generate embeddings with the default batch size, 256
+let embeddings: Vec<SparseEmbedding> = model.embed(documents, None)?;
 ```
 
 ### Image Embeddings
@@ -112,10 +135,10 @@ let documents = vec![
 ```rust
 use fastembed::{ImageEmbedding, ImageInitOptions, ImageEmbeddingModel};
 
-// With default InitOptions
+// With default options
 let mut model = ImageEmbedding::try_new(Default::default())?;
 
-// With custom InitOptions
+// With custom options
 let mut model = ImageEmbedding::try_new(
     ImageInitOptions::new(ImageEmbeddingModel::ClipVitB32).with_show_download_progress(true),
 )?;
@@ -134,6 +157,10 @@ println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimens
 ```rust
 use fastembed::{TextRerank, RerankInitOptions, RerankerModel};
 
+// With default options
+let mut model = TextRerank::try_new(Default::default())?;
+
+// With custom options
 let mut model = TextRerank::try_new(
     RerankInitOptions::new(RerankerModel::BGERerankerBase).with_show_download_progress(true),
 )?;
