@@ -77,7 +77,7 @@ Or add the following line to your Cargo.toml:
 
 ```toml
 [dependencies]
-fastembed = "4"
+fastembed = "5"
 ```
 
 ## 📖 Usage
