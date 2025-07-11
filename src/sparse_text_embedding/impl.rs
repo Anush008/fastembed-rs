@@ -16,9 +16,6 @@ use ort::{session::Session, value::Value};
 use std::path::PathBuf;
 use tokenizers::Tokenizer;
 
-#[cfg_attr(not(feature = "hf-hub"), allow(unused_imports))]
-use std::thread::available_parallelism;
-
 #[cfg(feature = "hf-hub")]
 use super::SparseInitOptions;
 use super::{SparseTextEmbedding, DEFAULT_BATCH_SIZE};
@@ -42,8 +39,6 @@ impl SparseTextEmbedding {
             show_download_progress,
         } = options;
 
-        let threads = available_parallelism()?.get();
-
         let model_repo = SparseTextEmbedding::retrieve_model(
             model_name.clone(),
             cache_dir.clone(),
@@ -55,10 +50,13 @@ impl SparseTextEmbedding {
             .get(&model_file_name)
             .context(format!("Failed to retrieve {} ", model_file_name))?;
 
+        // Create ONNX Runtime session with deterministic configuration
+        // Use single thread execution for consistent/deterministic results
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
+            .with_intra_threads(1)?  // Use single thread for deterministic results
+            .with_inter_threads(1)?  // Use single thread for inter-op parallelism
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;

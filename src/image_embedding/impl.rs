@@ -8,7 +8,7 @@ use ort::{
 };
 #[cfg(feature = "hf-hub")]
 use std::path::PathBuf;
-use std::{io::Cursor, path::Path, thread::available_parallelism};
+use std::{io::Cursor, path::Path};
 
 use crate::{
     common::normalize, models::image_embedding::models_list, Embedding, ImageEmbeddingModel,
@@ -41,8 +41,6 @@ impl ImageEmbedding {
             show_download_progress,
         } = options;
 
-        let threads = available_parallelism()?.get();
-
         let model_repo = ImageEmbedding::retrieve_model(
             model_name.clone(),
             cache_dir.clone(),
@@ -59,10 +57,13 @@ impl ImageEmbedding {
             .get(&model_file_name)
             .context(format!("Failed to retrieve {}", model_file_name))?;
 
+        // Create ONNX Runtime session with deterministic configuration
+        // Use single thread execution for consistent/deterministic results
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
+            .with_intra_threads(1)?  // Use single thread for deterministic results
+            .with_inter_threads(1)?  // Use single thread for inter-op parallelism
             .commit_from_file(model_file_reference)?;
 
         Ok(Self::new(preprocessor, session))
@@ -79,14 +80,15 @@ impl ImageEmbedding {
             execution_providers,
         } = options;
 
-        let threads = available_parallelism()?.get();
-
         let preprocessor = Compose::from_bytes(model.preprocessor_file)?;
 
+        // Create ONNX Runtime session with deterministic configuration
+        // Use single thread execution for consistent/deterministic results
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
+            .with_intra_threads(1)?  // Use single thread for deterministic results
+            .with_inter_threads(1)?  // Use single thread for inter-op parallelism
             .commit_from_memory(&model.onnx_file)?;
 
         Ok(Self::new(preprocessor, session))
