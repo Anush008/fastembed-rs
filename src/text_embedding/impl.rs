@@ -33,7 +33,7 @@ impl TextEmbedding {
     ///
     /// Uses the highest level of Graph optimization
     ///
-    /// Uses single-threaded execution for deterministic results (Fix for issue #171)
+    /// Uses deterministic computation for consistent results (Fix for issue #171)
     #[cfg(feature = "hf-hub")]
     pub fn try_new(options: InitOptions) -> Result<Self> {
         let InitOptions {
@@ -68,13 +68,12 @@ impl TextEmbedding {
         let post_processing = TextEmbedding::get_default_pooling_method(&model_name);
 
         // Create ONNX Runtime session with deterministic configuration
-        // Fix for GitHub issue #171: Use single thread execution to ensure
+        // Fix for GitHub issue #171: Enable deterministic compute to ensure
         // consistent/deterministic embedding results across multiple calls
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(1)?  // Use single thread for deterministic results
-            .with_inter_threads(1)?  // Use single thread for inter-op parallelism
+            .with_deterministic_compute(true)?  // Enable deterministic computation
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
@@ -99,13 +98,12 @@ impl TextEmbedding {
         } = options;
 
         // Create ONNX Runtime session with deterministic configuration
-        // Fix for GitHub issue #171: Use single thread execution to ensure
+        // Fix for GitHub issue #171: Enable deterministic compute to ensure
         // consistent/deterministic embedding results across multiple calls
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(1)?  // Use single thread for deterministic results
-            .with_inter_threads(1)?  // Use single thread for inter-op parallelism
+            .with_deterministic_compute(true)?  // Enable deterministic computation
             .commit_from_memory(&model.onnx_file)?;
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;

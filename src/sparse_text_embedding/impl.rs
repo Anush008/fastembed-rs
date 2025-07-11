@@ -51,12 +51,11 @@ impl SparseTextEmbedding {
             .context(format!("Failed to retrieve {} ", model_file_name))?;
 
         // Create ONNX Runtime session with deterministic configuration
-        // Use single thread execution for consistent/deterministic results
+        // Enable deterministic compute for consistent/deterministic results
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(1)?  // Use single thread for deterministic results
-            .with_inter_threads(1)?  // Use single thread for inter-op parallelism
+            .with_deterministic_compute(true)?  // Enable deterministic computation
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;

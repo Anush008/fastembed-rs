@@ -58,12 +58,11 @@ impl ImageEmbedding {
             .context(format!("Failed to retrieve {}", model_file_name))?;
 
         // Create ONNX Runtime session with deterministic configuration
-        // Use single thread execution for consistent/deterministic results
+        // Enable deterministic compute for consistent/deterministic results
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(1)?  // Use single thread for deterministic results
-            .with_inter_threads(1)?  // Use single thread for inter-op parallelism
+            .with_deterministic_compute(true)?  // Enable deterministic computation
             .commit_from_file(model_file_reference)?;
 
         Ok(Self::new(preprocessor, session))
@@ -83,12 +82,11 @@ impl ImageEmbedding {
         let preprocessor = Compose::from_bytes(model.preprocessor_file)?;
 
         // Create ONNX Runtime session with deterministic configuration
-        // Use single thread execution for consistent/deterministic results
+        // Enable deterministic compute for consistent/deterministic results
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(1)?  // Use single thread for deterministic results
-            .with_inter_threads(1)?  // Use single thread for inter-op parallelism
+            .with_deterministic_compute(true)?  // Enable deterministic computation
             .commit_from_memory(&model.onnx_file)?;
 
         Ok(Self::new(preprocessor, session))

@@ -27,10 +27,13 @@ fn test_embedding_consistency_issue_171() {
 
 #[test]
 fn test_embedding_consistency_multiple_models() {
-    // Test consistency across different models
+    // Test consistency across different models to identify which ones have deterministic issues
     let models = vec![
         EmbeddingModel::AllMiniLML6V2,
         EmbeddingModel::BGESmallENV15,
+        EmbeddingModel::ClipVitB32,
+        EmbeddingModel::AllMiniLML12V2,
+        EmbeddingModel::BGEBaseENV15,
     ];
     
     for model in models {
