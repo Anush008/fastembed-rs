@@ -53,29 +53,3 @@ fn test_embedding_consistency_multiple_models() {
     }
 }
 
-#[test]
-fn test_deterministic_session_configuration() {
-    // This test documents the comprehensive fix for GitHub issue #171
-    // The issue was that TextEmbedding was returning inconsistent results
-    // due to multi-threading in ONNX Runtime causing non-deterministic behavior
-    
-    // Our fix sets both intra_threads and inter_threads to 1 for deterministic execution
-    // across ALL embedding types:
-    // 1. TextEmbedding (the originally reported issue)
-    // 2. ImageEmbedding (preventive fix for consistency)
-    // 3. SparseTextEmbedding (preventive fix for consistency)
-    // 4. TextRerank (preventive fix for consistency)
-    
-    // This ensures that:
-    // - Intra-op parallelism is disabled (single thread within operations)
-    // - Inter-op parallelism is disabled (single thread between operations)
-    // - All embedding types have consistent, deterministic behavior
-    
-    let intra_threads = 1;  // Single thread for deterministic intra-op execution
-    let inter_threads = 1;  // Single thread for deterministic inter-op execution
-    
-    assert_eq!(intra_threads, 1, "Intra-threads should be 1 for deterministic execution");
-    assert_eq!(inter_threads, 1, "Inter-threads should be 1 for deterministic execution");
-    
-    println!("Comprehensive fix verified: All embedding types use single-threaded deterministic configuration");
-}
