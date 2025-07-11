@@ -20,7 +20,6 @@ use ort::{
 };
 #[cfg(feature = "hf-hub")]
 use std::path::PathBuf;
-use std::thread::available_parallelism;
 use tokenizers::Tokenizer;
 
 #[cfg(feature = "hf-hub")]
@@ -34,7 +33,7 @@ impl TextEmbedding {
     ///
     /// Uses the highest level of Graph optimization
     ///
-    /// Uses the total number of CPUs available as the number of intra-threads
+    /// Uses single-threaded execution for deterministic results (Fix for issue #171)
     #[cfg(feature = "hf-hub")]
     pub fn try_new(options: InitOptions) -> Result<Self> {
         let InitOptions {
@@ -44,8 +43,6 @@ impl TextEmbedding {
             cache_dir,
             show_download_progress,
         } = options;
-
-        let threads = available_parallelism()?.get();
 
         let model_repo = TextEmbedding::retrieve_model(
             model_name.clone(),
@@ -70,10 +67,14 @@ impl TextEmbedding {
         // prioritise loading pooling config if available, if not (thanks qdrant!), look for it in hardcoded
         let post_processing = TextEmbedding::get_default_pooling_method(&model_name);
 
+        // Create ONNX Runtime session with deterministic configuration
+        // Fix for GitHub issue #171: Use single thread execution to ensure
+        // consistent/deterministic embedding results across multiple calls
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
+            .with_intra_threads(1)?  // Use single thread for deterministic results
+            .with_inter_threads(1)?  // Use single thread for inter-op parallelism
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
@@ -97,12 +98,14 @@ impl TextEmbedding {
             max_length,
         } = options;
 
-        let threads = available_parallelism()?.get();
-
+        // Create ONNX Runtime session with deterministic configuration
+        // Fix for GitHub issue #171: Use single thread execution to ensure
+        // consistent/deterministic embedding results across multiple calls
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
+            .with_intra_threads(1)?  // Use single thread for deterministic results
+            .with_inter_threads(1)?  // Use single thread for inter-op parallelism
             .commit_from_memory(&model.onnx_file)?;
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
