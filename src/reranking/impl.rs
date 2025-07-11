@@ -80,12 +80,15 @@ impl TextRerank {
             ))?;
         }
 
-        // Create ONNX Runtime session with deterministic configuration
-        // Enable deterministic compute for consistent/deterministic results
+        // Create ONNX Runtime session with comprehensive deterministic configuration
+        // Fix for GitHub issue #171: Combine multiple approaches to ensure
+        // consistent/deterministic embedding results across multiple calls
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_deterministic_compute(true)?  // Enable deterministic computation
+            .with_intra_threads(1)?              // Force single-threaded intra-op execution
+            .with_inter_threads(1)?              // Force single-threaded inter-op execution
+            .with_deterministic_compute(true)?   // Enable deterministic algorithms
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
@@ -104,12 +107,15 @@ impl TextRerank {
             max_length,
         } = options;
 
-        // Create ONNX Runtime session with deterministic configuration
-        // Enable deterministic compute for consistent/deterministic results
+        // Create ONNX Runtime session with comprehensive deterministic configuration
+        // Fix for GitHub issue #171: Combine multiple approaches to ensure
+        // consistent/deterministic embedding results across multiple calls
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_deterministic_compute(true)?  // Enable deterministic computation
+            .with_intra_threads(1)?              // Force single-threaded intra-op execution
+            .with_inter_threads(1)?              // Force single-threaded inter-op execution
+            .with_deterministic_compute(true)?   // Enable deterministic algorithms
 
         let session = match &model.onnx_source {
             OnnxSource::Memory(bytes) => session.commit_from_memory(bytes)?,

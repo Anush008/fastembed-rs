@@ -57,12 +57,15 @@ impl ImageEmbedding {
             .get(&model_file_name)
             .context(format!("Failed to retrieve {}", model_file_name))?;
 
-        // Create ONNX Runtime session with deterministic configuration
-        // Enable deterministic compute for consistent/deterministic results
+        // Create ONNX Runtime session with comprehensive deterministic configuration
+        // Fix for GitHub issue #171: Combine multiple approaches to ensure
+        // consistent/deterministic embedding results across multiple calls
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_deterministic_compute(true)?  // Enable deterministic computation
+            .with_intra_threads(1)?              // Force single-threaded intra-op execution
+            .with_inter_threads(1)?              // Force single-threaded inter-op execution
+            .with_deterministic_compute(true)?   // Enable deterministic algorithms
             .commit_from_file(model_file_reference)?;
 
         Ok(Self::new(preprocessor, session))
@@ -81,12 +84,15 @@ impl ImageEmbedding {
 
         let preprocessor = Compose::from_bytes(model.preprocessor_file)?;
 
-        // Create ONNX Runtime session with deterministic configuration
-        // Enable deterministic compute for consistent/deterministic results
+        // Create ONNX Runtime session with comprehensive deterministic configuration
+        // Fix for GitHub issue #171: Combine multiple approaches to ensure
+        // consistent/deterministic embedding results across multiple calls
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_deterministic_compute(true)?  // Enable deterministic computation
+            .with_intra_threads(1)?              // Force single-threaded intra-op execution
+            .with_inter_threads(1)?              // Force single-threaded inter-op execution
+            .with_deterministic_compute(true)?   // Enable deterministic algorithms
             .commit_from_memory(&model.onnx_file)?;
 
         Ok(Self::new(preprocessor, session))
