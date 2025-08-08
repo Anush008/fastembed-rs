@@ -659,3 +659,24 @@ fn test_allminilml6v2_match_python_counterpart() {
         assert!((expected - actual).abs() < tolerance);
     }
 }
+
+// Ref: https://github.com/Anush008/fastembed-rs/issues/171#issue-3209484009
+#[test]
+fn clip_vit_b32_deterministic_across_calls() {
+    let q = "red car";
+    let mut fe = TextEmbedding::try_new(InitOptions::new(EmbeddingModel::ClipVitB32)).unwrap();
+    let mut first: Option<Vec<f32>> = None;
+    for i in 0..100 {
+        let vecs = fe.embed(vec![q], None).unwrap();
+        if first.is_none() {
+            first = Some(vecs[0].clone());
+        } else {
+            assert_eq!(
+                vecs[0],
+                *first.as_ref().unwrap(),
+                "Embedding changed after {} iterations",
+                i
+            );
+        }
+    }
+}
