@@ -10,7 +10,7 @@ use super::{OutputKey, OutputPrecedence};
 /// pooling etc. This struct should contain all the necessary information for the
 /// post-processing to be performed.
 pub struct SingleBatchOutput {
-    pub outputs: std::collections::HashMap<String, ort::value::Value>,
+    pub outputs: std::collections::BTreeMap<String, ort::value::Value>,
     pub attention_mask_array: Array2<i64>,
 }
 
@@ -26,7 +26,14 @@ impl SingleBatchOutput {
         let ort_output: &ort::value::Value = precedence
             .key_precedence()
             .find_map(|key| match key {
-                OutputKey::OnlyOne => self.outputs.values().next(),
+                // Only select the sole output if and only if there is exactly one.
+                OutputKey::OnlyOne => {
+                    if self.outputs.len() == 1 {
+                        self.outputs.values().next()
+                    } else {
+                        None
+                    }
+                }
                 OutputKey::ByOrder(idx) => self.outputs.values().nth(*idx),
                 OutputKey::ByName(name) => self.outputs.get(*name),
             })
