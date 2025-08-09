@@ -12,6 +12,7 @@ use super::TextEmbedding;
 /// The default output precedence for the TextEmbedding model.
 pub const OUTPUT_TYPE_PRECEDENCE: &[OutputKey] = &[
     OutputKey::OnlyOne,
+    OutputKey::ByName("text_embeds"),
     OutputKey::ByName("last_hidden_state"),
     OutputKey::ByName("sentence_embedding"),
     // Better not to expose this unless the user explicitly asks for it.
