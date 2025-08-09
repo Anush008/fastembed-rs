@@ -26,13 +26,14 @@ impl SingleBatchOutput {
         let ort_output: &ort::value::Value = precedence
             .key_precedence()
             .find_map(|key| match key {
+                // Only select the sole output if and only if there is exactly one.
                 OutputKey::OnlyOne => {
                     if self.outputs.len() == 1 {
                         self.outputs.first().map(|(_, v)| v)
                     } else {
                         None
                     }
-                },
+                }
                 OutputKey::ByOrder(idx) => self.outputs.iter().nth(*idx).map(|(_, v)| v),
                 OutputKey::ByName(name) => self.outputs.iter().find(|(n, _)| n == name).map(|(_, v)| v),
             })
