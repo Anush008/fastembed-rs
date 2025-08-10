@@ -10,7 +10,7 @@ use super::{OutputKey, OutputPrecedence};
 /// pooling etc. This struct should contain all the necessary information for the
 /// post-processing to be performed.
 pub struct SingleBatchOutput {
-    pub outputs: std::collections::BTreeMap<String, ort::value::Value>,
+    pub outputs: Vec<(String, ort::value::Value)>,
     pub attention_mask_array: Array2<i64>,
 }
 
@@ -29,18 +29,18 @@ impl SingleBatchOutput {
                 // Only select the sole output if and only if there is exactly one.
                 OutputKey::OnlyOne => {
                     if self.outputs.len() == 1 {
-                        self.outputs.values().next()
+                        self.outputs.first().map(|(_, v)| v)
                     } else {
                         None
                     }
                 }
-                OutputKey::ByOrder(idx) => self.outputs.values().nth(*idx),
-                OutputKey::ByName(name) => self.outputs.get(*name),
+                OutputKey::ByOrder(idx) => self.outputs.get(*idx).map(|(_, v)| v),
+                OutputKey::ByName(name) => self.outputs.iter().find(|(n, _)| n == name).map(|(_, v)| v),
             })
             .ok_or_else(|| {
                 anyhow::Error::msg(format!(
                     "No suitable output found in the outputs. Available outputs: {:?}",
-                    self.outputs.keys().collect::<Vec<_>>()
+                    self.outputs.iter().map(|(k, _)| k).collect::<Vec<_>>()
                 ))
             })?;
 

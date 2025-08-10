@@ -34,7 +34,7 @@
 ```
 # use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
 # fn embedding_demo() -> anyhow::Result<()> {
-# let model: TextEmbedding = TextEmbedding::try_new(Default::default())?;
+# let mut model: TextEmbedding = TextEmbedding::try_new(Default::default())?;
  let documents = vec![
     "passage: Hello, World!",
     "query: Hello, World!",
