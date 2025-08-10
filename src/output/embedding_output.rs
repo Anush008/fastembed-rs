@@ -34,7 +34,7 @@ impl SingleBatchOutput {
                         None
                     }
                 }
-                OutputKey::ByOrder(idx) => self.outputs.iter().nth(*idx).map(|(_, v)| v),
+                OutputKey::ByOrder(idx) => self.outputs.get(*idx).map(|(_, v)| v),
                 OutputKey::ByName(name) => self.outputs.iter().find(|(n, _)| n == name).map(|(_, v)| v),
             })
             .ok_or_else(|| {
