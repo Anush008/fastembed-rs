@@ -1,58 +1,9 @@
-use std::path::{Path, PathBuf};
-
+use super::utils::Compose;
+use crate::{init::InitOptions, ImageEmbeddingModel};
 use ort::{execution_providers::ExecutionProviderDispatch, session::Session};
 
-use crate::{get_cache_dir, ImageEmbeddingModel};
-
-use super::{utils::Compose, DEFAULT_EMBEDDING_MODEL};
-
 /// Options for initializing the ImageEmbedding model
-#[derive(Debug, Clone)]
-#[non_exhaustive]
-pub struct ImageInitOptions {
-    pub model_name: ImageEmbeddingModel,
-    pub execution_providers: Vec<ExecutionProviderDispatch>,
-    pub cache_dir: PathBuf,
-    pub show_download_progress: bool,
-}
-
-impl ImageInitOptions {
-    pub fn new(model_name: ImageEmbeddingModel) -> Self {
-        Self {
-            model_name,
-            ..Default::default()
-        }
-    }
-
-    pub fn with_cache_dir(mut self, cache_dir: PathBuf) -> Self {
-        self.cache_dir = cache_dir;
-        self
-    }
-
-    pub fn with_execution_providers(
-        mut self,
-        execution_providers: Vec<ExecutionProviderDispatch>,
-    ) -> Self {
-        self.execution_providers = execution_providers;
-        self
-    }
-
-    pub fn with_show_download_progress(mut self, show_download_progress: bool) -> Self {
-        self.show_download_progress = show_download_progress;
-        self
-    }
-}
-
-impl Default for ImageInitOptions {
-    fn default() -> Self {
-        Self {
-            model_name: DEFAULT_EMBEDDING_MODEL,
-            execution_providers: Default::default(),
-            cache_dir: Path::new(&get_cache_dir()).to_path_buf(),
-            show_download_progress: true,
-        }
-    }
-}
+pub type ImageInitOptions = InitOptions<ImageEmbeddingModel>;
 
 /// Options for initializing UserDefinedImageEmbeddingModel
 ///

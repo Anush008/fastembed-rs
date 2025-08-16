@@ -35,11 +35,11 @@ impl SparseTextEmbedding {
         use ort::{session::builder::GraphOptimizationLevel, session::Session};
 
         let SparseInitOptions {
-            model_name,
-            execution_providers,
             max_length,
+            model_name,
             cache_dir,
             show_download_progress,
+            execution_providers,
         } = options;
 
         let threads = available_parallelism()?.get();

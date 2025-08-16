@@ -24,7 +24,7 @@ use std::thread::available_parallelism;
 use tokenizers::Tokenizer;
 
 #[cfg(feature = "hf-hub")]
-use super::InitOptions;
+use super::TextInitOptions;
 use super::{
     output, InitOptionsUserDefined, TextEmbedding, UserDefinedEmbeddingModel, DEFAULT_BATCH_SIZE,
 };
@@ -36,15 +36,14 @@ impl TextEmbedding {
     ///
     /// Uses the total number of CPUs available as the number of intra-threads
     #[cfg(feature = "hf-hub")]
-    pub fn try_new(options: InitOptions) -> Result<Self> {
-        let InitOptions {
+    pub fn try_new(options: TextInitOptions) -> Result<Self> {
+        let TextInitOptions {
+            max_length,
             model_name,
             execution_providers,
-            max_length,
             cache_dir,
             show_download_progress,
         } = options;
-
         let threads = available_parallelism()?.get();
 
         let model_repo = TextEmbedding::retrieve_model(

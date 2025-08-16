@@ -1,66 +1,20 @@
-use std::path::{Path, PathBuf};
-
-use ort::{execution_providers::ExecutionProviderDispatch, session::Session};
+use ort::session::Session;
 use tokenizers::Tokenizer;
 
-use crate::{common::get_cache_dir, models::sparse::SparseModel, TokenizerFiles};
+use crate::{
+    init::{HasMaxLength, InitOptionsWithLength},
+    models::sparse::SparseModel,
+    TokenizerFiles,
+};
 
-use super::{DEFAULT_EMBEDDING_MODEL, DEFAULT_MAX_LENGTH};
+use super::DEFAULT_MAX_LENGTH;
+
+impl HasMaxLength for SparseModel {
+    const MAX_LENGTH: usize = DEFAULT_MAX_LENGTH;
+}
 
 /// Options for initializing the SparseTextEmbedding model
-#[derive(Debug, Clone)]
-#[non_exhaustive]
-pub struct SparseInitOptions {
-    pub model_name: SparseModel,
-    pub execution_providers: Vec<ExecutionProviderDispatch>,
-    pub max_length: usize,
-    pub cache_dir: PathBuf,
-    pub show_download_progress: bool,
-}
-
-impl SparseInitOptions {
-    pub fn new(model_name: SparseModel) -> Self {
-        Self {
-            model_name,
-            ..Default::default()
-        }
-    }
-
-    pub fn with_max_length(mut self, max_length: usize) -> Self {
-        self.max_length = max_length;
-        self
-    }
-
-    pub fn with_cache_dir(mut self, cache_dir: PathBuf) -> Self {
-        self.cache_dir = cache_dir;
-        self
-    }
-
-    pub fn with_execution_providers(
-        mut self,
-        execution_providers: Vec<ExecutionProviderDispatch>,
-    ) -> Self {
-        self.execution_providers = execution_providers;
-        self
-    }
-
-    pub fn with_show_download_progress(mut self, show_download_progress: bool) -> Self {
-        self.show_download_progress = show_download_progress;
-        self
-    }
-}
-
-impl Default for SparseInitOptions {
-    fn default() -> Self {
-        Self {
-            model_name: DEFAULT_EMBEDDING_MODEL,
-            execution_providers: Default::default(),
-            max_length: DEFAULT_MAX_LENGTH,
-            cache_dir: Path::new(&get_cache_dir()).to_path_buf(),
-            show_download_progress: true,
-        }
-    }
-}
+pub type SparseInitOptions = InitOptionsWithLength<SparseModel>;
 
 /// Struct for "bring your own" embedding models
 ///
