@@ -2,9 +2,10 @@ use std::{fmt::Display, str::FromStr};
 
 use crate::RerankerModelInfo;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub enum RerankerModel {
     /// BAAI/bge-reranker-base
+    #[default]
     BGERerankerBase,
     /// rozgo/bge-reranker-v2-m3
     BGERerankerV2M3,

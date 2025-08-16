@@ -5,7 +5,7 @@ use super::model_info::ModelInfo;
 /// Lazy static list of all available models.
 static MODEL_MAP: OnceLock<HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>>> = OnceLock::new();
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EmbeddingModel {
     /// sentence-transformers/all-MiniLM-L6-v2
     AllMiniLML6V2,
@@ -24,6 +24,7 @@ pub enum EmbeddingModel {
     /// Quantized BAAI/bge-large-en-v1.5
     BGELargeENV15Q,
     /// BAAI/bge-small-en-v1.5 - Default
+    #[default]
     BGESmallENV15,
     /// Quantized BAAI/bge-small-en-v1.5
     BGESmallENV15Q,

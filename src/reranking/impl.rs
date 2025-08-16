@@ -54,9 +54,9 @@ impl TextRerank {
         use super::RerankInitOptions;
 
         let RerankInitOptions {
+            max_length,
             model_name,
             execution_providers,
-            max_length,
             cache_dir,
             show_download_progress,
         } = options;

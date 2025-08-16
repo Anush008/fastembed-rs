@@ -55,6 +55,7 @@
 
 mod common;
 mod image_embedding;
+mod init;
 mod models;
 pub mod output;
 mod pooling;
@@ -74,7 +75,8 @@ pub use crate::pooling::Pooling;
 // For Text Embedding
 pub use crate::models::text_embedding::EmbeddingModel;
 pub use crate::text_embedding::{
-    InitOptions, InitOptionsUserDefined, TextEmbedding, UserDefinedEmbeddingModel,
+    InitOptionsUserDefined, TextEmbedding, TextInitOptions as InitOptions,
+    UserDefinedEmbeddingModel,
 };
 
 // For Sparse Text Embedding

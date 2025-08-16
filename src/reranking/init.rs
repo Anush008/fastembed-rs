@@ -1,11 +1,11 @@
-use std::path::{Path, PathBuf};
-
+use super::DEFAULT_MAX_LENGTH;
+use crate::{
+    init::{HasMaxLength, InitOptionsWithLength},
+    RerankerModel, TokenizerFiles,
+};
 use ort::{execution_providers::ExecutionProviderDispatch, session::Session};
+use std::path::PathBuf;
 use tokenizers::Tokenizer;
-
-use crate::{common::get_cache_dir, RerankerModel, TokenizerFiles};
-
-use super::{DEFAULT_MAX_LENGTH, DEFAULT_RE_RANKER_MODEL};
 
 #[derive(Debug)]
 pub struct TextRerank {
@@ -14,60 +14,12 @@ pub struct TextRerank {
     pub(crate) need_token_type_ids: bool,
 }
 
-/// Options for initializing the reranking model
-#[derive(Debug, Clone)]
-#[non_exhaustive]
-pub struct RerankInitOptions {
-    pub model_name: RerankerModel,
-    pub execution_providers: Vec<ExecutionProviderDispatch>,
-    pub max_length: usize,
-    pub cache_dir: PathBuf,
-    pub show_download_progress: bool,
+impl HasMaxLength for RerankerModel {
+    const MAX_LENGTH: usize = DEFAULT_MAX_LENGTH;
 }
 
-impl RerankInitOptions {
-    pub fn new(model_name: RerankerModel) -> Self {
-        Self {
-            model_name,
-            ..Default::default()
-        }
-    }
-
-    pub fn with_max_length(mut self, max_length: usize) -> Self {
-        self.max_length = max_length;
-        self
-    }
-
-    pub fn with_cache_dir(mut self, cache_dir: PathBuf) -> Self {
-        self.cache_dir = cache_dir;
-        self
-    }
-
-    pub fn with_execution_providers(
-        mut self,
-        execution_providers: Vec<ExecutionProviderDispatch>,
-    ) -> Self {
-        self.execution_providers = execution_providers;
-        self
-    }
-
-    pub fn with_show_download_progress(mut self, show_download_progress: bool) -> Self {
-        self.show_download_progress = show_download_progress;
-        self
-    }
-}
-
-impl Default for RerankInitOptions {
-    fn default() -> Self {
-        Self {
-            model_name: DEFAULT_RE_RANKER_MODEL,
-            execution_providers: Default::default(),
-            max_length: DEFAULT_MAX_LENGTH,
-            cache_dir: Path::new(&get_cache_dir()).to_path_buf(),
-            show_download_progress: true,
-        }
-    }
-}
+/// Options for initializing the reranking models
+pub type RerankInitOptions = InitOptionsWithLength<RerankerModel>;
 
 /// Options for initializing UserDefinedRerankerModel
 ///

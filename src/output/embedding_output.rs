@@ -22,7 +22,7 @@ impl SingleBatchOutput {
     pub fn select_output(
         &self,
         precedence: &impl OutputPrecedence,
-    ) -> anyhow::Result<ArrayView<f32, Dim<IxDynImpl>>> {
+    ) -> anyhow::Result<ArrayView<'_, f32, Dim<IxDynImpl>>> {
         let ort_output: &ort::value::Value = precedence
             .key_precedence()
             .find_map(|key| match key {
@@ -35,7 +35,9 @@ impl SingleBatchOutput {
                     }
                 }
                 OutputKey::ByOrder(idx) => self.outputs.get(*idx).map(|(_, v)| v),
-                OutputKey::ByName(name) => self.outputs.iter().find(|(n, _)| n == name).map(|(_, v)| v),
+                OutputKey::ByName(name) => {
+                    self.outputs.iter().find(|(n, _)| n == name).map(|(_, v)| v)
+                }
             })
             .ok_or_else(|| {
                 anyhow::Error::msg(format!(

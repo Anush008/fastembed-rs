@@ -2,9 +2,10 @@ use std::{fmt::Display, str::FromStr};
 
 use super::model_info::ModelInfo;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub enum ImageEmbeddingModel {
     /// Qdrant/clip-ViT-B-32-vision
+    #[default]
     ClipVitB32,
     /// Qdrant/resnet50-onnx
     Resnet50,
