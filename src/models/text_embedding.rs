@@ -1,6 +1,6 @@
 use std::{collections::HashMap, convert::TryFrom, fmt::Display, str::FromStr, sync::OnceLock};
 
-use super::model_info::ModelInfo;
+use super::{model_info::ModelInfo, ModelTrait};
 
 /// Lazy static list of all available models.
 static MODEL_MAP: OnceLock<HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>>> = OnceLock::new();
@@ -342,11 +342,6 @@ pub fn models_map() -> &'static HashMap<EmbeddingModel, ModelInfo<EmbeddingModel
     MODEL_MAP.get_or_init(init_models_map)
 }
 
-/// Get model information by model code.
-pub fn get_model_info(model: &EmbeddingModel) -> Option<&ModelInfo<EmbeddingModel>> {
-    models_map().get(model)
-}
-
 /// Get a list of all available models.
 ///
 /// This will assign new memory to the models list; where possible, use
@@ -355,9 +350,18 @@ pub fn models_list() -> Vec<ModelInfo<EmbeddingModel>> {
     models_map().values().cloned().collect()
 }
 
+impl ModelTrait for EmbeddingModel {
+    type Model = Self;
+
+    /// Get model information by model code.
+    fn get_model_info(model: &EmbeddingModel) -> Option<&ModelInfo<EmbeddingModel>> {
+        models_map().get(model)
+    }
+}
+
 impl Display for EmbeddingModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let model_info = get_model_info(self).expect("Model not found.");
+        let model_info = EmbeddingModel::get_model_info(self).expect("Model not found.");
         write!(f, "{}", model_info.model_code)
     }
 }

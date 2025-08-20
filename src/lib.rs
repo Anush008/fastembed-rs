@@ -72,11 +72,16 @@ pub use crate::models::{
 pub use crate::output::{EmbeddingOutput, OutputKey, OutputPrecedence, SingleBatchOutput};
 pub use crate::pooling::Pooling;
 
+// For all Embedding
+pub use crate::init::{InitOptions as BaseInitOptions, InitOptionsWithLength};
+pub use crate::models::ModelTrait;
+
 // For Text Embedding
 pub use crate::models::text_embedding::EmbeddingModel;
+#[deprecated(note = "use `TextInitOptions` instead")]
+pub use crate::text_embedding::TextInitOptions as InitOptions;
 pub use crate::text_embedding::{
-    InitOptionsUserDefined, TextEmbedding, TextInitOptions as InitOptions,
-    UserDefinedEmbeddingModel,
+    InitOptionsUserDefined, TextEmbedding, TextInitOptions, UserDefinedEmbeddingModel,
 };
 
 // For Sparse Text Embedding

@@ -3,10 +3,9 @@
 #[cfg(feature = "hf-hub")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::load_tokenizer,
-    models::text_embedding::{get_model_info, models_list},
-    pooling::Pooling,
-    Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, QuantizationMode, SingleBatchOutput,
+    common::load_tokenizer, models::text_embedding::models_list, models::ModelTrait,
+    pooling::Pooling, Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, QuantizationMode,
+    SingleBatchOutput,
 };
 #[cfg(feature = "hf-hub")]
 use anyhow::Context;
@@ -225,7 +224,7 @@ impl TextEmbedding {
 
     /// Get ModelInfo from EmbeddingModel
     pub fn get_model_info(model: &EmbeddingModel) -> Result<&ModelInfo<EmbeddingModel>> {
-        get_model_info(model).ok_or_else(|| {
+        EmbeddingModel::get_model_info(model).ok_or_else(|| {
             anyhow::Error::msg(format!(
                 "Model {model:?} not found. Please check if the model is supported \
                 by the current version."

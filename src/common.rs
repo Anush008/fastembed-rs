@@ -1,6 +1,7 @@
 use anyhow::Result;
 #[cfg(feature = "hf-hub")]
 use hf_hub::api::sync::{ApiBuilder, ApiRepo};
+#[cfg(feature = "hf-hub")]
 use std::path::PathBuf;
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, Tokenizer, TruncationParams};
 
