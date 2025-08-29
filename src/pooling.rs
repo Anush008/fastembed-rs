@@ -59,13 +59,13 @@ pub fn mean(
     let attention_mask = attention_mask_array
         .insert_axis(ndarray::Axis(2))
         .broadcast(token_embeddings.dim())
-        .unwrap_or_else(|| {
-            panic!(
+        .ok_or_else(|| {
+            anyhow::Error::msg(format!(
                 "Could not broadcast attention mask from {:?} to {:?}",
                 attention_mask_original_dim,
                 token_embeddings.dim()
-            )
-        })
+            ))
+        })?
         .mapv(|x| x as f32);
 
     let masked_tensor = &attention_mask * &token_embeddings;

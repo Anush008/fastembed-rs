@@ -119,7 +119,9 @@ impl SparseTextEmbedding {
             .map(|batch| {
                 // Encode the texts in the batch
                 let inputs = batch.iter().map(|text| text.as_ref()).collect();
-                let encodings = self.tokenizer.encode_batch(inputs, true).unwrap();
+                let encodings = self.tokenizer.encode_batch(inputs, true).map_err(|e| {
+                    anyhow::Error::msg(e.to_string()).context("Failed to encode the batch.")
+                })?;
 
                 // Extract the encoding length and batch size
                 let encoding_length = encodings[0].len();
