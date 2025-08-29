@@ -112,20 +112,36 @@ pub fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Res
     if let serde_json::Value::Object(root_object) = special_tokens_map {
         for (_, value) in root_object.iter() {
             if value.is_string() {
-                tokenizer.add_special_tokens(&[AddedToken {
-                    content: value.as_str().unwrap().into(),
-                    special: true,
-                    ..Default::default()
-                }]);
+                if let Some(content) = value.as_str() {
+                    tokenizer.add_special_tokens(&[AddedToken {
+                        content: content.into(),
+                        special: true,
+                        ..Default::default()
+                    }]);
+                }
             } else if value.is_object() {
-                tokenizer.add_special_tokens(&[AddedToken {
-                    content: value["content"].as_str().unwrap().into(),
-                    special: true,
-                    single_word: value["single_word"].as_bool().unwrap(),
-                    lstrip: value["lstrip"].as_bool().unwrap(),
-                    rstrip: value["rstrip"].as_bool().unwrap(),
-                    normalized: value["normalized"].as_bool().unwrap(),
-                }]);
+                if let (
+                    Some(content),
+                    Some(single_word),
+                    Some(lstrip),
+                    Some(rstrip),
+                    Some(normalized),
+                ) = (
+                    value["content"].as_str(),
+                    value["single_word"].as_bool(),
+                    value["lstrip"].as_bool(),
+                    value["rstrip"].as_bool(),
+                    value["normalized"].as_bool(),
+                ) {
+                    tokenizer.add_special_tokens(&[AddedToken {
+                        content: content.into(),
+                        special: true,
+                        single_word,
+                        lstrip,
+                        rstrip,
+                        normalized,
+                    }]);
+                }
             }
         }
     }
