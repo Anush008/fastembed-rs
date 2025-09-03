@@ -30,7 +30,7 @@ ort = { version = "=2.0.0-rc.10", default-features = false, features = [
   "ndarray", "std"
 ] }
 serde_json = { version = "1" }
-tokenizers = { version = "0.21.2", default-features = false, features = ["onig"] }
+tokenizers = { version = "0.22.0", default-features = false, features = ["onig"] }
 
 [features]
 default = ["ort-download-binaries", "hf-hub-native-tls"]
