@@ -5,7 +5,7 @@ use crate::{
     common::TokenizerFiles,
     init::{HasMaxLength, InitOptionsWithLength},
     pooling::Pooling,
-    EmbeddingModel, QuantizationMode,
+    EmbeddingModel, OutputKey, QuantizationMode,
 };
 use ort::{execution_providers::ExecutionProviderDispatch, session::Session};
 use tokenizers::Tokenizer;
@@ -80,6 +80,7 @@ pub struct UserDefinedEmbeddingModel {
     pub tokenizer_files: TokenizerFiles,
     pub pooling: Option<Pooling>,
     pub quantization: QuantizationMode,
+    pub output_key: Option<OutputKey>,
 }
 
 impl UserDefinedEmbeddingModel {
@@ -89,6 +90,7 @@ impl UserDefinedEmbeddingModel {
             tokenizer_files,
             quantization: QuantizationMode::None,
             pooling: None,
+            output_key: None,
         }
     }
 
@@ -110,4 +112,5 @@ pub struct TextEmbedding {
     pub(crate) session: Session,
     pub(crate) need_token_type_ids: bool,
     pub(crate) quantization: QuantizationMode,
+    pub(crate) output_key: Option<OutputKey>,
 }

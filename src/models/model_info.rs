@@ -1,4 +1,4 @@
-use crate::RerankerModel;
+use crate::{OutputKey, RerankerModel};
 
 /// Data struct about the available models
 #[derive(Debug, Clone)]
@@ -9,6 +9,7 @@ pub struct ModelInfo<T> {
     pub model_code: String,
     pub model_file: String,
     pub additional_files: Vec<String>,
+    pub output_key: Option<OutputKey>,
 }
 
 /// Data struct about the available reranker models
