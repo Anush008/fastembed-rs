@@ -7,7 +7,7 @@
 //! e.g. reading the output keys from the model file.
 
 /// Enum for defining the key of the output.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OutputKey {
     OnlyOne,
     ByOrder(usize),
@@ -39,5 +39,11 @@ pub trait OutputPrecedence {
 impl OutputPrecedence for &[OutputKey] {
     fn key_precedence(&self) -> impl Iterator<Item = &OutputKey> {
         self.iter()
+    }
+}
+
+impl OutputPrecedence for &OutputKey {
+    fn key_precedence(&self) -> impl Iterator<Item = &OutputKey> {
+        std::iter::once(*self)
     }
 }

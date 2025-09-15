@@ -3,8 +3,10 @@
 #[cfg(feature = "hf-hub")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::load_tokenizer, models::text_embedding::models_list, models::ModelTrait,
-    pooling::Pooling, Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, QuantizationMode,
+    common::load_tokenizer,
+    models::{text_embedding::models_list, ModelTrait},
+    pooling::Pooling,
+    Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, OutputKey, QuantizationMode,
     SingleBatchOutput,
 };
 #[cfg(feature = "hf-hub")]
@@ -80,6 +82,7 @@ impl TextEmbedding {
             session,
             post_processing,
             TextEmbedding::get_quantization_mode(&model_name),
+            model_info.output_key.clone(),
         ))
     }
 
@@ -109,6 +112,7 @@ impl TextEmbedding {
             session,
             model.pooling,
             model.quantization,
+            model.output_key,
         ))
     }
 
@@ -118,6 +122,7 @@ impl TextEmbedding {
         session: Session,
         post_process: Option<Pooling>,
         quantization: QuantizationMode,
+        output_key: Option<OutputKey>,
     ) -> Self {
         let need_token_type_ids = session
             .inputs
@@ -130,6 +135,7 @@ impl TextEmbedding {
             need_token_type_ids,
             pooling: post_process,
             quantization,
+            output_key,
         }
     }
     /// Return the TextEmbedding model's directory from cache or remote retrieval
@@ -185,6 +191,8 @@ impl TextEmbedding {
             EmbeddingModel::ClipVitB32 => Some(Pooling::Mean),
 
             EmbeddingModel::JinaEmbeddingsV2BaseCode => Some(Pooling::Mean),
+
+            EmbeddingModel::EmbeddingGemma300M => Some(Pooling::Mean),
         }
     }
 
@@ -365,10 +373,16 @@ impl TextEmbedding {
         batch_size: Option<usize>,
     ) -> Result<Vec<Embedding>> {
         let batches = self.transform(texts, batch_size)?;
-
-        batches.export_with_transformer(output::transformer_with_precedence(
-            output::OUTPUT_TYPE_PRECEDENCE,
-            self.pooling.clone(),
-        ))
+        if let Some(output_key) = &self.output_key {
+            batches.export_with_transformer(output::transformer_with_precedence(
+                output_key,
+                self.pooling.clone(),
+            ))
+        } else {
+            batches.export_with_transformer(output::transformer_with_precedence(
+                output::OUTPUT_TYPE_PRECEDENCE,
+                self.pooling.clone(),
+            ))
+        }
     }
 }

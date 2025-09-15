@@ -17,6 +17,7 @@ pub fn models_list() -> Vec<ModelInfo<SparseModel>> {
         model_code: String::from("Qdrant/Splade_PP_en_v1"),
         model_file: String::from("model.onnx"),
         additional_files: Vec::new(),
+        output_key: None,
     }]
 }
 
