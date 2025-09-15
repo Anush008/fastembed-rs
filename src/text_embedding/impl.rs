@@ -374,10 +374,10 @@ impl TextEmbedding {
     ) -> Result<Vec<Embedding>> {
         let batches = self.transform(texts, batch_size)?;
         if let Some(output_key) = &self.output_key {
-            return batches.export_with_transformer(output::transformer_with_precedence(
+            batches.export_with_transformer(output::transformer_with_precedence(
                 output_key,
                 self.pooling.clone(),
-            ));
+            ))
         } else {
             batches.export_with_transformer(output::transformer_with_precedence(
                 output::OUTPUT_TYPE_PRECEDENCE,

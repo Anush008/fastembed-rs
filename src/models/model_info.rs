@@ -2,6 +2,7 @@ use crate::{OutputKey, RerankerModel};
 
 /// Data struct about the available models
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct ModelInfo<T> {
     pub model: T,
     pub dim: usize,
@@ -14,6 +15,7 @@ pub struct ModelInfo<T> {
 
 /// Data struct about the available reranker models
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct RerankerModelInfo {
     pub model: RerankerModel,
     pub description: String,
