@@ -19,7 +19,7 @@ pub const OUTPUT_TYPE_PRECEDENCE: &[OutputKey] = &[
     // OutputKey::ByName("token_embeddings"),
 ];
 
-/// Generates thea default array transformer for the [`TextEmbedding`] model using the
+/// Generates the default array transformer for the [`TextEmbedding`] model using the
 /// provided output precedence.
 ///
 // TODO (denwong47): now that pooling is done in SingleBatchOutput, it is possible that

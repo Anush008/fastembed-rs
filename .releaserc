@@ -64,7 +64,6 @@
         ]
       }
     ],
-    "@semantic-release/release-notes-generator",
     "@semantic-release/github",
     [
       "semantic-release-cargo",
@@ -106,10 +105,6 @@
           "types": [
             {
               "type": "feat",
-              "section": "🍕 Features"
-            },
-            {
-              "type": "feature",
               "section": "🍕 Features"
             },
             {

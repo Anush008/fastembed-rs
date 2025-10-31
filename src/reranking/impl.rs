@@ -67,7 +67,7 @@ impl TextRerank {
         let api = ApiBuilder::from_cache(cache)
             .with_progress(show_download_progress)
             .build()
-            .expect("Failed to build API from cache");
+            .map_err(|e| anyhow::Error::msg(format!("Failed to build API from cache: {}", e)))?;
         let model_repo = api.model(model_name.to_string());
 
         let model_file_name = TextRerank::get_model_info(&model_name).model_file;
@@ -138,7 +138,7 @@ impl TextRerank {
             let encodings = self
                 .tokenizer
                 .encode_batch(inputs, true)
-                .expect("Failed to encode batch");
+                .map_err(|e| anyhow::Error::msg(e.to_string()).context("Failed to encode batch"))?;
 
             let encoding_length = encodings[0].len();
             let batch_size = batch.len();
@@ -176,9 +176,13 @@ impl TextRerank {
             }
 
             let outputs = self.session.run(session_inputs)?;
-            let outputs = outputs["logits"]
+            let outputs = outputs
+                .get("logits")
+                .ok_or_else(|| anyhow::Error::msg("Output does not contain 'logits' key"))?
                 .try_extract_array()
-                .expect("Failed to extract logits tensor");
+                .map_err(|e| {
+                    anyhow::Error::msg(format!("Failed to extract logits tensor: {}", e))
+                })?;
             let batch_scores: Vec<f32> = outputs
                 .slice(s![.., 0])
                 .rows()
@@ -199,6 +203,6 @@ impl TextRerank {
             })
             .collect();
         top_n_result.sort_by(|a, b| a.score.total_cmp(&b.score).reverse());
-        Ok(top_n_result.to_vec())
+        Ok(top_n_result)
     }
 }
