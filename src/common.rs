@@ -97,7 +97,7 @@ pub fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Res
 
     let mut tokenizer = tokenizer
         .with_padding(Some(PaddingParams {
-            // TODO: the user should able to choose the padding strategy
+            // TODO: the user should be able to choose the padding strategy
             strategy: PaddingStrategy::BatchLongest,
             pad_token,
             pad_id,

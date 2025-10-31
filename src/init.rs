@@ -49,7 +49,7 @@ impl<M: Default> Default for InitOptions<M> {
 }
 
 impl<M: Default + HasMaxLength> InitOptionsWithLength<M> {
-    /// Crea a new InitOptionsWithLength with the given model name
+    /// Create a new InitOptionsWithLength with the given model name
     pub fn new(model_name: M) -> Self {
         Self {
             model_name,
@@ -57,9 +57,9 @@ impl<M: Default + HasMaxLength> InitOptionsWithLength<M> {
         }
     }
 
-    /// Set the maximum maximum length
-    pub fn with_max_length(mut self, max_lenght: usize) -> Self {
-        self.max_length = max_lenght;
+    /// Set the maximum length
+    pub fn with_max_length(mut self, max_length: usize) -> Self {
+        self.max_length = max_length;
         self
     }
 
@@ -86,7 +86,7 @@ impl<M: Default + HasMaxLength> InitOptionsWithLength<M> {
 }
 
 impl<M: Default> InitOptions<M> {
-    /// Crea a new InitOptionsWithLength with the given model name
+    /// Create a new InitOptions with the given model name
     pub fn new(model_name: M) -> Self {
         Self {
             model_name,

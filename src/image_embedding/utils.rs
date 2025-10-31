@@ -156,7 +156,7 @@ impl Transform for Normalize {
                 Ok(TransformData::NdArray(array_normalized))
             }
             _ => Err(anyhow!(
-                "Transformer convert error. Normlize operator get error shape."
+                "Transformer convert error. Normalize operator got error shape."
             )),
         }
     }
@@ -236,11 +236,11 @@ fn load_preprocessor(config: serde_json::Value) -> anyhow::Result<Compose> {
                         crop_size["height"]
                             .as_u64()
                             .map(|height| height as u32)
-                            .ok_or(anyhow!("crop_size height must be cotained"))?,
+                            .ok_or(anyhow!("crop_size height must be contained"))?,
                         crop_size["width"]
                             .as_u64()
                             .map(|width| width as u32)
-                            .ok_or(anyhow!("crop_size width must be cotained"))?,
+                            .ok_or(anyhow!("crop_size width must be contained"))?,
                     )
                 } else {
                     return Err(anyhow!("Invalid crop size: {:?}", crop_size));
@@ -325,7 +325,7 @@ fn load_preprocessor(config: serde_json::Value) -> anyhow::Result<Compose> {
                 }));
             }
         }
-        mode => return Err(anyhow!("Preprocessror {} is not supported", mode)),
+        mode => return Err(anyhow!("Preprocessor {} is not supported", mode)),
     }
 
     transformers.push(Box::new(PILToNDarray));
