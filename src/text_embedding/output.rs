@@ -37,12 +37,18 @@ pub fn transformer_with_precedence(
             .map(|batch| {
                 batch
                     .select_and_pool_output(&output_precedence, pooling.clone())
-                    .map(|array| {
+                    .and_then(|array| {
                         array
                             .rows()
                             .into_iter()
-                            .map(|row| normalize(row.as_slice().unwrap()))
-                            .collect::<Vec<Embedding>>()
+                            .map(|row| {
+                                row.as_slice()
+                                    .ok_or_else(|| {
+                                        anyhow::anyhow!("Failed to convert array row to slice")
+                                    })
+                                    .map(normalize)
+                            })
+                            .collect::<anyhow::Result<Vec<Embedding>>>()
                     })
             })
             .try_fold(Vec::new(), |mut acc, res| {

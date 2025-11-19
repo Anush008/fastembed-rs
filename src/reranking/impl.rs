@@ -42,7 +42,7 @@ impl TextRerank {
         TextRerank::list_supported_models()
             .into_iter()
             .find(|m| &m.model == model)
-            .expect("Model not found.")
+            .expect("Model not found in supported models list. This is a bug - please report it.")
     }
 
     pub fn list_supported_models() -> Vec<RerankerModelInfo> {
@@ -140,7 +140,10 @@ impl TextRerank {
                 .encode_batch(inputs, true)
                 .map_err(|e| anyhow::Error::msg(e.to_string()).context("Failed to encode batch"))?;
 
-            let encoding_length = encodings[0].len();
+            let encoding_length = encodings
+                .first()
+                .ok_or_else(|| anyhow::anyhow!("Tokenizer returned empty encodings"))?
+                .len();
             let batch_size = batch.len();
             let max_size = encoding_length * batch_size;
 

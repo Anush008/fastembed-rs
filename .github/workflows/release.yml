@@ -13,12 +13,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
 
       - name: "🔧 setup Bun"
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@v2
 
       - name: "📦 install dependencies"
         run: bun install -D @semantic-release/git conventional-changelog-conventionalcommits semantic-release-cargo 

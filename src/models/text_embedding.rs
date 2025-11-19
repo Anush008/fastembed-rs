@@ -402,7 +402,7 @@ impl ModelTrait for EmbeddingModel {
 
 impl Display for EmbeddingModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let model_info = EmbeddingModel::get_model_info(self).expect("Model not found.");
+        let model_info = EmbeddingModel::get_model_info(self).ok_or(std::fmt::Error)?;
         write!(f, "{}", model_info.model_code)
     }
 }

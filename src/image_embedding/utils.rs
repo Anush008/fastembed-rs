@@ -142,17 +142,21 @@ impl Transform for Normalize {
         let array = data.array()?;
         let mean = Array::from_vec(self.mean.clone())
             .into_shape_with_order((3, 1, 1))
-            .unwrap();
+            .map_err(|e| anyhow!("Failed to reshape mean array: {}", e))?;
         let std = Array::from_vec(self.std.clone())
             .into_shape_with_order((3, 1, 1))
-            .unwrap();
+            .map_err(|e| anyhow!("Failed to reshape std array: {}", e))?;
 
         let shape = array.shape().to_vec();
         match shape.as_slice() {
             [c, h, w] => {
-                let array_normalized = array
-                    .sub(mean.broadcast((*c, *h, *w)).unwrap())
-                    .div(std.broadcast((*c, *h, *w)).unwrap());
+                let mean_broadcast = mean.broadcast((*c, *h, *w)).ok_or_else(|| {
+                    anyhow!("Failed to broadcast mean array to shape {:?}", (*c, *h, *w))
+                })?;
+                let std_broadcast = std.broadcast((*c, *h, *w)).ok_or_else(|| {
+                    anyhow!("Failed to broadcast std array to shape {:?}", (*c, *h, *w))
+                })?;
+                let array_normalized = array.sub(mean_broadcast).div(std_broadcast);
                 Ok(TransformData::NdArray(array_normalized))
             }
             _ => Err(anyhow!(
@@ -229,18 +233,21 @@ fn load_preprocessor(config: serde_json::Value) -> anyhow::Result<Compose> {
             if config["do_center_crop"].as_bool().unwrap_or(false) {
                 let crop_size = config["crop_size"].clone();
                 let (height, width) = if crop_size.is_u64() {
-                    let size = crop_size.as_u64().unwrap() as u32;
+                    let size = crop_size
+                        .as_u64()
+                        .ok_or_else(|| anyhow!("crop_size must be a valid u64"))?
+                        as u32;
                     (size, size)
                 } else if crop_size.is_object() {
                     (
                         crop_size["height"]
                             .as_u64()
                             .map(|height| height as u32)
-                            .ok_or(anyhow!("crop_size height must be contained"))?,
+                            .ok_or_else(|| anyhow!("crop_size height must be contained"))?,
                         crop_size["width"]
                             .as_u64()
                             .map(|width| width as u32)
-                            .ok_or(anyhow!("crop_size width must be contained"))?,
+                            .ok_or_else(|| anyhow!("crop_size width must be contained"))?,
                     )
                 } else {
                     return Err(anyhow!("Invalid crop size: {:?}", crop_size));
@@ -304,18 +311,21 @@ fn load_preprocessor(config: serde_json::Value) -> anyhow::Result<Compose> {
             if config["do_center_crop"].as_bool().unwrap_or(false) {
                 let crop_size = config["crop_size"].clone();
                 let (height, width) = if crop_size.is_u64() {
-                    let size = crop_size.as_u64().unwrap() as u32;
+                    let size = crop_size
+                        .as_u64()
+                        .ok_or_else(|| anyhow!("crop_size must be a valid u64"))?
+                        as u32;
                     (size, size)
                 } else if crop_size.is_object() {
                     (
                         crop_size["height"]
                             .as_u64()
                             .map(|height| height as u32)
-                            .ok_or(anyhow!("crop_size height must be contained"))?,
+                            .ok_or_else(|| anyhow!("crop_size height must be contained"))?,
                         crop_size["width"]
                             .as_u64()
                             .map(|width| width as u32)
-                            .ok_or(anyhow!("crop_size width must be contained"))?,
+                            .ok_or_else(|| anyhow!("crop_size width must be contained"))?,
                     )
                 } else {
                     return Err(anyhow!("Invalid crop size: {:?}", crop_size));
