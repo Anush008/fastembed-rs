@@ -81,7 +81,7 @@ impl Display for ImageEmbeddingModel {
         let model_info = models_list()
             .into_iter()
             .find(|model| model.model == *self)
-            .unwrap();
+            .ok_or(std::fmt::Error)?;
         write!(f, "{}", model_info.model_code)
     }
 }

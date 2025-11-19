@@ -54,7 +54,7 @@ impl Display for RerankerModel {
         let model_info = reranker_model_list()
             .into_iter()
             .find(|model| model.model == *self)
-            .expect("Model not found in supported models list.");
+            .ok_or(std::fmt::Error)?;
         write!(f, "{}", model_info.model_code)
     }
 }

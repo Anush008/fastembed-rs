@@ -300,7 +300,10 @@ impl TextEmbedding {
                 })?;
 
                 // Extract the encoding length and batch size
-                let encoding_length = encodings[0].len();
+                let encoding_length = encodings
+                    .first()
+                    .ok_or_else(|| anyhow::anyhow!("Tokenizer returned empty encodings"))?
+                    .len();
                 let batch_size = batch.len();
 
                 let max_size = encoding_length * batch_size;

@@ -101,7 +101,7 @@ impl SparseTextEmbedding {
         SparseTextEmbedding::list_supported_models()
             .into_iter()
             .find(|m| &m.model == model)
-            .expect("Model not found.")
+            .expect("Model not found in supported models list. This is a bug - please report it.")
     }
 
     /// Method to generate sentence embeddings for a Vec of texts
@@ -124,7 +124,10 @@ impl SparseTextEmbedding {
                 })?;
 
                 // Extract the encoding length and batch size
-                let encoding_length = encodings[0].len();
+                let encoding_length = encodings
+                    .first()
+                    .ok_or_else(|| anyhow::anyhow!("Tokenizer returned empty encodings"))?
+                    .len();
                 let batch_size = batch.len();
 
                 let max_size = encoding_length * batch_size;
@@ -170,7 +173,10 @@ impl SparseTextEmbedding {
                 // Try to get the only output key
                 // If multiple, then default to `last_hidden_state`
                 let last_hidden_state_key = match outputs.len() {
-                    1 => outputs.keys().next().unwrap(),
+                    1 => outputs
+                        .keys()
+                        .next()
+                        .ok_or_else(|| anyhow::anyhow!("Expected one output but found none"))?,
                     _ => "last_hidden_state",
                 };
 
