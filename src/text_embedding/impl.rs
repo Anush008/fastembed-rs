@@ -173,6 +173,7 @@ impl TextEmbedding {
             EmbeddingModel::ParaphraseMLMiniLML12V2 => Some(Pooling::Mean),
             EmbeddingModel::ParaphraseMLMiniLML12V2Q => Some(Pooling::Mean),
             EmbeddingModel::ParaphraseMLMpnetBaseV2 => Some(Pooling::Mean),
+            EmbeddingModel::AllMpnetBaseV2 => Some(Pooling::Mean),
 
             EmbeddingModel::ModernBertEmbedLarge => Some(Pooling::Mean),
 

@@ -15,6 +15,8 @@ pub enum EmbeddingModel {
     AllMiniLML12V2,
     /// Quantized sentence-transformers/all-MiniLM-L12-v2
     AllMiniLML12V2Q,
+    /// sentence-transformers/all-mpnet-base-v2
+    AllMpnetBaseV2,
     /// BAAI/bge-base-en-v1.5
     BGEBaseENV15,
     /// Quantized BAAI/bge-base-en-v1.5
@@ -108,6 +110,15 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             description: String::from("Quantized Sentence Transformer model, MiniLM-L12-v2"),
             model_code: String::from("Xenova/all-MiniLM-L12-v2"),
             model_file: String::from("onnx/model_quantized.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::AllMpnetBaseV2,
+            dim: 768,
+            description: String::from("Sentence Transformer model, mpnet-base-v2"),
+            model_code: String::from("Xenova/all-mpnet-base-v2"),
+            model_file: String::from("onnx/model.onnx"),
             additional_files: Vec::new(),
             output_key: None,
         },
