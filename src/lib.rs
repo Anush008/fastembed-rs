@@ -54,6 +54,8 @@
 )]
 
 mod common;
+
+#[cfg(feature = "image-models")]
 mod image_embedding;
 mod init;
 mod models;
@@ -91,6 +93,7 @@ pub use crate::sparse_text_embedding::{
 };
 
 // For Image Embedding
+#[cfg(feature = "image-models")]
 pub use crate::image_embedding::{
     ImageEmbedding, ImageInitOptions, ImageInitOptionsUserDefined, UserDefinedImageEmbeddingModel,
 };

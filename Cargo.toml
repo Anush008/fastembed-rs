@@ -24,7 +24,7 @@ homepage = "https://crates.io/crates/fastembed"
 [dependencies]
 anyhow = { version = "1" }
 hf-hub = { version = "0.4.1", default-features = false, optional = true }
-image = "0.25.2"
+image = { version = "0.25.2", optional = true }
 ndarray = { version = "0.16", default-features = false }
 ort = { version = "=2.0.0-rc.10", default-features = false, features = [
   "ndarray", "std"
@@ -33,7 +33,7 @@ serde_json = { version = "1" }
 tokenizers = { version = "0.22.0", default-features = false, features = ["onig"] }
 
 [features]
-default = ["ort-download-binaries", "hf-hub-native-tls"]
+default = ["ort-download-binaries", "hf-hub-native-tls", "image-models"]
 
 hf-hub = ["dep:hf-hub", "hf-hub?/ureq"]
 hf-hub-native-tls = ["hf-hub", "hf-hub?/native-tls"]
@@ -41,6 +41,8 @@ hf-hub-rustls-tls = ["hf-hub", "hf-hub?/rustls-tls"]
 
 ort-download-binaries = ["ort/download-binaries"]
 ort-load-dynamic = ["ort/load-dynamic"]
+
+image-models = ["image"]
 
 # This feature does not change any code, but is used to limit tests if
 # the user does not have `optimum-cli` or even python installed.
