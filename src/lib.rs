@@ -71,9 +71,9 @@ mod text_embedding;
 pub use ort::execution_providers::ExecutionProviderDispatch;
 
 pub use crate::common::{get_cache_dir, Embedding, Error, SparseEmbedding, TokenizerFiles};
-pub use crate::models::{
-    model_info::ModelInfo, model_info::RerankerModelInfo, quantization::QuantizationMode,
-};
+#[cfg(feature = "reranking-models")]
+pub use crate::models::model_info::RerankerModelInfo;
+pub use crate::models::{model_info::ModelInfo, quantization::QuantizationMode};
 pub use crate::output::{EmbeddingOutput, OutputKey, OutputPrecedence, SingleBatchOutput};
 pub use crate::pooling::Pooling;
 

@@ -33,7 +33,7 @@ serde_json = { version = "1" }
 tokenizers = { version = "0.22.0", default-features = false, features = ["onig"] }
 
 [features]
-default = ["ort-download-binaries", "hf-hub-native-tls", "image-models", "reranker-models", "text-models", "sparse-text-models" ]
+default = ["ort-download-binaries", "hf-hub-native-tls", "image-models", "reranking-models", "text-models", "sparse-text-models" ]
 
 hf-hub = ["dep:hf-hub", "hf-hub?/ureq"]
 hf-hub-native-tls = ["hf-hub", "hf-hub?/native-tls"]
@@ -43,7 +43,7 @@ ort-download-binaries = ["ort/download-binaries"]
 ort-load-dynamic = ["ort/load-dynamic"]
 
 image-models = ["image"]
-reranker-models = []
+reranking-models = []
 text-models = []
 sparse-text-models = []
 
