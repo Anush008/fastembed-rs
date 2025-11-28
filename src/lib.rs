@@ -54,21 +54,26 @@
 )]
 
 mod common;
+
+#[cfg(feature = "image-models")]
 mod image_embedding;
 mod init;
 mod models;
 pub mod output;
 mod pooling;
+#[cfg(feature = "reranking-models")]
 mod reranking;
+#[cfg(feature = "sparse-text-models")]
 mod sparse_text_embedding;
+#[cfg(feature = "text-models")]
 mod text_embedding;
 
 pub use ort::execution_providers::ExecutionProviderDispatch;
 
 pub use crate::common::{get_cache_dir, Embedding, Error, SparseEmbedding, TokenizerFiles};
-pub use crate::models::{
-    model_info::ModelInfo, model_info::RerankerModelInfo, quantization::QuantizationMode,
-};
+#[cfg(feature = "reranking-models")]
+pub use crate::models::model_info::RerankerModelInfo;
+pub use crate::models::{model_info::ModelInfo, quantization::QuantizationMode};
 pub use crate::output::{EmbeddingOutput, OutputKey, OutputPrecedence, SingleBatchOutput};
 pub use crate::pooling::Pooling;
 
@@ -77,27 +82,36 @@ pub use crate::init::{InitOptions as BaseInitOptions, InitOptionsWithLength};
 pub use crate::models::ModelTrait;
 
 // For Text Embedding
+#[cfg(feature = "text-models")]
 pub use crate::models::text_embedding::EmbeddingModel;
 #[deprecated(note = "use `TextInitOptions` instead")]
+#[cfg(feature = "text-models")]
 pub use crate::text_embedding::TextInitOptions as InitOptions;
+#[cfg(feature = "text-models")]
 pub use crate::text_embedding::{
     InitOptionsUserDefined, TextEmbedding, TextInitOptions, UserDefinedEmbeddingModel,
 };
 
 // For Sparse Text Embedding
+#[cfg(feature = "sparse-text-models")]
 pub use crate::models::sparse::SparseModel;
+#[cfg(feature = "sparse-text-models")]
 pub use crate::sparse_text_embedding::{
     SparseInitOptions, SparseTextEmbedding, UserDefinedSparseModel,
 };
 
 // For Image Embedding
+#[cfg(feature = "image-models")]
 pub use crate::image_embedding::{
     ImageEmbedding, ImageInitOptions, ImageInitOptionsUserDefined, UserDefinedImageEmbeddingModel,
 };
+#[cfg(feature = "image-models")]
 pub use crate::models::image_embedding::ImageEmbeddingModel;
 
 // For Reranking
+#[cfg(feature = "reranking-models")]
 pub use crate::models::reranking::RerankerModel;
+#[cfg(feature = "reranking-models")]
 pub use crate::reranking::{
     OnnxSource, RerankInitOptions, RerankInitOptionsUserDefined, RerankResult, TextRerank,
     UserDefinedRerankingModel,

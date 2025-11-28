@@ -1,4 +1,6 @@
-use crate::{OutputKey, RerankerModel};
+use crate::OutputKey;
+#[cfg(feature = "reranking-models")]
+use crate::RerankerModel;
 
 /// Data struct about the available models
 #[derive(Debug, Clone)]
@@ -16,6 +18,7 @@ pub struct ModelInfo<T> {
 /// Data struct about the available reranker models
 #[derive(Debug, Clone)]
 #[non_exhaustive]
+#[cfg(feature = "reranking-models")]
 pub struct RerankerModelInfo {
     pub model: RerankerModel,
     pub description: String,

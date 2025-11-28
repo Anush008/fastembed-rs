@@ -3,6 +3,7 @@ use crate::ModelInfo;
 pub mod image_embedding;
 pub mod model_info;
 pub mod quantization;
+#[cfg(feature = "reranking-models")]
 pub mod reranking;
 pub mod sparse;
 pub mod text_embedding;
