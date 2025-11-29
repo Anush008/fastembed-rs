@@ -122,13 +122,16 @@ impl TextRerank {
     }
 
     /// Rerank documents using the reranker model and returns the results sorted by score in descending order.
+    ///
+    /// Accepts a query and a collection of documents implementing [`AsRef<str>`].
     pub fn rerank<S: AsRef<str> + Send + Sync>(
         &mut self,
         query: S,
-        documents: Vec<S>,
+        documents: impl AsRef<[S]>,
         return_documents: bool,
         batch_size: Option<usize>,
     ) -> Result<Vec<RerankResult>> {
+        let documents = documents.as_ref();
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
         let q = query.as_ref();
 
