@@ -104,13 +104,16 @@ impl SparseTextEmbedding {
             .expect("Model not found in supported models list. This is a bug - please report it.")
     }
 
-    /// Method to generate sentence embeddings for a Vec of texts
-    // Generic type to accept String, &str, OsString, &OsStr
+    /// Method to generate sentence embeddings for a collection of texts.
+    ///
+    /// Accepts anything that can be referenced as a slice of elements implementing
+    /// [`AsRef<str>`], such as `Vec<String>`, `Vec<&str>`, `&[String]`, or `&[&str]`.
     pub fn embed<S: AsRef<str> + Send + Sync>(
         &mut self,
-        texts: Vec<S>,
+        texts: impl AsRef<[S]>,
         batch_size: Option<usize>,
     ) -> Result<Vec<SparseEmbedding>> {
+        let texts = texts.as_ref();
         // Determine the batch size, default if not specified
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
 

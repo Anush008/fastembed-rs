@@ -265,9 +265,10 @@ impl TextEmbedding {
     /// embeddings with your custom output type.
     pub fn transform<S: AsRef<str> + Send + Sync>(
         &mut self,
-        texts: Vec<S>,
+        texts: impl AsRef<[S]>,
         batch_size: Option<usize>,
     ) -> Result<EmbeddingOutput> {
+        let texts = texts.as_ref();
         // Determine the batch size according to the quantization method used.
         // Default if not specified
         let batch_size = match self.quantization {
@@ -360,10 +361,10 @@ impl TextEmbedding {
         Ok(EmbeddingOutput::new(batches))
     }
 
-    /// Method to generate sentence embeddings for a Vec of texts.
+    /// Method to generate sentence embeddings for a collection of texts.
     ///
-    /// Accepts a [`Vec`] consisting of elements of either [`String`], &[`str`],
-    /// [`std::ffi::OsString`], &[`std::ffi::OsStr`].
+    /// Accepts anything that can be referenced as a slice of elements implementing
+    /// [`AsRef<str>`], such as `Vec<String>`, `Vec<&str>`, `&[String]`, or `&[&str]`.
     ///
     /// The output is a [`Vec`] of [`Embedding`]s.
     ///
@@ -373,10 +374,10 @@ impl TextEmbedding {
     /// the default output precedence and array transformer for the [`TextEmbedding`] model.
     pub fn embed<S: AsRef<str> + Send + Sync>(
         &mut self,
-        texts: Vec<S>,
+        texts: impl AsRef<[S]>,
         batch_size: Option<usize>,
     ) -> Result<Vec<Embedding>> {
-        let batches = self.transform(texts, batch_size)?;
+        let batches = self.transform(texts.as_ref(), batch_size)?;
         if let Some(output_key) = &self.output_key {
             batches.export_with_transformer(output::transformer_with_precedence(
                 output_key,
