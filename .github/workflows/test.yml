@@ -14,6 +14,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
+        with:
+          # this might remove tools that are actually needed,
+          tool-cache: false
+
       - name: Restore Builds
         id: cache-build-restore
         uses: actions/cache/restore@v4
@@ -32,10 +38,10 @@ jobs:
           cd ..
 
       - name: Cargo Test With Release Build
-        run: ORT_LIB_LOCATION="$(pwd)/onnxruntime/build/Linux/Release" cargo test --release --no-default-features --features hf-hub-native-tls
+        run: ORT_LIB_LOCATION="$(pwd)/onnxruntime/build/Linux/Release" cargo test --release --no-default-features --features hf-hub-native-tls,image-models
 
       - name: Cargo Test Offline
-        run: ORT_LIB_LOCATION="$(pwd)/onnxruntime/build/Linux/Release" cargo test --no-default-features
+        run: ORT_LIB_LOCATION="$(pwd)/onnxruntime/build/Linux/Release" cargo test --no-default-features,image-models
 
       - name: Cargo Clippy
         run: cargo clippy
