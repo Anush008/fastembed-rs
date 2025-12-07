@@ -157,13 +157,16 @@ impl ImageEmbedding {
         Ok(output)
     }
 
-    /// Method to generate image embeddings for a Vec of image path
-    // Generic type to accept String, &str, OsString, &OsStr
+    /// Method to generate image embeddings for a collection of image paths.
+    ///
+    /// Accepts anything that can be referenced as a slice of elements implementing
+    /// [`AsRef<Path>`], such as `Vec<String>`, `Vec<PathBuf>`, `&[&str]`, or `&[&Path]`.
     pub fn embed<S: AsRef<Path> + Send + Sync>(
         &mut self,
-        images: Vec<S>,
+        images: impl AsRef<[S]>,
         batch_size: Option<usize>,
     ) -> anyhow::Result<Vec<Embedding>> {
+        let images = images.as_ref();
         // Determine the batch size, default if not specified
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
 
