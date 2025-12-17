@@ -65,6 +65,11 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         EmbeddingModel::ClipVitB32 => [0.7057363, 1.3549932, 0.46823958, 0.52351093],
         EmbeddingModel::JinaEmbeddingsV2BaseCode => [-0.31383067, -0.3758629, -0.24878195, -0.35373706],
         EmbeddingModel::EmbeddingGemma300M => [0.22703816, 0.6947083, 0.07579082, 1.6958784],
+        EmbeddingModel::SnowflakeArcticEmbedXS => [0.0092, 0.0619, 0.0196, 0.009, -0.0114],
+        EmbeddingModel::SnowflakeArcticEmbedS => [-0.0416, -0.0867, 0.0209, 0.0554, -0.0272],
+        EmbeddingModel::SnowflakeArcticEmbedM => [-0.0329, 0.0364, 0.0481, 0.0016, 0.0328],
+        EmbeddingModel::SnowflakeArcticEmbedMLong => [0.0080, -0.0266, -0.0335, 0.0282, 0.0143],
+        EmbeddingModel::SnowflakeArcticEmbedL => [0.0189, -0.0673, 0.0183, 0.0124, 0.0146],
         _ => panic!("Model {model} not found. If you have just inserted this `EmbeddingModel` variant, please update the expected embeddings."),
     };
 

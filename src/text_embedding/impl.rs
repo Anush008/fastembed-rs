@@ -194,6 +194,12 @@ impl TextEmbedding {
             EmbeddingModel::JinaEmbeddingsV2BaseCode => Some(Pooling::Mean),
 
             EmbeddingModel::EmbeddingGemma300M => Some(Pooling::Mean),
+
+            EmbeddingModel::SnowflakeArcticEmbedXS => Some(Pooling::Cls),
+            EmbeddingModel::SnowflakeArcticEmbedS => Some(Pooling::Cls),
+            EmbeddingModel::SnowflakeArcticEmbedM => Some(Pooling::Cls),
+            EmbeddingModel::SnowflakeArcticEmbedMLong => Some(Pooling::Cls),
+            EmbeddingModel::SnowflakeArcticEmbedL => Some(Pooling::Cls),
         }
     }
 
