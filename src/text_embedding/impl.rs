@@ -194,6 +194,8 @@ impl TextEmbedding {
             EmbeddingModel::JinaEmbeddingsV2BaseCode => Some(Pooling::Mean),
 
             EmbeddingModel::EmbeddingGemma300M => Some(Pooling::Mean),
+
+            EmbeddingModel::TarkaEmbedding150MV1 => Some(Pooling::Mean),
         }
     }
 

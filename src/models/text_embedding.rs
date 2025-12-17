@@ -72,6 +72,8 @@ pub enum EmbeddingModel {
     JinaEmbeddingsV2BaseCode,
     /// onnx-community/embeddinggemma-300m-ONNX
     EmbeddingGemma300M,
+    /// permutans/Tarka-Embedding-150M-V1-ONNX
+    TarkaEmbedding150MV1,
 }
 
 /// Centralized function to initialize the models map.
@@ -369,6 +371,15 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model_code: String::from("onnx-community/embeddinggemma-300m-ONNX"),
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec!["onnx/model.onnx_data".to_string()],
+            output_key: Some(crate::OutputKey::ByName("sentence_embedding")),
+        },
+        ModelInfo {
+            model: EmbeddingModel::TarkaEmbedding150MV1,
+            dim: 768,
+            description: String::from("Tarka-Embedding-150M-V1 distilled from EmbeddingGemma"),
+            model_code: String::from("permutans/Tarka-Embedding-150M-V1-ONNX"),
+            model_file: String::from("model.onnx"),
+            additional_files: Vec::new(),
             output_key: Some(crate::OutputKey::ByName("sentence_embedding")),
         },
     ];
