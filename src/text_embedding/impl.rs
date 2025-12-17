@@ -196,10 +196,15 @@ impl TextEmbedding {
             EmbeddingModel::EmbeddingGemma300M => Some(Pooling::Mean),
 
             EmbeddingModel::SnowflakeArcticEmbedXS => Some(Pooling::Cls),
+            EmbeddingModel::SnowflakeArcticEmbedXSQ => Some(Pooling::Cls),
             EmbeddingModel::SnowflakeArcticEmbedS => Some(Pooling::Cls),
+            EmbeddingModel::SnowflakeArcticEmbedSQ => Some(Pooling::Cls),
             EmbeddingModel::SnowflakeArcticEmbedM => Some(Pooling::Cls),
+            EmbeddingModel::SnowflakeArcticEmbedMQ => Some(Pooling::Cls),
             EmbeddingModel::SnowflakeArcticEmbedMLong => Some(Pooling::Cls),
+            EmbeddingModel::SnowflakeArcticEmbedMLongQ => Some(Pooling::Cls),
             EmbeddingModel::SnowflakeArcticEmbedL => Some(Pooling::Cls),
+            EmbeddingModel::SnowflakeArcticEmbedLQ => Some(Pooling::Cls),
         }
     }
 
@@ -228,6 +233,11 @@ impl TextEmbedding {
             EmbeddingModel::MxbaiEmbedLargeV1Q => QuantizationMode::Dynamic,
             EmbeddingModel::GTEBaseENV15Q => QuantizationMode::Dynamic,
             EmbeddingModel::GTELargeENV15Q => QuantizationMode::Dynamic,
+            EmbeddingModel::SnowflakeArcticEmbedXSQ => QuantizationMode::Dynamic,
+            EmbeddingModel::SnowflakeArcticEmbedSQ => QuantizationMode::Dynamic,
+            EmbeddingModel::SnowflakeArcticEmbedMQ => QuantizationMode::Dynamic,
+            EmbeddingModel::SnowflakeArcticEmbedMLongQ => QuantizationMode::Dynamic,
+            EmbeddingModel::SnowflakeArcticEmbedLQ => QuantizationMode::Dynamic,
             _ => QuantizationMode::None,
         }
     }
