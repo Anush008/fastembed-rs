@@ -72,6 +72,26 @@ pub enum EmbeddingModel {
     JinaEmbeddingsV2BaseCode,
     /// onnx-community/embeddinggemma-300m-ONNX
     EmbeddingGemma300M,
+    /// snowflake/snowflake-arctic-embed-xs
+    SnowflakeArcticEmbedXS,
+    /// Quantized snowflake/snowflake-arctic-embed-xs
+    SnowflakeArcticEmbedXSQ,
+    /// snowflake/snowflake-arctic-embed-s
+    SnowflakeArcticEmbedS,
+    /// Quantized snowflake/snowflake-arctic-embed-s
+    SnowflakeArcticEmbedSQ,
+    /// snowflake/snowflake-arctic-embed-m
+    SnowflakeArcticEmbedM,
+    /// Quantized snowflake/snowflake-arctic-embed-m
+    SnowflakeArcticEmbedMQ,
+    /// snowflake/snowflake-arctic-embed-m-long
+    SnowflakeArcticEmbedMLong,
+    /// Quantized snowflake/snowflake-arctic-embed-m-long
+    SnowflakeArcticEmbedMLongQ,
+    /// snowflake/snowflake-arctic-embed-l
+    SnowflakeArcticEmbedL,
+    /// Quantized snowflake/snowflake-arctic-embed-l
+    SnowflakeArcticEmbedLQ,
 }
 
 /// Centralized function to initialize the models map.
@@ -370,6 +390,96 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec!["onnx/model.onnx_data".to_string()],
             output_key: Some(crate::OutputKey::ByName("sentence_embedding")),
+        },
+        ModelInfo {
+            model: EmbeddingModel::SnowflakeArcticEmbedXS,
+            dim: 384,
+            description: String::from("Snowflake Arctic embed model, xs"),
+            model_code: String::from("snowflake/snowflake-arctic-embed-xs"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::SnowflakeArcticEmbedXSQ,
+            dim: 384,
+            description: String::from("Quantized Snowflake Arctic embed model, xs"),
+            model_code: String::from("snowflake/snowflake-arctic-embed-xs"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::SnowflakeArcticEmbedS,
+            dim: 384,
+            description: String::from("Snowflake Arctic embed model, small"),
+            model_code: String::from("snowflake/snowflake-arctic-embed-s"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::SnowflakeArcticEmbedSQ,
+            dim: 384,
+            description: String::from("Quantized Snowflake Arctic embed model, small"),
+            model_code: String::from("snowflake/snowflake-arctic-embed-s"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::SnowflakeArcticEmbedM,
+            dim: 768,
+            description: String::from("Snowflake Arctic embed model, medium"),
+            model_code: String::from("Snowflake/snowflake-arctic-embed-m"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::SnowflakeArcticEmbedMQ,
+            dim: 768,
+            description: String::from("Quantized Snowflake Arctic embed model, medium"),
+            model_code: String::from("Snowflake/snowflake-arctic-embed-m"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::SnowflakeArcticEmbedMLong,
+            dim: 768,
+            description: String::from("Snowflake Arctic embed model, medium with 2048 context"),
+            model_code: String::from("snowflake/snowflake-arctic-embed-m-long"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::SnowflakeArcticEmbedMLongQ,
+            dim: 768,
+            description: String::from("Quantized Snowflake Arctic embed model, medium with 2048 context"),
+            model_code: String::from("snowflake/snowflake-arctic-embed-m-long"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::SnowflakeArcticEmbedL,
+            dim: 1024,
+            description: String::from("Snowflake Arctic embed model, large"),
+            model_code: String::from("snowflake/snowflake-arctic-embed-l"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::SnowflakeArcticEmbedLQ,
+            dim: 1024,
+            description: String::from("Quantized Snowflake Arctic embed model, large"),
+            model_code: String::from("snowflake/snowflake-arctic-embed-l"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
         },
     ];
 

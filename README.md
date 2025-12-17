@@ -44,6 +44,11 @@
 - [**Qdrant/clip-ViT-B-32-text**](https://huggingface.co/Qdrant/clip-ViT-B-32-text) - pairs with `clip-ViT-B-32-vision` for image-to-text search
 - [**jinaai/jina-embeddings-v2-base-code**](https://huggingface.co/jinaai/jina-embeddings-v2-base-code)
 - [**google/embeddinggemma-300m**](https://huggingface.co/google/embeddinggemma-300m) - 768-dim embeddings from Google
+- [**snowflake/snowflake-arctic-embed-xs**](https://huggingface.co/snowflake/snowflake-arctic-embed-xs)
+- [**snowflake/snowflake-arctic-embed-s**](https://huggingface.co/snowflake/snowflake-arctic-embed-s)
+- [**snowflake/snowflake-arctic-embed-m**](https://huggingface.co/snowflake/snowflake-arctic-embed-m)
+- [**snowflake/snowflake-arctic-embed-m-long**](https://huggingface.co/snowflake/snowflake-arctic-embed-m-long) - 2048 context length
+- [**snowflake/snowflake-arctic-embed-l**](https://huggingface.co/snowflake/snowflake-arctic-embed-l)
 
 Quantized versions are also available for several models above (append `Q` to the model enum variant, e.g., `EmbeddingModel::BGESmallENV15Q`).
 
