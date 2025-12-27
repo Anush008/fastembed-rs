@@ -60,3 +60,7 @@ online = ["hf-hub-native-tls"]
 [[examples]]
 name = "muvera_demo"
 features = ["hf-hub", "muvera"]
+
+[[examples]]
+name = "beir_scidocs_benchmark"
+features = ["hf-hub", "muvera"]
