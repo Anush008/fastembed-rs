@@ -217,7 +217,6 @@ impl LateInteractionTextEmbedding {
         ))
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn new(
         tokenizer: Tokenizer,
         query_tokenizer: Tokenizer,
@@ -405,24 +404,19 @@ impl LateInteractionTextEmbedding {
                 let mut embeddings: Vec<Vec<f32>> = Vec::new();
 
                 if is_query {
-                    // For queries: return all token embeddings, including MASK/pad tokens.
-                    for (seq_idx, &mask_val) in
-                        attention_mask_array.iter().enumerate().take(seq_len)
-                    {
-                        if mask_val == 1 {
-                            let start = batch_idx * seq_len * dim + seq_idx * dim;
-                            let end = start + dim;
-                            let token_embedding: Vec<f32> = data[start..end].to_vec();
+                    // For queries: return ALL token embeddings (including MASK padding)
+                    for seq_idx in 0..seq_len {
+                        let start = batch_idx * seq_len * dim + seq_idx * dim;
+                        let end = start + dim;
+                        let token_embedding: Vec<f32> = data[start..end].to_vec();
 
-                            // L2 normalize
-                            let norm: f32 =
-                                token_embedding.iter().map(|x| x * x).sum::<f32>().sqrt();
-                            let norm = norm.max(1e-12);
-                            let normalized: Vec<f32> =
-                                token_embedding.iter().map(|x| x / norm).collect();
+                        // L2 normalize
+                        let norm: f32 = token_embedding.iter().map(|x| x * x).sum::<f32>().sqrt();
+                        let norm = norm.max(1e-12);
+                        let normalized: Vec<f32> =
+                            token_embedding.iter().map(|x| x / norm).collect();
 
-                            embeddings.push(normalized);
-                        }
+                        embeddings.push(normalized);
                     }
                 } else {
                     // For documents: mask out punctuation and pad tokens, filter by attention mask
@@ -442,9 +436,8 @@ impl LateInteractionTextEmbedding {
                         }
                     }
 
-                    for (seq_idx, &mask_val) in attention_mask_vec.iter().enumerate().take(seq_len)
-                    {
-                        if mask_val == 1 {
+                    for seq_idx in 0..seq_len {
+                        if attention_mask_vec[seq_idx] == 1 {
                             let start = batch_idx * seq_len * dim + seq_idx * dim;
                             let end = start + dim;
                             let token_embedding: Vec<f32> = data[start..end].to_vec();

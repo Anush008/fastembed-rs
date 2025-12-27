@@ -56,3 +56,7 @@ optimum-cli = []
 
 # For compatibility recommend using hf-hub-native-tls
 online = ["hf-hub-native-tls"]
+
+[[examples]]
+name = "muvera_demo"
+features = ["hf-hub", "muvera"]

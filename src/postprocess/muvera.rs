@@ -64,9 +64,10 @@ impl SimHashProjection {
         // Generate k_sim random hyperplanes from standard normal distribution
         // Shape: (dim, k_sim) - each column is a hyperplane normal vector
         let mut simhash_vectors = vec![vec![0.0f32; k_sim]; dim];
-        for (row, _col) in simhash_vectors.iter_mut().take(dim).zip(0..) {
-            for v in row.iter_mut().take(k_sim) {
-                *v = StandardNormal.sample(rng);
+        for d in 0..dim {
+            for k in 0..k_sim {
+                let x: f32 = StandardNormal.sample(rng);
+                simhash_vectors[d][k] = x;
             }
         }
 
@@ -287,15 +288,12 @@ impl Muvera {
 
             // Assign vectors to clusters and accumulate centers (sum)
             let cluster_ids = simhash.get_cluster_ids(vectors);
-            for (center, vec_idx) in cluster_centers
-                .iter_mut()
-                .zip(&cluster_ids)
-                .take(self.num_partitions)
-            {
-                for (slot, &value) in center.iter_mut().zip(&vectors[proj_idx]).take(self.dim) {
-                    *slot += value;
+            for (vec_idx, &cluster_id) in cluster_ids.iter().enumerate() {
+                let cluster_idx = cluster_id as usize;
+                for d in 0..self.dim {
+                    cluster_centers[cluster_idx][d] += vectors[vec_idx][d];
                 }
-                cluster_vector_indices[*vec_idx as usize].push(proj_idx);
+                cluster_vector_indices[cluster_idx].push(vec_idx);
             }
 
             // Compute cluster counts and empty mask
@@ -305,14 +303,10 @@ impl Muvera {
 
             // Normalize by count if requested (only non-empty clusters)
             if normalize_by_count {
-                for (center, &count) in cluster_centers
-                    .iter_mut()
-                    .zip(&cluster_counts)
-                    .take(self.num_partitions)
-                {
+                for (cluster_idx, &count) in cluster_counts.iter().enumerate() {
                     if count > 0 {
-                        for slot in center.iter_mut().take(self.dim) {
-                            *slot /= count as f32;
+                        for d in 0..self.dim {
+                            cluster_centers[cluster_idx][d] /= count as f32;
                         }
                     }
                 }
@@ -325,15 +319,12 @@ impl Muvera {
                 // This matches Python: masked_hamming = np.where(empty_mask[None, :], MAX, hamming)
                 // Then argmin along axis=1
                 let mut nearest_non_empty: Vec<usize> = vec![0; self.num_partitions];
-                for (i, center) in nearest_non_empty
-                    .iter_mut()
-                    .enumerate()
-                    .take(self.num_partitions)
-                {
+                for i in 0..self.num_partitions {
                     let mut min_dist = MAX_HAMMING_DISTANCE;
-                    let mut best_j = 0;
-                    for (j, &is_empty) in empty_mask.iter().enumerate().take(self.num_partitions) {
-                        let dist = if is_empty {
+                    let mut best_j = 0usize;
+                    for j in 0..self.num_partitions {
+                        // Mask: if column j is empty, treat distance as MAX
+                        let dist = if empty_mask[j] {
                             MAX_HAMMING_DISTANCE
                         } else {
                             self.hamming_matrix[i][j]
@@ -343,7 +334,7 @@ impl Muvera {
                             best_j = j;
                         }
                     }
-                    *center = best_j;
+                    nearest_non_empty[i] = best_j;
                 }
 
                 // Now fill empty clusters: for each empty cluster i,
