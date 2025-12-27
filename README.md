@@ -71,6 +71,11 @@ Quantized versions are also available for several models above (append `Q` to th
 - [**jinaai/jina-reranker-v1-turbo-en**](https://huggingface.co/jinaai/jina-reranker-v1-turbo-en)
 - [**jinaai/jina-reranker-v2-base-multiligual**](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual)
 
+### Late Interaction Embedding
+
+- [**colbert-ir/colbertv2.0**](https://huggingface.co/colbert-ir/colbertv2.0) - Default, 128-dim embeddings
+- [**answerdotai/answerai-colbert-small-v1**](https://huggingface.co/answerdotai/answerai-colbert-small-v1) - 96-dim embeddings
+
 ## ✊ Support
 
 To support the library, please donate to our primary upstream dependency, [`ort`](https://github.com/pykeio/ort?tab=readme-ov-file#-sponsor-ort) - The Rust wrapper for the ONNX runtime.

@@ -457,7 +457,9 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
         ModelInfo {
             model: EmbeddingModel::SnowflakeArcticEmbedMLongQ,
             dim: 768,
-            description: String::from("Quantized Snowflake Arctic embed model, medium with 2048 context"),
+            description: String::from(
+                "Quantized Snowflake Arctic embed model, medium with 2048 context",
+            ),
             model_code: String::from("snowflake/snowflake-arctic-embed-m-long"),
             model_file: String::from("onnx/model_quantized.onnx"),
             additional_files: Vec::new(),

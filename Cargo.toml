@@ -31,6 +31,9 @@ ort = { version = "=2.0.0-rc.10", default-features = false, features = [
 ] }
 serde_json = { version = "1" }
 tokenizers = { version = "0.22.0", default-features = false, features = ["onig"] }
+rand = { version = "0.8", optional = true }
+rand_chacha = { version = "0.3", optional = true }
+rand_distr = { version = "0.4", optional = true }
 
 [features]
 default = ["ort-download-binaries", "hf-hub-native-tls", "image-models"]
@@ -44,9 +47,16 @@ ort-load-dynamic = ["ort/load-dynamic"]
 
 image-models = ["image"]
 
+# MUVERA post-processing support
+muvera = ["dep:rand", "dep:rand_chacha", "dep:rand_distr"]
+
 # This feature does not change any code, but is used to limit tests if
 # the user does not have `optimum-cli` or even python installed.
 optimum-cli = []
 
 # For compatibility recommend using hf-hub-native-tls
 online = ["hf-hub-native-tls"]
+
+[[examples]]
+name = "muvera_demo"
+features = ["hf-hub", "muvera"]
