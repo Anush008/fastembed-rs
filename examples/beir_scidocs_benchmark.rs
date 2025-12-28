@@ -144,58 +144,65 @@ fn main() -> Result<()> {
 
     // 3. Embed corpus
     println!("Embedding corpus...");
-    let corpus_embeddings = model.embed(&corpus_texts, Some(batch_size))?;
-    
-    // Create id -> index mapping
-    let corpus_id_to_idx: HashMap<&str, usize> = corpus_ids
-        .iter()
-        .enumerate()
-        .map(|(i, id)| (id.as_str(), i))
-        .collect();
+    let mut corpus_embeddings = Vec::with_capacity(corpus_texts.len());
+    for (i, text) in corpus_texts.iter().enumerate() {
+        if i % 1000 == 0 {
+            println!("  Embedded {}/{} documents", i, corpus_texts.len());
+        }
+        let emb = model.embed(&[text], None)?;
+        corpus_embeddings.push(emb.into_iter().next().unwrap());
+    }
 
     // 4. Embed queries
     println!("Embedding queries...");
-    let query_embeddings = model.query_embed(&query_texts, Some(batch_size))?;
-
-    // 5. Evaluate brute-force ColBERT (baseline)
-    println!("\n--- Evaluating brute-force ColBERT ---");
-    let mut recalls_4 = Vec::new();
-    let mut recalls_5 = Vec::new();
-    let mut recalls_10 = Vec::new();
-    
-    for (q_idx, query_id) in query_ids.iter().enumerate() {
-        if let Some(relevant_docs) = qrels.get(query_id) {
-            // Score all documents with MaxSim
-            let mut scores: Vec<(usize, f32)> = corpus_embeddings
-                .iter()
-                .enumerate()
-                .map(|(d_idx, doc_emb)| (d_idx, maxsim(&query_embeddings[q_idx], doc_emb)))
-                .collect();
-            
-            // Sort by score descending
-            scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-            
-            // Get top-k document IDs
-            let retrieved: Vec<String> = scores
-                .iter()
-                .take(10)
-                .map(|(idx, _)| corpus_ids[*idx].clone())
-                .collect();
-            
-            recalls_4.push(recall_at_k(relevant_docs, &retrieved, 4));
-            recalls_5.push(recall_at_k(relevant_docs, &retrieved, 5));
-            recalls_10.push(recall_at_k(relevant_docs, &retrieved, 10));
+    let mut query_embeddings = Vec::with_capacity(query_texts.len());
+    for (i, text) in query_texts.iter().enumerate() {
+        if i % 100 == 0 {
+            println!("  Embedded {}/{} queries", i, query_texts.len());
         }
+        let emb = model.query_embed(&[text], None)?;
+        query_embeddings.push(emb.into_iter().next().unwrap());
     }
-    
-    let avg_r4 = recalls_4.iter().sum::<f32>() / recalls_4.len() as f32;
-    let avg_r5 = recalls_5.iter().sum::<f32>() / recalls_5.len() as f32;
-    let avg_r10 = recalls_10.iter().sum::<f32>() / recalls_10.len() as f32;
-    
-    println!(
-        "Vector: colbert, Recall@4: {:.4}, Recall@5: {:.4}, Recall@10: {:.4}",
-        avg_r4, avg_r5, avg_r10
-    );
+
+    // // 5. Evaluate brute-force ColBERT (baseline)
+    // println!("\n--- Evaluating brute-force ColBERT ---");
+    // let mut recalls_4 = Vec::new();
+    // let mut recalls_5 = Vec::new();
+    // let mut recalls_10 = Vec::new();
+    // 
+    // for (q_idx, query_id) in query_ids.iter().enumerate() {
+    //     if let Some(relevant_docs) = qrels.get(query_id) {
+    //         // Score all documents with MaxSim
+    //         let mut scores: Vec<(usize, f32)> = corpus_embeddings
+    //             .iter()
+    //             .enumerate()
+    //             .map(|(d_idx, doc_emb)| (d_idx, maxsim(&query_embeddings[q_idx], doc_emb)))
+    //             .collect();
+    //         
+    //         // Sort by score descending
+    //         scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    //         
+    //         // Get top-k document IDs
+    //         let retrieved: Vec<String> = scores
+    //             .iter()
+    //             .take(10)
+    //             .map(|(idx, _)| corpus_ids[*idx].clone())
+    //             .collect();
+    //         
+    //         recalls_4.push(recall_at_k(relevant_docs, &retrieved, 4));
+    //         recalls_5.push(recall_at_k(relevant_docs, &retrieved, 5));
+    //         recalls_10.push(recall_at_k(relevant_docs, &retrieved, 10));
+    //     }
+    // }
+    // 
+    // let avg_r4 = recalls_4.iter().sum::<f32>() / recalls_4.len() as f32;
+    // let avg_r5 = recalls_5.iter().sum::<f32>() / recalls_5.len() as f32;
+    // let avg_r10 = recalls_10.iter().sum::<f32>() / recalls_10.len() as f32;
+    // 
+    // println!(
+    //     "Vector: colbert, Recall@4: {:.4}, Recall@5: {:.4}, Recall@10: {:.4}",
+    //     avg_r4, avg_r5, avg_r10
+    // );
 
     // 6. Evaluate MUVERA configurations
     for (r_reps, k_sim, dim_proj) in &muvera_configs {
@@ -226,43 +233,66 @@ fn main() -> Result<()> {
         let mut recalls_4 = Vec::new();
         let mut recalls_5 = Vec::new();
         let mut recalls_10 = Vec::new();
-        
+
         for (q_idx, query_id) in query_ids.iter().enumerate() {
             if let Some(relevant_docs) = qrels.get(query_id) {
-                // Stage 1: ANN candidate retrieval using MUVERA dot product
-                let mut fde_scores: Vec<(usize, f32)> = corpus_fdes
+                // Just MUVERA dot product - NO reranking
+                let mut scores: Vec<(usize, f32)> = corpus_fdes
                     .iter()
                     .enumerate()
                     .map(|(d_idx, doc_fde)| (d_idx, dot(&query_fdes[q_idx], doc_fde)))
                     .collect();
-                
-                fde_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-                
-                let candidates: Vec<usize> = fde_scores
-                    .iter()
-                    .take(top_n_candidates)
-                    .map(|(idx, _)| *idx)
-                    .collect();
-                
-                // Stage 2: Rerank candidates with ColBERT MaxSim
-                let mut reranked: Vec<(usize, f32)> = candidates
-                    .iter()
-                    .map(|&d_idx| (d_idx, maxsim(&query_embeddings[q_idx], &corpus_embeddings[d_idx])))
-                    .collect();
-                
-                reranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-                
-                let retrieved: Vec<String> = reranked
+
+                scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+
+                let retrieved: Vec<String> = scores
                     .iter()
                     .take(10)
                     .map(|(idx, _)| corpus_ids[*idx].clone())
                     .collect();
-                
+
                 recalls_4.push(recall_at_k(relevant_docs, &retrieved, 4));
                 recalls_5.push(recall_at_k(relevant_docs, &retrieved, 5));
                 recalls_10.push(recall_at_k(relevant_docs, &retrieved, 10));
             }
         }
+        
+        // for (q_idx, query_id) in query_ids.iter().enumerate() {
+        //     if let Some(relevant_docs) = qrels.get(query_id) {
+        //         // Stage 1: ANN candidate retrieval using MUVERA dot product
+        //         let mut fde_scores: Vec<(usize, f32)> = corpus_fdes
+        //             .iter()
+        //             .enumerate()
+        //             .map(|(d_idx, doc_fde)| (d_idx, dot(&query_fdes[q_idx], doc_fde)))
+        //             .collect();
+        //         
+        //         fde_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        //         
+        //         let candidates: Vec<usize> = fde_scores
+        //             .iter()
+        //             .take(top_n_candidates)
+        //             .map(|(idx, _)| *idx)
+        //             .collect();
+        //         
+        //         // Stage 2: Rerank candidates with ColBERT MaxSim
+        //         let mut reranked: Vec<(usize, f32)> = candidates
+        //             .iter()
+        //             .map(|&d_idx| (d_idx, maxsim(&query_embeddings[q_idx], &corpus_embeddings[d_idx])))
+        //             .collect();
+        //         
+        //         reranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        //         
+        //         let retrieved: Vec<String> = reranked
+        //             .iter()
+        //             .take(10)
+        //             .map(|(idx, _)| corpus_ids[*idx].clone())
+        //             .collect();
+        //         
+        //         recalls_4.push(recall_at_k(relevant_docs, &retrieved, 4));
+        //         recalls_5.push(recall_at_k(relevant_docs, &retrieved, 5));
+        //         recalls_10.push(recall_at_k(relevant_docs, &retrieved, 10));
+        //     }
+        // }
         
         let avg_r4 = recalls_4.iter().sum::<f32>() / recalls_4.len() as f32;
         let avg_r5 = recalls_5.iter().sum::<f32>() / recalls_5.len() as f32;
