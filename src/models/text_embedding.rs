@@ -46,6 +46,8 @@ pub enum EmbeddingModel {
     BGESmallZHV15,
     /// BAAI/bge-large-zh-v1.5
     BGELargeZHV15,
+    /// BAAI/bge-m3
+    BGEM3,
     /// lightonai/modernbert-embed-large
     ModernBertEmbedLarge,
     /// intfloat/multilingual-e5-small
@@ -275,6 +277,20 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             output_key: None,
         },
         ModelInfo {
+            model: EmbeddingModel::BGEM3,
+            dim: 1024,
+            description: String::from(
+                "Multilingual M3 model with 8192 context length, supports 100+ languages",
+            ),
+            model_code: String::from("BAAI/bge-m3"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: vec![
+                "onnx/model.onnx_data".to_string(),
+                "onnx/Constant_7_attr__value".to_string(),
+            ],
+            output_key: None,
+        },
+        ModelInfo {
             model: EmbeddingModel::ModernBertEmbedLarge,
             dim: 1024,
             description: String::from("Large model of ModernBert Text Embeddings"),
@@ -457,7 +473,9 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
         ModelInfo {
             model: EmbeddingModel::SnowflakeArcticEmbedMLongQ,
             dim: 768,
-            description: String::from("Quantized Snowflake Arctic embed model, medium with 2048 context"),
+            description: String::from(
+                "Quantized Snowflake Arctic embed model, medium with 2048 context",
+            ),
             model_code: String::from("snowflake/snowflake-arctic-embed-m-long"),
             model_file: String::from("onnx/model_quantized.onnx"),
             additional_files: Vec::new(),

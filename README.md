@@ -27,6 +27,7 @@
 - [**BAAI/bge-large-en-v1.5**](https://huggingface.co/BAAI/bge-large-en-v1.5)
 - [**BAAI/bge-small-zh-v1.5**](https://huggingface.co/BAAI/bge-small-zh-v1.5)
 - [**BAAI/bge-large-zh-v1.5**](https://huggingface.co/BAAI/bge-large-zh-v1.5)
+- [**BAAI/bge-m3**](https://huggingface.co/BAAI/bge-m3)
 - [**sentence-transformers/all-MiniLM-L6-v2**](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
 - [**sentence-transformers/all-MiniLM-L12-v2**](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2)
 - [**sentence-transformers/all-mpnet-base-v2**](https://huggingface.co/sentence-transformers/all-mpnet-base-v2)
@@ -111,7 +112,7 @@ let documents = vec![
     "passage: This is an example passage.",
     // You can leave out the prefix but it's recommended
     "fastembed-rs is licensed under Apache  2.0"
-    ];
+];
 
  // Generate embeddings with the default batch size, 256
  let embeddings = model.embed(documents, None)?;
@@ -138,7 +139,7 @@ let documents = vec![
     "query: Hello, World!",
     "passage: This is an example passage.",
     "fastembed-rs is licensed under Apache  2.0"
-    ];
+];
 
 // Generate embeddings with the default batch size, 256
 let embeddings: Vec<SparseEmbedding> = model.embed(documents, None)?;
@@ -185,7 +186,7 @@ let documents = vec![
     "panda is animal",
     "i dont know",
     "kind of mammal",
-    ];
+];
 
 // Rerank with the default batch size, 256 and return document contents
 let results = model.rerank("what is panda?", documents, true, None)?;
