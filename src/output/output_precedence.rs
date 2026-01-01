@@ -7,17 +7,12 @@
 //! e.g. reading the output keys from the model file.
 
 /// Enum for defining the key of the output.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub enum OutputKey {
+    #[default]
     OnlyOne,
     ByOrder(usize),
     ByName(&'static str),
-}
-
-impl Default for OutputKey {
-    fn default() -> Self {
-        Self::OnlyOne
-    }
 }
 
 /// Trait for defining a precedence of keys in the output.

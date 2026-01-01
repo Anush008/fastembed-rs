@@ -1,13 +1,8 @@
 /// Enum for quantization mode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QuantizationMode {
+    #[default]
     None,
     Static,
     Dynamic,
-}
-
-impl Default for QuantizationMode {
-    fn default() -> Self {
-        Self::None
-    }
 }
