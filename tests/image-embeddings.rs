@@ -1,4 +1,4 @@
-#![cfg(feature = "image-models")]
+#![cfg(all(feature = "image-models", feature = "hf-hub"))]
 
 use fastembed::InitOptions;
 use fastembed::{ImageEmbedding, ImageEmbeddingModel, ImageInitOptions, ModelInfo, TextEmbedding};

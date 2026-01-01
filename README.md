@@ -27,6 +27,7 @@
 - [**BAAI/bge-large-en-v1.5**](https://huggingface.co/BAAI/bge-large-en-v1.5)
 - [**BAAI/bge-small-zh-v1.5**](https://huggingface.co/BAAI/bge-small-zh-v1.5)
 - [**BAAI/bge-large-zh-v1.5**](https://huggingface.co/BAAI/bge-large-zh-v1.5)
+- [**BAAI/bge-m3**](https://huggingface.co/BAAI/bge-m3)
 - [**sentence-transformers/all-MiniLM-L6-v2**](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
 - [**sentence-transformers/all-MiniLM-L12-v2**](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2)
 - [**sentence-transformers/all-mpnet-base-v2**](https://huggingface.co/sentence-transformers/all-mpnet-base-v2)
@@ -43,11 +44,11 @@
 - [**lightonai/ModernBERT-embed-large**](https://huggingface.co/lightonai/modernbert-embed-large)
 - [**Qdrant/clip-ViT-B-32-text**](https://huggingface.co/Qdrant/clip-ViT-B-32-text) - pairs with `clip-ViT-B-32-vision` for image-to-text search
 - [**jinaai/jina-embeddings-v2-base-code**](https://huggingface.co/jinaai/jina-embeddings-v2-base-code)
-- [**google/embeddinggemma-300m**](https://huggingface.co/google/embeddinggemma-300m) - 768-dim embeddings from Google
+- [**google/embeddinggemma-300m**](https://huggingface.co/google/embeddinggemma-300m)
 - [**snowflake/snowflake-arctic-embed-xs**](https://huggingface.co/snowflake/snowflake-arctic-embed-xs)
 - [**snowflake/snowflake-arctic-embed-s**](https://huggingface.co/snowflake/snowflake-arctic-embed-s)
 - [**snowflake/snowflake-arctic-embed-m**](https://huggingface.co/snowflake/snowflake-arctic-embed-m)
-- [**snowflake/snowflake-arctic-embed-m-long**](https://huggingface.co/snowflake/snowflake-arctic-embed-m-long) - 2048 context length
+- [**snowflake/snowflake-arctic-embed-m-long**](https://huggingface.co/snowflake/snowflake-arctic-embed-m-long)
 - [**snowflake/snowflake-arctic-embed-l**](https://huggingface.co/snowflake/snowflake-arctic-embed-l)
 
 Quantized versions are also available for several models above (append `Q` to the model enum variant, e.g., `EmbeddingModel::BGESmallENV15Q`).
@@ -111,7 +112,7 @@ let documents = vec![
     "passage: This is an example passage.",
     // You can leave out the prefix but it's recommended
     "fastembed-rs is licensed under Apache  2.0"
-    ];
+];
 
  // Generate embeddings with the default batch size, 256
  let embeddings = model.embed(documents, None)?;
@@ -138,7 +139,7 @@ let documents = vec![
     "query: Hello, World!",
     "passage: This is an example passage.",
     "fastembed-rs is licensed under Apache  2.0"
-    ];
+];
 
 // Generate embeddings with the default batch size, 256
 let embeddings: Vec<SparseEmbedding> = model.embed(documents, None)?;
@@ -185,7 +186,7 @@ let documents = vec![
     "panda is animal",
     "i dont know",
     "kind of mammal",
-    ];
+];
 
 // Rerank with the default batch size, 256 and return document contents
 let results = model.rerank("what is panda?", documents, true, None)?;

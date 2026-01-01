@@ -41,7 +41,7 @@ jobs:
         run: ORT_LIB_LOCATION="$(pwd)/onnxruntime/build/Linux/Release" cargo test --release --no-default-features --features hf-hub-native-tls,image-models
 
       - name: Cargo Test Offline
-        run: ORT_LIB_LOCATION="$(pwd)/onnxruntime/build/Linux/Release" cargo test --no-default-features,image-models
+        run: ORT_LIB_LOCATION="$(pwd)/onnxruntime/build/Linux/Release" cargo test --no-default-features --features image-models
 
       - name: Cargo Clippy
         run: cargo clippy
