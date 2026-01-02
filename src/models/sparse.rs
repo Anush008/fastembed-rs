@@ -7,18 +7,36 @@ pub enum SparseModel {
     /// prithivida/Splade_PP_en_v1
     #[default]
     SPLADEPPV1,
+    /// BAAI/bge-m3
+    BGEM3,
 }
 
 pub fn models_list() -> Vec<ModelInfo<SparseModel>> {
-    vec![ModelInfo {
-        model: SparseModel::SPLADEPPV1,
-        dim: 0,
-        description: String::from("Splade sparse vector model for commercial use, v1"),
-        model_code: String::from("Qdrant/Splade_PP_en_v1"),
-        model_file: String::from("model.onnx"),
-        additional_files: Vec::new(),
-        output_key: None,
-    }]
+    vec![
+        ModelInfo {
+            model: SparseModel::SPLADEPPV1,
+            dim: 0,
+            description: String::from("Splade sparse vector model for commercial use, v1"),
+            model_code: String::from("Qdrant/Splade_PP_en_v1"),
+            model_file: String::from("model.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: SparseModel::BGEM3,
+            dim: 0,
+            description: String::from(
+                "BGE-M3 sparse embedding model with 8192 context, supports 100+ languages",
+            ),
+            model_code: String::from("BAAI/bge-m3"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: vec![
+                "onnx/model.onnx_data".to_string(),
+                "onnx/Constant_7_attr__value".to_string(),
+            ],
+            output_key: None,
+        },
+    ]
 }
 
 impl Display for SparseModel {
