@@ -56,6 +56,7 @@ Quantized versions are also available for several models above (append `Q` to th
 ### Sparse Text Embedding
 
 - [**prithivida/Splade_PP_en_v1**](https://huggingface.co/prithivida/Splade_PP_en_v1) - Default
+- [**BAAI/bge-m3**](https://huggingface.co/BAAI/bge-m3)
 
 ### Image Embedding
 
@@ -111,7 +112,7 @@ let documents = vec![
     "query: Hello, World!",
     "passage: This is an example passage.",
     // You can leave out the prefix but it's recommended
-    "fastembed-rs is licensed under Apache  2.0"
+    "fastembed-rs is licensed under Apache 2.0"
 ];
 
  // Generate embeddings with the default batch size, 256
@@ -138,7 +139,7 @@ let documents = vec![
     "passage: Hello, World!",
     "query: Hello, World!",
     "passage: This is an example passage.",
-    "fastembed-rs is licensed under Apache  2.0"
+    "fastembed-rs is licensed under Apache 2.0"
 ];
 
 // Generate embeddings with the default batch size, 256
