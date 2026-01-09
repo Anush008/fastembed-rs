@@ -193,6 +193,7 @@ impl TextEmbedding {
             EmbeddingModel::ClipVitB32 => Some(Pooling::Mean),
 
             EmbeddingModel::JinaEmbeddingsV2BaseCode => Some(Pooling::Mean),
+            EmbeddingModel::JinaEmbeddingsV2BaseEN => Some(Pooling::Mean),
 
             EmbeddingModel::EmbeddingGemma300M => Some(Pooling::Mean),
 
