@@ -105,3 +105,76 @@ pub use crate::reranking::{
     OnnxSource, RerankInitOptions, RerankInitOptionsUserDefined, RerankResult, TextRerank,
     UserDefinedRerankingModel,
 };
+
+// ============================================================================
+// Module-level convenience functions for listing supported models
+// ============================================================================
+
+/// List all supported text embedding models.
+///
+/// This is a convenience function that wraps [`TextEmbedding::list_supported_models()`].
+///
+/// # Example
+/// ```
+/// use fastembed::list_supported_text_embedding_models;
+///
+/// let models = list_supported_text_embedding_models();
+/// for model_info in models {
+///     println!("{}: {}", model_info.model_code, model_info.description);
+/// }
+/// ```
+pub fn list_supported_text_embedding_models() -> Vec<ModelInfo<EmbeddingModel>> {
+    TextEmbedding::list_supported_models()
+}
+
+/// List all supported sparse text embedding models.
+///
+/// This is a convenience function that wraps [`SparseTextEmbedding::list_supported_models()`].
+///
+/// # Example
+/// ```
+/// use fastembed::list_supported_sparse_embedding_models;
+///
+/// let models = list_supported_sparse_embedding_models();
+/// for model_info in models {
+///     println!("{}: {}", model_info.model_code, model_info.description);
+/// }
+/// ```
+pub fn list_supported_sparse_embedding_models() -> Vec<ModelInfo<SparseModel>> {
+    SparseTextEmbedding::list_supported_models()
+}
+
+/// List all supported image embedding models.
+///
+/// This is a convenience function that wraps [`ImageEmbedding::list_supported_models()`].
+///
+/// # Example
+/// ```ignore
+/// use fastembed::list_supported_image_embedding_models;
+///
+/// let models = list_supported_image_embedding_models();
+/// for model_info in models {
+///     println!("{}: {}", model_info.model_code, model_info.description);
+/// }
+/// ```
+#[cfg(feature = "image-models")]
+pub fn list_supported_image_embedding_models() -> Vec<ModelInfo<ImageEmbeddingModel>> {
+    ImageEmbedding::list_supported_models()
+}
+
+/// List all supported reranker models.
+///
+/// This is a convenience function that wraps [`TextRerank::list_supported_models()`].
+///
+/// # Example
+/// ```
+/// use fastembed::list_supported_reranker_models;
+///
+/// let models = list_supported_reranker_models();
+/// for model_info in models {
+///     println!("{}: {}", model_info.model_code, model_info.description);
+/// }
+/// ```
+pub fn list_supported_reranker_models() -> Vec<RerankerModelInfo> {
+    TextRerank::list_supported_models()
+}
