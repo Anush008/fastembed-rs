@@ -606,7 +606,6 @@ impl Qwen3TextEmbedding {
             Tensor::from_vec(attention_mask_vec, (batch_size, seq_len), device)?;
 
         // Build 4D attention mask: causal + padding
-        // Use -1e4 as the mask value (like EmbedAnything), not -inf or float16 min
         let mask_value = -1e4f32;
 
         // causal_mask[i,j] = 0 if i >= j else mask_value
