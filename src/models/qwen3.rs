@@ -35,6 +35,7 @@ impl Config {
         self.head_dim
             .unwrap_or(self.hidden_size / self.num_attention_heads)
     }
+
     pub fn num_kv_groups(&self) -> usize {
         self.num_attention_heads / self.num_key_value_heads
     }
@@ -43,6 +44,7 @@ impl Config {
 fn scalar_f32(device: &Device, v: f32) -> Result<Tensor> {
     Tensor::from_slice(&[v], (1,), device)?.to_dtype(DType::F32)
 }
+
 fn scalar_f64_as_f32(device: &Device, v: f64) -> Result<Tensor> {
     scalar_f32(device, v as f32)
 }
