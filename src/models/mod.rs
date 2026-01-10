@@ -6,6 +6,7 @@ pub mod quantization;
 pub mod reranking;
 pub mod sparse;
 pub mod text_embedding;
+pub mod qwen3;
 
 pub trait ModelTrait {
     type Model;
