@@ -121,7 +121,7 @@ impl Qwen3RotaryEmbedding {
     pub fn new(cfg: &Config, device: &Device) -> Result<Self> {
         let base = cfg.rope_theta; // f64 for precision
         let dim = cfg.head_dim(); // head_dim
-        assert!(dim % 2 == 0, "head_dim must be even, got {dim}");
+        assert!(dim.is_multiple_of(2), "head_dim must be even, got {dim}");
 
         // t = [0,2,4,...,dim-2] as f32
         let t = Tensor::arange_step(0u32, dim as u32, 2u32, device)?.to_dtype(DType::F32)?;
@@ -253,7 +253,7 @@ impl Qwen3Attention {
         let num_kv_heads = cfg.num_key_value_heads;
         let num_kv_groups = cfg.num_kv_groups();
         assert!(
-            num_heads % num_kv_heads == 0,
+            num_heads.is_multiple_of(num_kv_heads),
             "num_heads must be multiple of num_kv_heads"
         );
 
