@@ -78,3 +78,5 @@ Cargo.lock
 
 ## Nix
 /.direnv
+
+datasets/

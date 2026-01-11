@@ -58,9 +58,11 @@ mod common;
 #[cfg(feature = "image-models")]
 mod image_embedding;
 mod init;
+mod late_interaction;
 mod models;
 pub mod output;
 mod pooling;
+mod postprocess;
 mod reranking;
 mod sparse_text_embedding;
 mod text_embedding;
@@ -105,3 +107,14 @@ pub use crate::reranking::{
     OnnxSource, RerankInitOptions, RerankInitOptionsUserDefined, RerankResult, TextRerank,
     UserDefinedRerankingModel,
 };
+
+// For Late Interaction
+pub use crate::late_interaction::{
+    LateInteractionEmbedding, LateInteractionInitOptions, LateInteractionInitOptionsUserDefined,
+    LateInteractionModel, LateInteractionModelInfo, LateInteractionTextEmbedding,
+    UserDefinedLateInteractionModel,
+};
+
+// For Post-processing (MUVERA)
+#[cfg(feature = "muvera")]
+pub use crate::postprocess::{Muvera, SimHashProjection};
