@@ -31,7 +31,10 @@ ort = { version = "=2.0.0-rc.10", default-features = false, features = [
 ] }
 safetensors = { version = "0.7" }
 serde_json = { version = "1" }
+serde = { version = "1", features = ["derive"] }
 tokenizers = { version = "0.22.0", default-features = false, features = ["onig"] }
+candle-core = { version = "0.9", default-features = false, optional = true }
+candle-nn = { version = "0.9", default-features = false, optional = true }
 
 [features]
 default = ["ort-download-binaries", "hf-hub-native-tls", "image-models"]
@@ -43,7 +46,14 @@ hf-hub-rustls-tls = ["hf-hub", "hf-hub?/rustls-tls"]
 ort-download-binaries = ["ort/download-binaries"]
 ort-load-dynamic = ["ort/load-dynamic"]
 
+qwen3 = ["dep:candle-core", "dep:candle-nn", "hf-hub"]
+
 image-models = ["image"]
+accelerate = ["qwen3", "candle-core/accelerate", "candle-nn/accelerate"]
+mkl = ["qwen3", "candle-core/mkl", "candle-nn/mkl"]
+cuda = ["qwen3", "candle-core/cuda", "candle-nn/cuda"]
+cudnn = ["qwen3", "candle-core/cudnn", "candle-nn/cudnn", "cuda"]
+metal = ["qwen3", "candle-core/metal", "candle-nn/metal"]
 
 # This feature does not change any code, but is used to limit tests if
 # the user does not have `optimum-cli` or even python installed.
