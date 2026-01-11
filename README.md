@@ -46,6 +46,9 @@
 - [**jinaai/jina-embeddings-v2-base-code**](https://huggingface.co/jinaai/jina-embeddings-v2-base-code)
 - [**jinaai/jina-embeddings-v2-base-en**](https://huggingface.co/jinaai/jina-embeddings-v2-base-en)
 - [**google/embeddinggemma-300m**](https://huggingface.co/google/embeddinggemma-300m)
+- [**Qwen/Qwen3-Embedding-0.6B**](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B) - requires `qwen3` feature (candle backend)
+- [**Qwen/Qwen3-Embedding-4B**](https://huggingface.co/Qwen/Qwen3-Embedding-4B) - requires `qwen3` feature (candle backend)
+- [**Qwen/Qwen3-Embedding-8B**](https://huggingface.co/Qwen/Qwen3-Embedding-8B) - requires `qwen3` feature (candle backend)
 - [**snowflake/snowflake-arctic-embed-xs**](https://huggingface.co/snowflake/snowflake-arctic-embed-xs)
 - [**snowflake/snowflake-arctic-embed-s**](https://huggingface.co/snowflake/snowflake-arctic-embed-s)
 - [**snowflake/snowflake-arctic-embed-m**](https://huggingface.co/snowflake/snowflake-arctic-embed-m)
@@ -121,6 +124,35 @@ let documents = vec![
 
  println!("Embeddings length: {}", embeddings.len()); // -> Embeddings length: 4
  println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 384
+```
+
+### Qwen3 Embeddings
+
+Qwen3 embedding models are available behind the `qwen3` feature flag (candle backend).
+
+Enable the feature in your `Cargo.toml`:
+
+```toml
+[dependencies]
+fastembed = { version = "5", features = ["qwen3"] }
+```
+
+Example:
+
+```rust
+use candle_core::{DType, Device};
+use fastembed::Qwen3TextEmbedding;
+
+let device = Device::Cpu;
+let model = Qwen3TextEmbedding::from_hf(
+    "Qwen/Qwen3-Embedding-0.6B",
+    &device,
+    DType::F32,
+    512,
+)?;
+
+let embeddings = model.embed(&["query: ...", "passage: ..."])?;
+println!("Embeddings length: {}", embeddings.len());
 ```
 
 ### Sparse Text Embeddings

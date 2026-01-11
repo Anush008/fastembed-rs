@@ -46,7 +46,7 @@ hf-hub-rustls-tls = ["hf-hub", "hf-hub?/rustls-tls"]
 ort-download-binaries = ["ort/download-binaries"]
 ort-load-dynamic = ["ort/load-dynamic"]
 
-qwen3 = ["dep:candle-core", "dep:candle-nn"]
+qwen3 = ["dep:candle-core", "dep:candle-nn", "hf-hub"]
 
 image-models = ["image"]
 accelerate = ["qwen3", "candle-core/accelerate", "candle-nn/accelerate"]
