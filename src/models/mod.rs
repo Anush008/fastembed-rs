@@ -6,6 +6,8 @@ pub mod quantization;
 pub mod reranking;
 pub mod sparse;
 pub mod text_embedding;
+
+#[cfg(feature = "qwen3")]
 pub mod qwen3;
 
 pub trait ModelTrait {

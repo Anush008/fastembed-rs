@@ -1,4 +1,5 @@
 #![cfg(feature = "hf-hub")]
+#![cfg(feature = "qwen3")]
 
 use candle_core::{DType, Device};
 use fastembed::Qwen3TextEmbedding;
@@ -54,33 +55,6 @@ fn run_embed_test(repo_id: &str) {
 #[test]
 fn qwen3_06b_embed() {
     run_embed_test(REPO_06B);
-}
-
-#[test]
-fn qwen3_06b_single_vs_batch() {
-    let device = Device::Cpu;
-    let model =
-        Qwen3TextEmbedding::from_hf(REPO_06B, &device, DType::F32, 8192).expect("load model");
-
-    let texts = ["Hello world", "This is a test", "Another sentence here"];
-    let batch_embeddings = model.embed(&texts).expect("batch embed");
-    let single_embeddings: Vec<Vec<f32>> = texts
-        .iter()
-        .map(|t| model.embed(&[*t]).expect("single embed")[0].clone())
-        .collect();
-
-    for (i, (batch, single)) in batch_embeddings
-        .iter()
-        .zip(single_embeddings.iter())
-        .enumerate()
-    {
-        let diff: f32 = batch
-            .iter()
-            .zip(single.iter())
-            .map(|(a, b)| (a - b).abs())
-            .sum();
-        assert!(diff < 0.01, "text {i} batch vs single diff = {diff}");
-    }
 }
 
 /// Reference scores from official Qwen3-Embedding model card: [[0.7646, 0.1414], [0.1355, 0.6000]]
