@@ -29,7 +29,7 @@ ndarray = { version = "0.16", default-features = false }
 ort = { version = "=2.0.0-rc.10", default-features = false, features = [
   "ndarray", "std"
 ] }
-safetensors = { version = "0.4" }
+safetensors = { version = "0.7" }
 serde_json = { version = "1" }
 serde = { version = "1", features = ["derive"] }
 tokenizers = { version = "0.22.0", default-features = false, features = ["onig"] }
