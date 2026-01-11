@@ -68,7 +68,7 @@
     [
       "semantic-release-cargo",
       {
-        "allFeatures": true,
+        "allFeatures": false,
         "check": true,
         "publishArgs": [
           "--no-verify"
