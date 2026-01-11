@@ -130,14 +130,10 @@ let documents = vec![
 
 Qwen3 embedding models are available behind the `qwen3` feature flag (candle backend).
 
-Enable the feature in your `Cargo.toml`:
-
 ```toml
 [dependencies]
 fastembed = { version = "5", features = ["qwen3"] }
 ```
-
-Example:
 
 ```rust
 use candle_core::{DType, Device};
