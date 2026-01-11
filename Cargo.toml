@@ -33,8 +33,11 @@ safetensors = { version = "0.7" }
 serde_json = { version = "1" }
 serde = { version = "1", features = ["derive"] }
 tokenizers = { version = "0.22.0", default-features = false, features = ["onig"] }
-candle-core = { version = "0.9", default-features = false, optional = true }
-candle-nn = { version = "0.9", default-features = false, optional = true }
+candle-nn = { version = "0.9.1", optional = true }
+candle-core = { version = "0.9.1", optional = true }
+
+intel-mkl-src = { version = "0.8.1", optional = true }
+accelerate-src = { version = "0.3.2", optional = true }
 
 [features]
 default = ["ort-download-binaries", "hf-hub-native-tls", "image-models"]
@@ -49,8 +52,8 @@ ort-load-dynamic = ["ort/load-dynamic"]
 qwen3 = ["dep:candle-core", "dep:candle-nn", "hf-hub"]
 
 image-models = ["image"]
-accelerate = ["qwen3", "candle-core/accelerate", "candle-nn/accelerate"]
-mkl = ["qwen3", "candle-core/mkl", "candle-nn/mkl"]
+mkl = ["qwen3","dep:intel-mkl-src", "candle-nn/mkl", "candle-core/mkl"]
+accelerate = ["qwen3", "dep:accelerate-src", "candle-core/accelerate", "candle-nn/accelerate"]
 cuda = ["qwen3", "candle-core/cuda", "candle-nn/cuda"]
 cudnn = ["qwen3", "candle-core/cudnn", "candle-nn/cudnn", "cuda"]
 metal = ["qwen3", "candle-core/metal", "candle-nn/metal"]
