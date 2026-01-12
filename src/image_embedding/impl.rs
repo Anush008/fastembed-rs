@@ -210,7 +210,7 @@ impl ImageEmbedding {
         let inputs_view: Vec<ArrayView3<f32>> = inputs.iter().map(|img| img.view()).collect();
         let pixel_values_array = ndarray::stack(ndarray::Axis(0), &inputs_view)?;
 
-        let input_name = self.session.inputs[0].name.clone();
+        let input_name = self.session.inputs()[0].name().to_string();
         let session_inputs = ort::inputs![
             input_name => Value::from_array(pixel_values_array)?,
         ];

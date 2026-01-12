@@ -80,9 +80,9 @@ impl SparseTextEmbedding {
     #[cfg_attr(not(feature = "hf-hub"), allow(dead_code))]
     fn new(tokenizer: Tokenizer, session: Session, model: SparseModel) -> Self {
         let need_token_type_ids = session
-            .inputs
+            .inputs()
             .iter()
-            .any(|input| input.name == "token_type_ids");
+            .any(|input| input.name() == "token_type_ids");
         Self {
             tokenizer,
             session,

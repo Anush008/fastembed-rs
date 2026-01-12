@@ -125,9 +125,9 @@ impl TextEmbedding {
         output_key: Option<OutputKey>,
     ) -> Self {
         let need_token_type_ids = session
-            .inputs
+            .inputs()
             .iter()
-            .any(|input| input.name == "token_type_ids");
+            .any(|input| input.name() == "token_type_ids");
 
         Self {
             tokenizer,
