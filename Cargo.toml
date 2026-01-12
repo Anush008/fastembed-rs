@@ -25,7 +25,7 @@ homepage = "https://crates.io/crates/fastembed"
 anyhow = { version = "1" }
 hf-hub = { version = "0.4.1", default-features = false, optional = true }
 image = { version = "0.25.2", optional = true }
-ndarray = { version = "0.16", default-features = false }
+ndarray = { version = "0.17", default-features = false }
 ort = { version = "=2.0.0-rc.11", default-features = false, features = [
   "ndarray", "std"
 ] }
@@ -46,7 +46,7 @@ hf-hub = ["dep:hf-hub", "hf-hub?/ureq"]
 hf-hub-native-tls = ["hf-hub", "hf-hub?/native-tls"]
 hf-hub-rustls-tls = ["hf-hub", "hf-hub?/rustls-tls"]
 
-ort-download-binaries = ["ort/download-binaries"]
+ort-download-binaries = ["ort/download-binaries", "ort/tls-native"]
 ort-load-dynamic = ["ort/load-dynamic"]
 
 qwen3 = ["dep:candle-core", "dep:candle-nn", "hf-hub"]
