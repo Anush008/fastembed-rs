@@ -40,15 +40,15 @@ intel-mkl-src = { version = "0.8.1", optional = true }
 accelerate-src = { version = "0.3.2", optional = true }
 
 [features]
-default = ["ort-download-binaries", "ort-tls-native", "hf-hub-native-tls", "image-models"]
+default = ["ort-download-binaries-native-tls", "hf-hub-native-tls", "image-models"]
 
 hf-hub = ["dep:hf-hub", "hf-hub?/ureq"]
 hf-hub-native-tls = ["hf-hub", "hf-hub?/native-tls"]
 hf-hub-rustls-tls = ["hf-hub", "hf-hub?/rustls-tls"]
 
-ort-download-binaries = ["ort/download-binaries"]
-ort-tls-native = ["ort/tls-native"]
-ort-tls-rustls = ["ort/tls-rustls"]
+ort-download-binaries = ["ort-download-binaries-native-tls"]
+ort-download-binaries-native-tls = ["ort/download-binaries", "ort/tls-native"]
+ort-download-binaries-rustls-tls = ["ort/download-binaries", "ort/tls-rustls"]
 ort-load-dynamic = ["ort/load-dynamic"]
 
 qwen3 = ["dep:candle-core", "dep:candle-nn", "hf-hub"]
