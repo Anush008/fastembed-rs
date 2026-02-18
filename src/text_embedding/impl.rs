@@ -100,11 +100,21 @@ impl TextEmbedding {
 
         let threads = available_parallelism()?.get();
 
-        let session = Session::builder()?
-            .with_execution_providers(execution_providers)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
-            .commit_from_memory(&model.onnx_file)?;
+        let session = {
+            let mut session_builder = Session::builder()?
+                .with_execution_providers(execution_providers)?
+                .with_optimization_level(GraphOptimizationLevel::Level3)?
+                .with_intra_threads(threads)?;
+
+            for external_initializer_file in model.external_initializers {
+                session_builder = session_builder.with_external_initializer_file_in_memory(
+                    external_initializer_file.file_name,
+                    external_initializer_file.buffer.into(),
+                )?;
+            }
+
+            session_builder.commit_from_memory(&model.onnx_file)?
+        };
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
         Ok(Self::new(
