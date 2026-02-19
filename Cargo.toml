@@ -52,13 +52,14 @@ ort-download-binaries-rustls-tls = ["ort/download-binaries", "ort/tls-rustls"]
 ort-load-dynamic = ["ort/load-dynamic"]
 
 qwen3 = ["dep:candle-core", "dep:candle-nn", "hf-hub"]
+nomic-v2-moe = ["dep:candle-core", "dep:candle-nn", "hf-hub"]
 
 image-models = ["image"]
-mkl = ["qwen3","dep:intel-mkl-src", "candle-nn/mkl", "candle-core/mkl"]
-accelerate = ["qwen3", "dep:accelerate-src", "candle-core/accelerate", "candle-nn/accelerate"]
-cuda = ["qwen3", "candle-core/cuda", "candle-nn/cuda"]
-cudnn = ["qwen3", "candle-core/cudnn", "candle-nn/cudnn", "cuda"]
-metal = ["qwen3", "candle-core/metal", "candle-nn/metal"]
+mkl = ["qwen3", "nomic-v2-moe", "dep:intel-mkl-src", "candle-nn/mkl", "candle-core/mkl"]
+accelerate = ["qwen3", "nomic-v2-moe", "dep:accelerate-src", "candle-core/accelerate", "candle-nn/accelerate"]
+cuda = ["qwen3", "nomic-v2-moe", "candle-core/cuda", "candle-nn/cuda"]
+cudnn = ["qwen3", "nomic-v2-moe", "candle-core/cudnn", "candle-nn/cudnn", "cuda"]
+metal = ["qwen3", "nomic-v2-moe", "candle-core/metal", "candle-nn/metal"]
 
 # This feature does not change any code, but is used to limit tests if
 # the user does not have `optimum-cli` or even python installed.
