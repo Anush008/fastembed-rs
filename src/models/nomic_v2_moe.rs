@@ -62,15 +62,33 @@ pub struct NomicConfig {
     pub pad_token_id: usize,
 }
 
-fn default_type_vocab_size() -> usize { 1 }
-fn default_num_experts() -> usize { 8 }
-fn default_moe_top_k() -> usize { 2 }
-fn default_moe_every_n_layers() -> usize { 2 }
-fn default_rotary_emb_base() -> f64 { 10000.0 }
-fn default_rotary_emb_fraction() -> f64 { 1.0 }
-fn default_layer_norm_epsilon() -> f64 { 1e-5 }
-fn default_true() -> bool { true }
-fn default_pad_token_id() -> usize { 1 }
+fn default_type_vocab_size() -> usize {
+    1
+}
+fn default_num_experts() -> usize {
+    8
+}
+fn default_moe_top_k() -> usize {
+    2
+}
+fn default_moe_every_n_layers() -> usize {
+    2
+}
+fn default_rotary_emb_base() -> f64 {
+    10000.0
+}
+fn default_rotary_emb_fraction() -> f64 {
+    1.0
+}
+fn default_layer_norm_epsilon() -> f64 {
+    1e-5
+}
+fn default_true() -> bool {
+    true
+}
+fn default_pad_token_id() -> usize {
+    1
+}
 
 impl NomicConfig {
     pub fn head_dim(&self) -> usize {
@@ -94,10 +112,12 @@ impl NomicRotaryEmbedding {
     fn new(cfg: &NomicConfig, device: &Device) -> Result<Self> {
         let rotary_dim = cfg.rotary_dim();
         let base = cfg.rotary_emb_base;
-        assert!(rotary_dim.is_multiple_of(2), "rotary_dim must be even, got {rotary_dim}");
+        assert!(
+            rotary_dim.is_multiple_of(2),
+            "rotary_dim must be even, got {rotary_dim}"
+        );
 
-        let t = Tensor::arange_step(0u32, rotary_dim as u32, 2u32, device)?
-            .to_dtype(DType::F32)?;
+        let t = Tensor::arange_step(0u32, rotary_dim as u32, 2u32, device)?.to_dtype(DType::F32)?;
         let dim_f = Tensor::new(&[rotary_dim as f32], device)?;
         let exponent = t.broadcast_div(&dim_f)?;
         let ln_base = (base as f32).ln();
@@ -142,7 +162,8 @@ fn apply_rotary_full(x: &Tensor, cos: &Tensor, sin: &Tensor) -> Result<Tensor> {
     let x1 = x.narrow(D::Minus1, 0, half)?;
     let x2 = x.narrow(D::Minus1, half, half)?;
     let rotated = Tensor::cat(&[&x2.neg()?, &x1], x.rank() - 1)?;
-    x.broadcast_mul(&cos)?.broadcast_add(&rotated.broadcast_mul(&sin)?)
+    x.broadcast_mul(&cos)?
+        .broadcast_add(&rotated.broadcast_mul(&sin)?)
 }
 
 // ---------------------------------------------------------------------------
@@ -308,11 +329,7 @@ struct NomicRouter {
 
 impl NomicRouter {
     fn new(cfg: &NomicConfig, vb: VarBuilder) -> Result<Self> {
-        let gate = candle_nn::linear_no_bias(
-            cfg.hidden_size,
-            cfg.num_experts,
-            vb.pp("layer"),
-        )?;
+        let gate = candle_nn::linear_no_bias(cfg.hidden_size, cfg.num_experts, vb.pp("layer"))?;
         Ok(Self {
             gate,
             top_k: cfg.moe_top_k,
@@ -351,8 +368,8 @@ impl NomicRouter {
 
 struct NomicMoELayer {
     router: NomicRouter,
-    w1: Tensor, // [num_experts, intermediate_size, hidden_size]
-    w2: Tensor, // [num_experts, intermediate_size, hidden_size] (megablocks: no transpose)
+    w1: Tensor,   // [num_experts, intermediate_size, hidden_size]
+    w2: Tensor,   // [num_experts, intermediate_size, hidden_size] (megablocks: no transpose)
     bias: Tensor, // [hidden_size] shared output bias
     num_experts: usize,
 }
@@ -400,8 +417,10 @@ impl NomicMoELayer {
             let mut assigned_tokens: Vec<usize> = Vec::new();
             let mut assigned_weights: Vec<f32> = Vec::new();
 
-            for (token_idx, (indices, weights)) in
-                top_indices_vec.iter().zip(top_weights_vec.iter()).enumerate()
+            for (token_idx, (indices, weights)) in top_indices_vec
+                .iter()
+                .zip(top_weights_vec.iter())
+                .enumerate()
             {
                 for (&idx, &w) in indices.iter().zip(weights.iter()) {
                     if idx as usize == expert_idx {
@@ -416,7 +435,10 @@ impl NomicMoELayer {
             }
 
             let indices_t = Tensor::from_vec(
-                assigned_tokens.iter().map(|&i| i as u32).collect::<Vec<_>>(),
+                assigned_tokens
+                    .iter()
+                    .map(|&i| i as u32)
+                    .collect::<Vec<_>>(),
                 (assigned_tokens.len(),),
                 xs.device(),
             )?;
@@ -429,12 +451,9 @@ impl NomicMoELayer {
             let up = selected.matmul(&w1_i.t()?)?.gelu_erf()?;
             let down = up.matmul(&w2_i)?; // megablocks: no transpose on w2
 
-            let weights_t = Tensor::from_vec(
-                assigned_weights,
-                (assigned_tokens.len(), 1),
-                xs.device(),
-            )?
-            .to_dtype(xs.dtype())?;
+            let weights_t =
+                Tensor::from_vec(assigned_weights, (assigned_tokens.len(), 1), xs.device())?
+                    .to_dtype(xs.dtype())?;
             let weighted = down.broadcast_mul(&weights_t)?;
 
             let weighted_vec = weighted.to_vec2::<f32>()?;
@@ -445,8 +464,8 @@ impl NomicMoELayer {
             }
         }
 
-        let output = Tensor::from_vec(output_vec, (seq_len, hidden), xs.device())?
-            .to_dtype(xs.dtype())?;
+        let output =
+            Tensor::from_vec(output_vec, (seq_len, hidden), xs.device())?.to_dtype(xs.dtype())?;
         output.broadcast_add(&self.bias.to_dtype(xs.dtype())?)
     }
 }
@@ -502,7 +521,12 @@ impl NomicBertBlock {
         let norm1 = layer_norm(cfg.hidden_size, cfg.layer_norm_epsilon, vb.pp("norm1"))?;
         let norm2 = layer_norm(cfg.hidden_size, cfg.layer_norm_epsilon, vb.pp("norm2"))?;
 
-        Ok(Self { attn, mlp, norm1, norm2 })
+        Ok(Self {
+            attn,
+            mlp,
+            norm1,
+            norm2,
+        })
     }
 
     fn forward(
@@ -573,7 +597,13 @@ impl NomicBertModel {
         let emb_ln = layer_norm(cfg.hidden_size, cfg.layer_norm_epsilon, vb.pp("emb_ln"))?;
         let encoder = NomicBertEncoder::new(&cfg, vb.pp("encoder"))?;
         let rotary = NomicRotaryEmbedding::new(&cfg, &device)?;
-        Ok(Self { embeddings, emb_ln, encoder, rotary, device })
+        Ok(Self {
+            embeddings,
+            emb_ln,
+            encoder,
+            rotary,
+            device,
+        })
     }
 
     fn forward(
@@ -588,13 +618,16 @@ impl NomicBertModel {
         let hidden_states = emb.apply(&self.emb_ln)?;
 
         // Rotary position embeddings
-        let (cos, sin) = self.rotary.forward(t, &self.device, hidden_states.dtype())?;
+        let (cos, sin) = self
+            .rotary
+            .forward(t, &self.device, hidden_states.dtype())?;
 
         // Bidirectional attention mask [B, 1, 1, T]
         let mask_4d = build_bidirectional_mask(attention_mask)?;
 
         // Encoder (post-norm blocks, no final norm needed)
-        self.encoder.forward(&hidden_states, &cos, &sin, Some(&mask_4d))
+        self.encoder
+            .forward(&hidden_states, &cos, &sin, Some(&mask_4d))
     }
 }
 
@@ -637,12 +670,12 @@ pub struct NomicV2MoeTextEmbedding {
 }
 
 impl NomicV2MoeTextEmbedding {
-    pub fn new(
-        model: NomicBertModel,
-        tokenizer: tokenizers::Tokenizer,
-        cfg: NomicConfig,
-    ) -> Self {
-        Self { model, tokenizer, cfg }
+    pub fn new(model: NomicBertModel, tokenizer: tokenizers::Tokenizer, cfg: NomicConfig) -> Self {
+        Self {
+            model,
+            tokenizer,
+            cfg,
+        }
     }
 
     #[cfg(feature = "hf-hub")]
@@ -713,7 +746,11 @@ impl NomicV2MoeTextEmbedding {
             ..Default::default()
         }));
 
-        Ok(Self { model, tokenizer, cfg })
+        Ok(Self {
+            model,
+            tokenizer,
+            cfg,
+        })
     }
 
     pub fn config(&self) -> &NomicConfig {
@@ -747,8 +784,7 @@ impl NomicV2MoeTextEmbedding {
 
         let device = &self.model.device;
         let input_ids = Tensor::from_vec(input_ids_vec, (batch_size, seq_len), device)?;
-        let attention_mask =
-            Tensor::from_vec(attention_mask_vec, (batch_size, seq_len), device)?;
+        let attention_mask = Tensor::from_vec(attention_mask_vec, (batch_size, seq_len), device)?;
 
         let token_type_ids = Tensor::zeros((batch_size, seq_len), DType::U32, device)?;
 

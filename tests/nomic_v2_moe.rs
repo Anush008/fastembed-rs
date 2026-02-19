@@ -14,9 +14,8 @@ fn cosine_sim(a: &[f32], b: &[f32]) -> f32 {
 #[test]
 fn nomic_v2_moe_embed() {
     let device = Device::Cpu;
-    let model =
-        NomicV2MoeTextEmbedding::from_hf(REPO, &device, DType::F32, MAX_LENGTH)
-            .expect("load model");
+    let model = NomicV2MoeTextEmbedding::from_hf(REPO, &device, DType::F32, MAX_LENGTH)
+        .expect("load model");
 
     let queries = [
         "search_query: What is the capital of China?",

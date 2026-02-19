@@ -46,6 +46,7 @@
 - [**jinaai/jina-embeddings-v2-base-code**](https://huggingface.co/jinaai/jina-embeddings-v2-base-code)
 - [**jinaai/jina-embeddings-v2-base-en**](https://huggingface.co/jinaai/jina-embeddings-v2-base-en)
 - [**google/embeddinggemma-300m**](https://huggingface.co/google/embeddinggemma-300m)
+- [**nomic-ai/nomic-embed-text-v2-moe**](https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe) - requires `nomic-v2-moe` feature (candle backend)
 - [**Qwen/Qwen3-Embedding-0.6B**](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B) - requires `qwen3` feature (candle backend)
 - [**Qwen/Qwen3-Embedding-4B**](https://huggingface.co/Qwen/Qwen3-Embedding-4B) - requires `qwen3` feature (candle backend)
 - [**Qwen/Qwen3-Embedding-8B**](https://huggingface.co/Qwen/Qwen3-Embedding-8B) - requires `qwen3` feature (candle backend)
@@ -148,6 +149,31 @@ let model = Qwen3TextEmbedding::from_hf(
 )?;
 
 let embeddings = model.embed(&["query: ...", "passage: ..."])?;
+println!("Embeddings length: {}", embeddings.len());
+```
+
+### Nomic Embed Text v2 MoE
+
+The [nomic-embed-text-v2-moe](https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe) model is available behind the `nomic-v2-moe` feature flag (candle backend). First general-purpose MoE embedding model with 100+ language support.
+
+```toml
+[dependencies]
+fastembed = { version = "5", features = ["nomic-v2-moe"] }
+```
+
+```rust
+use candle_core::{DType, Device};
+use fastembed::NomicV2MoeTextEmbedding;
+
+let device = Device::Cpu;
+let model = NomicV2MoeTextEmbedding::from_hf(
+    "nomic-ai/nomic-embed-text-v2-moe",
+    &device,
+    DType::F32,
+    512,
+)?;
+
+let embeddings = model.embed(&["search_query: ...", "search_document: ..."])?;
 println!("Embeddings length: {}", embeddings.len());
 ```
 
