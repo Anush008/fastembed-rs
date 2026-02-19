@@ -77,16 +77,28 @@ impl From<TextInitOptions> for InitOptionsUserDefined {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UserDefinedEmbeddingModel {
     pub onnx_file: Vec<u8>,
+    pub external_initializers: Vec<ExternalInitializerFile>,
     pub tokenizer_files: TokenizerFiles,
     pub pooling: Option<Pooling>,
     pub quantization: QuantizationMode,
     pub output_key: Option<OutputKey>,
 }
 
+/// Struct for adding external initializers to "bring your own" embedding models
+///
+/// The buffer is expecting the data of the external initializer and the file_name
+/// must match the one referenced by the model.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExternalInitializerFile {
+    pub file_name: String,
+    pub buffer: Vec<u8>,
+}
+
 impl UserDefinedEmbeddingModel {
     pub fn new(onnx_file: Vec<u8>, tokenizer_files: TokenizerFiles) -> Self {
         Self {
             onnx_file,
+            external_initializers: Vec::new(),
             tokenizer_files,
             quantization: QuantizationMode::None,
             pooling: None,
@@ -101,6 +113,12 @@ impl UserDefinedEmbeddingModel {
 
     pub fn with_pooling(mut self, pooling: Pooling) -> Self {
         self.pooling = Some(pooling);
+        self
+    }
+
+    pub fn with_external_initializer(mut self, file_name: String, buffer: Vec<u8>) -> Self {
+        self.external_initializers
+            .push(ExternalInitializerFile { file_name, buffer });
         self
     }
 }
