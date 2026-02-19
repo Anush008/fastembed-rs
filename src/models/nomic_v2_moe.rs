@@ -14,7 +14,7 @@ extern crate intel_mkl_src;
 extern crate accelerate_src;
 
 use candle_core::{DType, Device, IndexOp, Result, Tensor, D};
-use candle_nn::{linear, Linear, Module, VarBuilder};
+use candle_nn::{layer_norm, linear, LayerNorm, Linear, Module, VarBuilder};
 use serde::Deserialize;
 use std::path::PathBuf;
 
@@ -83,38 +83,6 @@ impl NomicConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Standard LayerNorm (post-norm pattern — prenorm=false in config)
-// ---------------------------------------------------------------------------
-
-struct NomicLayerNorm {
-    weight: Tensor,
-    bias: Tensor,
-    eps: f64,
-}
-
-impl NomicLayerNorm {
-    fn new(dim: usize, eps: f64, vb: VarBuilder) -> Result<Self> {
-        let weight = vb.get((dim,), "weight")?;
-        let bias = vb.get((dim,), "bias")?;
-        Ok(Self { weight, bias, eps })
-    }
-
-    fn forward(&self, x: &Tensor) -> Result<Tensor> {
-        let in_dtype = x.dtype();
-        let x_f32 = x.to_dtype(DType::F32)?;
-        let mean = x_f32.mean_keepdim(D::Minus1)?;
-        let centered = x_f32.broadcast_sub(&mean)?;
-        let var = centered.sqr()?.mean_keepdim(D::Minus1)?;
-        let eps = Tensor::new(&[self.eps as f32], x.device())?;
-        let inv_std = var.broadcast_add(&eps)?.sqrt()?.recip()?;
-        let normed = centered.broadcast_mul(&inv_std)?.to_dtype(in_dtype)?;
-        normed
-            .broadcast_mul(&self.weight.to_dtype(in_dtype)?)?
-            .broadcast_add(&self.bias.to_dtype(in_dtype)?)
-    }
-}
-
-// ---------------------------------------------------------------------------
 // Rotary Positional Embedding
 // ---------------------------------------------------------------------------
 
@@ -126,7 +94,7 @@ impl NomicRotaryEmbedding {
     fn new(cfg: &NomicConfig, device: &Device) -> Result<Self> {
         let rotary_dim = cfg.rotary_dim();
         let base = cfg.rotary_emb_base;
-        assert!(rotary_dim % 2 == 0, "rotary_dim must be even, got {rotary_dim}");
+        assert!(rotary_dim.is_multiple_of(2), "rotary_dim must be even, got {rotary_dim}");
 
         let t = Tensor::arange_step(0u32, rotary_dim as u32, 2u32, device)?
             .to_dtype(DType::F32)?;
@@ -153,14 +121,15 @@ impl NomicRotaryEmbedding {
     }
 }
 
-/// Apply rotary embedding to q/k.
+/// Apply non-interleaved rotary embedding to q/k.
+/// `rotary_dim` is the number of dimensions to rotate (may be <= head_dim).
 fn apply_rotary_emb(x: &Tensor, cos: &Tensor, sin: &Tensor, rotary_dim: usize) -> Result<Tensor> {
     let last_dim = x.dim(D::Minus1)?;
-    if rotary_dim * 2 >= last_dim {
+    if rotary_dim >= last_dim {
         apply_rotary_full(x, cos, sin)
     } else {
-        let x_rot = x.narrow(D::Minus1, 0, rotary_dim * 2)?;
-        let x_pass = x.narrow(D::Minus1, rotary_dim * 2, last_dim - rotary_dim * 2)?;
+        let x_rot = x.narrow(D::Minus1, 0, rotary_dim)?;
+        let x_pass = x.narrow(D::Minus1, rotary_dim, last_dim - rotary_dim)?;
         let x_rot = apply_rotary_full(&x_rot, cos, sin)?;
         Tensor::cat(&[&x_rot, &x_pass], x.rank() - 1)
     }
@@ -223,6 +192,7 @@ struct NomicAttention {
     num_heads: usize,
     head_dim: usize,
     rotary_dim: usize,
+    scale: Tensor,
 }
 
 impl NomicAttention {
@@ -239,12 +209,16 @@ impl NomicAttention {
             candle_nn::linear_no_bias(hidden, hidden, vb.pp("out_proj"))?
         };
 
+        let head_dim = cfg.head_dim();
+        let scale = Tensor::new(&[(head_dim as f32).powf(-0.5)], vb.device())?;
+
         Ok(Self {
             wqkv,
             out_proj,
             num_heads: cfg.num_attention_heads,
-            head_dim: cfg.head_dim(),
-            rotary_dim: cfg.rotary_dim() / 2,
+            head_dim,
+            rotary_dim: cfg.rotary_dim(),
+            scale,
         })
     }
 
@@ -269,10 +243,7 @@ impl NomicAttention {
         let q = apply_rotary_emb(&q, cos, sin, self.rotary_dim)?;
         let k = apply_rotary_emb(&k, cos, sin, self.rotary_dim)?;
 
-        let scale = (d as f32).powf(-0.5);
-        let scale_t = Tensor::new(&[scale], q.device())?;
-        let kt = k.transpose(2, 3)?;
-        let mut attn = q.matmul(&kt)?.broadcast_mul(&scale_t)?;
+        let mut attn = q.matmul(&k.transpose(2, 3)?)?.broadcast_mul(&self.scale)?;
 
         if let Some(mask) = attention_mask {
             attn = attn.broadcast_add(mask)?;
@@ -324,6 +295,10 @@ impl Module for NomicBertMLP {
 //   mlp.experts.mlp.w1        [num_experts * intermediate, hidden_size]
 //   mlp.experts.mlp.w2        [num_experts * intermediate, hidden_size]
 //   mlp.experts.bias           [hidden_size]
+//
+// Note: Expert dispatch uses CPU-side token-by-expert accumulation. This is
+// efficient for CPU inference but would benefit from scatter/gather kernels
+// for GPU backends.
 // ---------------------------------------------------------------------------
 
 struct NomicRouter {
@@ -357,7 +332,7 @@ impl NomicRouter {
         for token_weights in &weights_vec {
             let mut indexed: Vec<(usize, f32)> =
                 token_weights.iter().copied().enumerate().collect();
-            indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+            indexed.sort_by(|a, b| b.1.total_cmp(&a.1));
 
             for &(idx, w) in indexed.iter().take(self.top_k) {
                 top_indices_vec.push(idx as u32);
@@ -452,7 +427,7 @@ impl NomicMoELayer {
             let w2_i = self.w2.i(expert_idx)?;
 
             let up = selected.matmul(&w1_i.t()?)?.gelu_erf()?;
-            let down = up.matmul(&w2_i)?;
+            let down = up.matmul(&w2_i)?; // megablocks: no transpose on w2
 
             let weights_t = Tensor::from_vec(
                 assigned_weights,
@@ -504,15 +479,15 @@ impl NomicMLP {
 // ---------------------------------------------------------------------------
 // Transformer Block — POST-NORM (prenorm=false in config)
 //
-// Flow: attn(x) → dropout → add residual → norm1 → mlp → dropout → add residual → norm2
-// Since resid_pdrop=0.0, dropout is no-op.
+// Flow: attn(x) + x → norm1 → mlp + prev → norm2
+// Dropout (resid_pdrop=0.0) is a no-op at inference and omitted.
 // ---------------------------------------------------------------------------
 
 struct NomicBertBlock {
     attn: NomicAttention,
     mlp: NomicMLP,
-    norm1: NomicLayerNorm,
-    norm2: NomicLayerNorm,
+    norm1: LayerNorm,
+    norm2: LayerNorm,
 }
 
 impl NomicBertBlock {
@@ -524,8 +499,8 @@ impl NomicBertBlock {
         } else {
             NomicMLP::Standard(NomicBertMLP::new(cfg, vb.pp("mlp"))?)
         };
-        let norm1 = NomicLayerNorm::new(cfg.hidden_size, cfg.layer_norm_epsilon, vb.pp("norm1"))?;
-        let norm2 = NomicLayerNorm::new(cfg.hidden_size, cfg.layer_norm_epsilon, vb.pp("norm2"))?;
+        let norm1 = layer_norm(cfg.hidden_size, cfg.layer_norm_epsilon, vb.pp("norm1"))?;
+        let norm2 = layer_norm(cfg.hidden_size, cfg.layer_norm_epsilon, vb.pp("norm2"))?;
 
         Ok(Self { attn, mlp, norm1, norm2 })
     }
@@ -539,11 +514,11 @@ impl NomicBertBlock {
     ) -> Result<Tensor> {
         // Post-norm: attn → residual add → norm1
         let attn_out = self.attn.forward(hidden_states, cos, sin, attention_mask)?;
-        let hidden_states = self.norm1.forward(&(attn_out + hidden_states)?)?;
+        let hidden_states = (attn_out + hidden_states)?.apply(&self.norm1)?;
 
         // Post-norm: mlp → residual add → norm2
         let mlp_out = self.mlp.forward(&hidden_states)?;
-        self.norm2.forward(&(mlp_out + hidden_states)?)
+        (mlp_out + hidden_states)?.apply(&self.norm2)
     }
 }
 
@@ -585,7 +560,7 @@ impl NomicBertEncoder {
 
 pub struct NomicBertModel {
     embeddings: NomicEmbeddings,
-    emb_ln: NomicLayerNorm,
+    emb_ln: LayerNorm,
     encoder: NomicBertEncoder,
     rotary: NomicRotaryEmbedding,
     device: Device,
@@ -595,7 +570,7 @@ impl NomicBertModel {
     fn new(cfg: NomicConfig, vb: VarBuilder) -> Result<Self> {
         let device = vb.device().clone();
         let embeddings = NomicEmbeddings::new(&cfg, vb.pp("embeddings"))?;
-        let emb_ln = NomicLayerNorm::new(cfg.hidden_size, cfg.layer_norm_epsilon, vb.pp("emb_ln"))?;
+        let emb_ln = layer_norm(cfg.hidden_size, cfg.layer_norm_epsilon, vb.pp("emb_ln"))?;
         let encoder = NomicBertEncoder::new(&cfg, vb.pp("encoder"))?;
         let rotary = NomicRotaryEmbedding::new(&cfg, &device)?;
         Ok(Self { embeddings, emb_ln, encoder, rotary, device })
@@ -609,9 +584,8 @@ impl NomicBertModel {
     ) -> Result<Tensor> {
         let (_b, t) = input_ids.dims2()?;
 
-        // Embeddings → emb_ln (no dropout since embd_pdrop=0.1 but we skip for inference)
         let emb = self.embeddings.forward(input_ids, token_type_ids)?;
-        let hidden_states = self.emb_ln.forward(&emb)?;
+        let hidden_states = emb.apply(&self.emb_ln)?;
 
         // Rotary position embeddings
         let (cos, sin) = self.rotary.forward(t, &self.device, hidden_states.dtype())?;
@@ -731,7 +705,7 @@ impl NomicV2MoeTextEmbedding {
             strategy: PaddingStrategy::BatchLongest,
             direction: tokenizers::PaddingDirection::Right,
             pad_id: cfg.pad_token_id as u32,
-            pad_token: "[PAD]".to_string(),
+            pad_token: "<pad>".to_string(),
             ..Default::default()
         }));
         let _ = tokenizer.with_truncation(Some(TruncationParams {
