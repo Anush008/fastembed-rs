@@ -157,7 +157,8 @@ impl TextEmbedding {
     ) -> anyhow::Result<ApiRepo> {
         use crate::common::pull_from_hf;
 
-        pull_from_hf(model.to_string(), cache_dir, show_download_progress)
+        let model_code = TextEmbedding::get_model_info(&model)?.model_code.clone();
+        pull_from_hf(model_code, cache_dir, show_download_progress)
     }
 
     pub fn get_default_pooling_method(model_name: &EmbeddingModel) -> Option<Pooling> {
