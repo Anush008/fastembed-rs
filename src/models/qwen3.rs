@@ -1195,7 +1195,9 @@ impl Qwen3VLEmbedding {
 
 #[cfg(test)]
 mod tests {
-    use super::{expand_image_token_placeholders, find_token_spans, parse_config_and_weight_prefix};
+    use super::{
+        expand_image_token_placeholders, find_token_spans, parse_config_and_weight_prefix,
+    };
 
     #[test]
     fn parses_qwen3_config_without_prefix() {
