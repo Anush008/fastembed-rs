@@ -9,6 +9,8 @@ pub mod text_embedding;
 
 #[cfg(feature = "qwen3")]
 pub mod qwen3;
+#[cfg(feature = "qwen3")]
+pub mod qwen3_vl;
 
 #[cfg(feature = "nomic-v2-moe")]
 pub mod nomic_v2_moe;

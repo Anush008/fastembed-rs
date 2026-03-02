@@ -2,11 +2,12 @@
 #![cfg(feature = "qwen3")]
 
 use candle_core::{DType, Device};
-use fastembed::Qwen3TextEmbedding;
+use fastembed::{Qwen3TextEmbedding, Qwen3VLEmbedding};
 
 const REPO_06B: &str = "Qwen/Qwen3-Embedding-0.6B";
 const REPO_4B: &str = "Qwen/Qwen3-Embedding-4B";
 const REPO_8B: &str = "Qwen/Qwen3-Embedding-8B";
+const REPO_VL_2B: &str = "Qwen/Qwen3-VL-Embedding-2B";
 const MAX_LENGTH: usize = 512;
 
 fn cosine_sim(a: &[f32], b: &[f32]) -> f32 {
@@ -121,4 +122,35 @@ fn qwen3_8b_embed() {
         return;
     }
     run_embed_test(REPO_8B);
+}
+
+#[test]
+fn qwen3_vl_2b_text_embed() {
+    if std::env::var("RUN_QWEN3_VL_2B").is_err() {
+        return;
+    }
+    run_embed_test(REPO_VL_2B);
+}
+
+#[test]
+fn qwen3_vl_2b_image_embed() {
+    if std::env::var("RUN_QWEN3_VL_2B_IMAGE").is_err() {
+        return;
+    }
+
+    let device = Device::Cpu;
+    let model = Qwen3VLEmbedding::from_hf(REPO_VL_2B, &device, DType::F32, 2048).expect("load");
+
+    let images = ["tests/assets/image_0.png", "tests/assets/image_1.png"];
+    let embeddings = model.embed_images(&images).expect("embed images");
+
+    assert_eq!(embeddings.len(), images.len());
+    for emb in &embeddings {
+        assert_eq!(emb.len(), model.config().hidden_size);
+        let norm: f32 = emb.iter().map(|x| x * x).sum::<f32>().sqrt();
+        assert!(
+            (norm - 1.0).abs() < 1e-4,
+            "expected L2-normalized, got {norm}"
+        );
+    }
 }
