@@ -188,6 +188,20 @@ fn find_token_spans(ids: &[u32], token_id: u32) -> Vec<(usize, usize)> {
     spans
 }
 
+fn round_ties_to_even(value: f64) -> usize {
+    let floor = value.floor();
+    let frac = value - floor;
+    if frac < 0.5 {
+        floor as usize
+    } else if frac > 0.5 {
+        (floor + 1.0) as usize
+    } else if (floor as i64) % 2 == 0 {
+        floor as usize
+    } else {
+        (floor + 1.0) as usize
+    }
+}
+
 fn smart_resize(
     height: usize,
     width: usize,
@@ -207,8 +221,9 @@ fn smart_resize(
         ));
     }
 
-    let mut h_bar = ((height as f64 / factor as f64).round() as usize) * factor;
-    let mut w_bar = ((width as f64 / factor as f64).round() as usize) * factor;
+    // Match Python `round()` behavior used by qwen-vl-utils (ties-to-even).
+    let mut h_bar = round_ties_to_even(height as f64 / factor as f64) * factor;
+    let mut w_bar = round_ties_to_even(width as f64 / factor as f64) * factor;
     h_bar = h_bar.max(factor);
     w_bar = w_bar.max(factor);
 
@@ -340,6 +355,109 @@ fn expand_image_token_placeholders(prompt: &str, num_image_tokens: usize) -> Res
     Ok(prompt.replacen(image_token, &image_token.repeat(num_image_tokens), 1))
 }
 
+fn build_image_position_ids(
+    encodings: &[tokenizers::Encoding],
+    image_spans_per_batch: &[Option<(usize, usize)>],
+    prepared_images: &[Option<PreparedImage>],
+    merge_size: usize,
+    device: &Device,
+) -> Result<Tensor> {
+    if encodings.is_empty() {
+        return Err(candle_core::Error::Msg(
+            "encodings cannot be empty when building position ids".into(),
+        ));
+    }
+    if encodings.len() != image_spans_per_batch.len() || encodings.len() != prepared_images.len() {
+        return Err(candle_core::Error::Msg(
+            "batch size mismatch while building position ids".into(),
+        ));
+    }
+
+    let batch_size = encodings.len();
+    let seq_len = encodings[0].len();
+    let mut data = vec![1u32; 3 * batch_size * seq_len];
+    let index = |dim: usize, batch: usize, pos: usize| -> usize {
+        (dim * batch_size + batch) * seq_len + pos
+    };
+
+    for (batch_idx, encoding) in encodings.iter().enumerate() {
+        let visible_len = encoding
+            .get_attention_mask()
+            .iter()
+            .filter(|&&m| m != 0)
+            .count();
+
+        let Some((start, end)) = image_spans_per_batch[batch_idx] else {
+            for pos in 0..visible_len {
+                let val = pos as u32;
+                data[index(0, batch_idx, pos)] = val;
+                data[index(1, batch_idx, pos)] = val;
+                data[index(2, batch_idx, pos)] = val;
+            }
+            continue;
+        };
+
+        let prepared = prepared_images[batch_idx].as_ref().ok_or_else(|| {
+            candle_core::Error::Msg(
+                "Found image token span for a sample without prepared image".into(),
+            )
+        })?;
+        if end > visible_len {
+            return Err(candle_core::Error::Msg(
+                "Image token span exceeds visible sequence length".into(),
+            ));
+        }
+
+        let llm_t = prepared.grid_t as usize;
+        let llm_h = prepared.grid_h as usize / merge_size;
+        let llm_w = prepared.grid_w as usize / merge_size;
+        let image_len = end - start;
+        if image_len != llm_t * llm_h * llm_w {
+            return Err(candle_core::Error::Msg(format!(
+                "Image token span length {} does not match expected LLM grid {}x{}x{}",
+                image_len, llm_t, llm_h, llm_w
+            )));
+        }
+
+        for pos in 0..start {
+            let val = pos as u32;
+            data[index(0, batch_idx, pos)] = val;
+            data[index(1, batch_idx, pos)] = val;
+            data[index(2, batch_idx, pos)] = val;
+        }
+
+        let mut seq_pos = start;
+        for t in 0..llm_t {
+            for h in 0..llm_h {
+                for w in 0..llm_w {
+                    data[index(0, batch_idx, seq_pos)] = (start + t) as u32;
+                    data[index(1, batch_idx, seq_pos)] = (start + h) as u32;
+                    data[index(2, batch_idx, seq_pos)] = (start + w) as u32;
+                    seq_pos += 1;
+                }
+            }
+        }
+        if seq_pos != end {
+            return Err(candle_core::Error::Msg(
+                "Image token position construction consumed the wrong number of tokens".into(),
+            ));
+        }
+
+        let prefix_max = start.saturating_sub(1);
+        let image_max = start + llm_t.max(llm_h).max(llm_w).saturating_sub(1);
+        let st_idx = prefix_max.max(image_max) + 1;
+        for offset in 0..(visible_len - end) {
+            let pos = end + offset;
+            let val = (st_idx + offset) as u32;
+            data[index(0, batch_idx, pos)] = val;
+            data[index(1, batch_idx, pos)] = val;
+            data[index(2, batch_idx, pos)] = val;
+        }
+    }
+
+    Tensor::from_vec(data, (3, batch_size, seq_len), device)
+}
+
 fn load_image_from_path(path: &Path) -> Result<DynamicImage> {
     image::ImageReader::open(path)
         .map_err(map_err)?
@@ -413,6 +531,8 @@ impl Module for Qwen3MLP {
 pub struct Qwen3RotaryEmbedding {
     inv_freq: Tensor,      // [dim/2] f32
     attention_factor: f32, // HF: attention_scaling (1.0 for default)
+    mrope_interleaved: bool,
+    mrope_section: [usize; 3],
 }
 
 impl Qwen3RotaryEmbedding {
@@ -433,39 +553,94 @@ impl Qwen3RotaryEmbedding {
         let ln_base_t = scalar_f32(device, ln_base)?;
         let inv_freq = exponent.broadcast_mul(&ln_base_t.neg()?)?.exp()?; // [dim/2]
 
+        let mut mrope_interleaved = false;
+        let mut mrope_section = [24usize, 20usize, 20usize];
+        if let Some(rope_scaling) = cfg.rope_scaling.as_ref() {
+            if let Some(v) = rope_scaling
+                .get("mrope_interleaved")
+                .and_then(|v| v.as_bool())
+            {
+                mrope_interleaved = v;
+            }
+            if let Some(arr) = rope_scaling.get("mrope_section").and_then(|v| v.as_array()) {
+                if arr.len() == 3 {
+                    mrope_section = [
+                        arr[0].as_u64().unwrap_or(mrope_section[0] as u64) as usize,
+                        arr[1].as_u64().unwrap_or(mrope_section[1] as u64) as usize,
+                        arr[2].as_u64().unwrap_or(mrope_section[2] as u64) as usize,
+                    ];
+                }
+            }
+        }
+
         Ok(Self {
             inv_freq,
             attention_factor: 1.0,
+            mrope_interleaved,
+            mrope_section,
         })
     }
 
-    /// position_ids: [B,T] (int)
+    /// position_ids: [B,T] or [3,B,T] (MRoPE)
     /// returns (cos, sin): [B,T,dim] in xs.dtype()
     pub fn forward(&self, xs: &Tensor, position_ids: &Tensor) -> Result<(Tensor, Tensor)> {
-        let (b, t) = position_ids.dims2()?;
-        let d2 = self.inv_freq.dims1()?;
         let dev = xs.device();
-
         let inv_freq = self.inv_freq.to_device(dev)?.to_dtype(DType::F32)?;
-        let pos = position_ids
-            .to_device(dev)?
-            .to_dtype(DType::F32)?
-            .contiguous()?;
+        let d2 = inv_freq.dims1()?;
 
-        // inv_freq_expanded: [B, d2, 1]
-        // Use expand().contiguous() to ensure proper batch handling
-        let inv_freq_expanded = inv_freq
-            .reshape((1, d2, 1))?
-            .expand((b, d2, 1))?
-            .contiguous()?;
-        // position_ids_expanded: [B, 1, T]
-        let pos_expanded = pos.reshape((b, 1, t))?.contiguous()?;
+        let freqs = if position_ids.rank() == 2 {
+            let (b, t) = position_ids.dims2()?;
+            let pos = position_ids
+                .to_device(dev)?
+                .to_dtype(DType::F32)?
+                .contiguous()?;
 
-        // freqs = (inv_freq_expanded @ pos_expanded).transpose(1,2) -> [B,T,d2]
-        let freqs = inv_freq_expanded
-            .matmul(&pos_expanded)?
-            .transpose(1, 2)?
-            .contiguous()?;
+            let inv_freq_expanded = inv_freq
+                .reshape((1, d2, 1))?
+                .expand((b, d2, 1))?
+                .contiguous()?;
+            let pos_expanded = pos.reshape((b, 1, t))?.contiguous()?;
+
+            inv_freq_expanded
+                .matmul(&pos_expanded)?
+                .transpose(1, 2)?
+                .contiguous()?
+        } else {
+            let (dims, b, t) = position_ids.dims3()?;
+            if dims != 3 {
+                return Err(candle_core::Error::Msg(
+                    "Expected position_ids first dimension to be 3 for MRoPE".into(),
+                ));
+            }
+
+            let inv = inv_freq.to_vec1::<f32>()?;
+            let pos = position_ids.to_device(dev)?.to_vec3::<u32>()?;
+            let mut freqs = vec![0f32; b * t * d2];
+
+            for batch_idx in 0..b {
+                for tok_idx in 0..t {
+                    let base = (batch_idx * t + tok_idx) * d2;
+                    let temporal = pos[0][batch_idx][tok_idx] as f32;
+                    for i in 0..d2 {
+                        freqs[base + i] = temporal * inv[i];
+                    }
+
+                    if self.mrope_interleaved {
+                        for dim in 1..=2 {
+                            let pos_dim = pos[dim][batch_idx][tok_idx] as f32;
+                            let mut i = dim;
+                            let limit = (self.mrope_section[dim] * 3).min(d2);
+                            while i < limit {
+                                freqs[base + i] = pos_dim * inv[i];
+                                i += 3;
+                            }
+                        }
+                    }
+                }
+            }
+
+            Tensor::from_vec(freqs, (b, t, d2), dev)?
+        };
 
         // emb = cat(freqs, freqs) -> [B,T,dim]
         let emb = Tensor::cat(&[&freqs, &freqs], 2)?;
@@ -746,21 +921,37 @@ impl Qwen3Model {
         &self,
         inputs_embeds: &Tensor,
         attention_mask_4d: Option<&Tensor>,
+        deepstack_additions: Option<&[Tensor]>,
+        position_ids: Option<&Tensor>,
     ) -> Result<Tensor> {
         let (b, t, _) = inputs_embeds.dims3()?;
         let mut hs = inputs_embeds.clone();
 
-        // position_ids = [B,T] = 0..T-1 (HF uses cache_position; for no-cache this is fine)
-        let pos_1d = Tensor::arange(0u32, t as u32, hs.device())?;
-        // Use expand() instead of broadcast_as() and make contiguous to avoid striding issues
-        let position_ids = pos_1d.unsqueeze(0)?.expand((b, t))?.contiguous()?;
+        let default_position_ids = if position_ids.is_none() {
+            let pos_1d = Tensor::arange(0u32, t as u32, hs.device())?;
+            Some(pos_1d.unsqueeze(0)?.expand((b, t))?.contiguous()?)
+        } else {
+            None
+        };
+        let position_ids = if let Some(position_ids) = position_ids {
+            position_ids
+        } else {
+            default_position_ids.as_ref().ok_or_else(|| {
+                candle_core::Error::Msg("missing default position ids".to_string())
+            })?
+        };
 
         // position_embeddings = (cos,sin) once
         let (cos, sin) = self.rotary_emb.forward(&hs, &position_ids)?;
 
         // layers
-        for layer in &self.layers {
+        for (layer_idx, layer) in self.layers.iter().enumerate() {
             hs = layer.forward(&hs, attention_mask_4d, (&cos, &sin))?;
+            if let Some(additions) = deepstack_additions {
+                if let Some(visual_add) = additions.get(layer_idx) {
+                    hs = hs.add(visual_add)?;
+                }
+            }
         }
 
         // final norm
@@ -776,7 +967,7 @@ impl Qwen3Model {
         attention_mask_4d: Option<&Tensor>,
     ) -> Result<Tensor> {
         let hs = self.embed_tokens(input_ids)?;
-        self.forward_with_inputs_embeds(&hs, attention_mask_4d)
+        self.forward_with_inputs_embeds(&hs, attention_mask_4d, None, None)
     }
 
     pub fn config(&self) -> &Config {
@@ -1111,6 +1302,29 @@ impl Qwen3VLEmbedding {
             .map_err(map_err)?;
         let batch_size = encodings.len();
         let seq_len = encodings[0].len();
+        let mut image_spans_per_batch = Vec::with_capacity(batch_size);
+        for (batch_idx, encoding) in encodings.iter().enumerate() {
+            let Some(prepared) = prepared_images[batch_idx].as_ref() else {
+                image_spans_per_batch.push(None);
+                continue;
+            };
+
+            let spans = find_token_spans(encoding.get_ids(), self.image_token_id);
+            if spans.len() != 1 {
+                return Err(candle_core::Error::Msg(
+                    "Expected exactly one image token span per image input".into(),
+                ));
+            }
+            let (start, end) = spans[0];
+            let span_len = end - start;
+            if span_len != prepared.num_llm_tokens {
+                return Err(candle_core::Error::Msg(format!(
+                    "Image token span mismatch: prompt has {}, preprocessor expects {}",
+                    span_len, prepared.num_llm_tokens
+                )));
+            }
+            image_spans_per_batch.push(Some((start, end)));
+        }
 
         let mut input_ids_vec = Vec::with_capacity(batch_size * seq_len);
         let mut attention_mask_vec = Vec::with_capacity(batch_size * seq_len);
@@ -1124,6 +1338,9 @@ impl Qwen3VLEmbedding {
         let attention_mask_2d =
             Tensor::from_vec(attention_mask_vec, (batch_size, seq_len), device)?;
         let mut inputs_embeds = self.model.embed_tokens(&input_ids)?;
+        let hidden_size = self.model.config().hidden_size;
+        let mut deepstack_additions: Option<Vec<Tensor>> = None;
+        let mut position_ids: Option<Tensor> = None;
 
         let num_images = prepared_images.iter().filter(|p| p.is_some()).count();
         if num_images > 0 {
@@ -1143,35 +1360,28 @@ impl Qwen3VLEmbedding {
             let pixel_values =
                 Tensor::from_vec(pixel_values, (num_patch_tokens, patch_dim), device)?;
             let image_grid_thw = Tensor::from_vec(grid_thw, (num_images, 3), device)?;
+            position_ids = Some(build_image_position_ids(
+                &encodings,
+                &image_spans_per_batch,
+                &prepared_images,
+                self.preprocessor.merge_size,
+                device,
+            )?);
 
-            let (image_embeds, _) = self.vision.forward(&pixel_values, &image_grid_thw)?;
+            let (image_embeds, deepstack_image_embeds) =
+                self.vision.forward(&pixel_values, &image_grid_thw)?;
             let mut offset = 0usize;
-            let hidden_size = self.model.config().hidden_size;
 
-            for (batch_idx, encoding) in encodings.iter().enumerate() {
-                let Some(prepared) = prepared_images[batch_idx].as_ref() else {
+            for (batch_idx, image_span) in image_spans_per_batch.iter().enumerate() {
+                let Some((start, end)) = image_span else {
                     continue;
                 };
-
-                let spans = find_token_spans(encoding.get_ids(), self.image_token_id);
-                if spans.len() != 1 {
-                    return Err(candle_core::Error::Msg(
-                        "Expected exactly one image token span per image input".into(),
-                    ));
-                }
-                let (start, end) = spans[0];
                 let span_len = end - start;
-                if span_len != prepared.num_llm_tokens {
-                    return Err(candle_core::Error::Msg(format!(
-                        "Image token span mismatch: prompt has {}, preprocessor expects {}",
-                        span_len, prepared.num_llm_tokens
-                    )));
-                }
 
                 let image_chunk = image_embeds.narrow(0, offset, span_len)?;
                 offset += span_len;
                 inputs_embeds = inputs_embeds.slice_assign(
-                    &[batch_idx..batch_idx + 1, start..end, 0..hidden_size],
+                    &[batch_idx..batch_idx + 1, *start..*end, 0..hidden_size],
                     &image_chunk.unsqueeze(0)?,
                 )?;
             }
@@ -1181,12 +1391,47 @@ impl Qwen3VLEmbedding {
                     "Unconsumed image embeddings remain after token injection".into(),
                 ));
             }
+
+            if !deepstack_image_embeds.is_empty() {
+                let mut per_layer_additions = Vec::with_capacity(deepstack_image_embeds.len());
+                for deepstack_layer in deepstack_image_embeds {
+                    let mut addition = Tensor::zeros(
+                        (batch_size, seq_len, hidden_size),
+                        deepstack_layer.dtype(),
+                        device,
+                    )?;
+                    let mut deep_offset = 0usize;
+                    for (batch_idx, image_span) in image_spans_per_batch.iter().enumerate() {
+                        let Some((start, end)) = image_span else {
+                            continue;
+                        };
+                        let span_len = end - start;
+                        let chunk = deepstack_layer.narrow(0, deep_offset, span_len)?;
+                        deep_offset += span_len;
+                        addition = addition.slice_assign(
+                            &[batch_idx..batch_idx + 1, *start..*end, 0..hidden_size],
+                            &chunk.unsqueeze(0)?,
+                        )?;
+                    }
+                    if deep_offset != deepstack_layer.dim(0)? {
+                        return Err(candle_core::Error::Msg(
+                            "Unconsumed deepstack image embeddings remain after token injection"
+                                .into(),
+                        ));
+                    }
+                    per_layer_additions.push(addition);
+                }
+                deepstack_additions = Some(per_layer_additions);
+            }
         }
 
         let attention_mask_4d = build_attention_mask_4d(&attention_mask_2d)?;
-        let hidden = self
-            .model
-            .forward_with_inputs_embeds(&inputs_embeds, Some(&attention_mask_4d))?;
+        let hidden = self.model.forward_with_inputs_embeds(
+            &inputs_embeds,
+            Some(&attention_mask_4d),
+            deepstack_additions.as_deref(),
+            position_ids.as_ref(),
+        )?;
         let pooled = last_token_pool(&hidden, &attention_mask_2d)?;
         let normalized = l2_normalize(&pooled)?.to_dtype(DType::F32)?;
         normalized.to_vec2::<f32>()
@@ -1197,6 +1442,7 @@ impl Qwen3VLEmbedding {
 mod tests {
     use super::{
         expand_image_token_placeholders, find_token_spans, parse_config_and_weight_prefix,
+        round_ties_to_even,
     };
 
     #[test]
@@ -1278,5 +1524,12 @@ mod tests {
             expanded,
             "<|vision_start|><|image_pad|><|image_pad|><|image_pad|><|vision_end|>"
         );
+    }
+
+    #[test]
+    fn rounds_half_to_even_like_python() {
+        assert_eq!(round_ties_to_even(12.5), 12);
+        assert_eq!(round_ties_to_even(13.5), 14);
+        assert_eq!(round_ties_to_even(9.5625), 10);
     }
 }
