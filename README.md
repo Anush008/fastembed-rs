@@ -50,6 +50,7 @@
 - [**Qwen/Qwen3-Embedding-0.6B**](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B) - requires `qwen3` feature (candle backend)
 - [**Qwen/Qwen3-Embedding-4B**](https://huggingface.co/Qwen/Qwen3-Embedding-4B) - requires `qwen3` feature (candle backend)
 - [**Qwen/Qwen3-Embedding-8B**](https://huggingface.co/Qwen/Qwen3-Embedding-8B) - requires `qwen3` feature (candle backend)
+- [**Qwen/Qwen3-VL-Embedding-2B**](https://huggingface.co/Qwen/Qwen3-VL-Embedding-2B) - requires `qwen3` feature (candle backend, multimodal via `Qwen3VLEmbedding`)
 - [**snowflake/snowflake-arctic-embed-xs**](https://huggingface.co/snowflake/snowflake-arctic-embed-xs)
 - [**snowflake/snowflake-arctic-embed-s**](https://huggingface.co/snowflake/snowflake-arctic-embed-s)
 - [**snowflake/snowflake-arctic-embed-m**](https://huggingface.co/snowflake/snowflake-arctic-embed-m)
@@ -148,8 +149,32 @@ let model = Qwen3TextEmbedding::from_hf(
     512,
 )?;
 
+// Text-only usage with the Qwen3-VL embedding checkpoint is also supported:
+// let model = Qwen3TextEmbedding::from_hf("Qwen/Qwen3-VL-Embedding-2B", &device, DType::F32, 512)?;
+
 let embeddings = model.embed(&["query: ...", "passage: ..."])?;
 println!("Embeddings length: {}", embeddings.len());
+```
+
+For multimodal text/image usage with `Qwen/Qwen3-VL-Embedding-2B`:
+
+```rust
+use candle_core::{DType, Device};
+use fastembed::Qwen3VLEmbedding;
+
+let device = Device::Cpu;
+let model = Qwen3VLEmbedding::from_hf(
+    "Qwen/Qwen3-VL-Embedding-2B",
+    &device,
+    DType::F32,
+    2048,
+)?;
+
+let image_embeddings = model.embed_images(&["tests/assets/image_0.png", "tests/assets/image_1.png"])?;
+let text_embeddings = model.embed_texts(&["query: blue cat", "query: red cat"])?;
+
+println!("Image embeddings: {}", image_embeddings.len());
+println!("Text embeddings: {}", text_embeddings.len());
 ```
 
 ### Nomic Embed Text v2 MoE

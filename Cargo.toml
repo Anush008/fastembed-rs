@@ -51,10 +51,10 @@ ort-download-binaries-native-tls = ["ort/download-binaries", "ort/tls-native"]
 ort-download-binaries-rustls-tls = ["ort/download-binaries", "ort/tls-rustls"]
 ort-load-dynamic = ["ort/load-dynamic"]
 
-qwen3 = ["dep:candle-core", "dep:candle-nn", "hf-hub"]
+qwen3 = ["dep:candle-core", "dep:candle-nn", "dep:image", "hf-hub"]
 nomic-v2-moe = ["dep:candle-core", "dep:candle-nn", "hf-hub"]
 
-image-models = ["image"]
+image-models = ["dep:image"]
 mkl = ["qwen3", "nomic-v2-moe", "dep:intel-mkl-src", "candle-nn/mkl", "candle-core/mkl"]
 accelerate = ["qwen3", "nomic-v2-moe", "dep:accelerate-src", "candle-core/accelerate", "candle-nn/accelerate"]
 cuda = ["qwen3", "nomic-v2-moe", "candle-core/cuda", "candle-nn/cuda"]
