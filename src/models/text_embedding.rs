@@ -552,8 +552,7 @@ impl ModelTrait for EmbeddingModel {
 
 impl Display for EmbeddingModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let model_info = EmbeddingModel::get_model_info(self).ok_or(std::fmt::Error)?;
-        write!(f, "{}", model_info.model_code)
+        write!(f, "{:?}", self)
     }
 }
 
@@ -561,10 +560,10 @@ impl FromStr for EmbeddingModel {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        models_list()
-            .into_iter()
-            .find(|m| m.model_code.eq_ignore_ascii_case(s))
-            .map(|m| m.model)
+        models_map()
+            .keys()
+            .find(|m| format!("{:?}", m).eq_ignore_ascii_case(s))
+            .cloned()
             .ok_or_else(|| format!("Unknown embedding model: {s}"))
     }
 }
