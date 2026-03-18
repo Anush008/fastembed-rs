@@ -804,6 +804,10 @@ fn test_new_models_semantic_retrieval() {
             "cstr/Octen-Embedding-0.6B-ONNX-INT8",
         ),
         (
+            EmbeddingModel::OctenEmbedding0_6BInt4,
+            "cstr/octen-embedding-0.6b-onnx-int4",
+        ),
+        (
             EmbeddingModel::OctenEmbedding0_6BInt8Full,
             "cstr/Octen-Embedding-0.6B-ONNX-INT8-FULL",
         ),
