@@ -103,8 +103,7 @@ impl SparseTextEmbedding {
 
         let model_code = model.to_string();
         let all_dirs = get_cache_dirs();
-        let effective_dir = find_model_cache_dir(&model_code, &all_dirs)
-            .unwrap_or(cache_dir);
+        let effective_dir = find_model_cache_dir(&model_code, &all_dirs).unwrap_or(cache_dir);
         pull_from_hf(model_code, effective_dir, show_download_progress)
     }
 

@@ -19,7 +19,10 @@ pub enum Pooling {
     /// Applies affine dequantization: `f32 = (u8 − zero_point) × scale`.
     /// Used for calibrated uint8 models such as
     /// `electroglyph/Qwen3-Embedding-0.6B-onnx-uint8`.
-    PrePooledU8 { scale: f32, zero_point: u8 },
+    PrePooledU8 {
+        scale: f32,
+        zero_point: u8,
+    },
 }
 
 impl Default for Pooling {
@@ -64,7 +67,11 @@ pub fn last_token(
     let mut result = Array2::zeros((batch_size, hidden_size));
 
     for i in 0..batch_size {
-        let mask_sum = attention_mask_array.row(i).iter().filter(|&&v| v > 0).count();
+        let mask_sum = attention_mask_array
+            .row(i)
+            .iter()
+            .filter(|&&v| v > 0)
+            .count();
         let last_pos = if mask_sum > 0 { mask_sum - 1 } else { 0 };
         result
             .row_mut(i)

@@ -222,8 +222,7 @@ impl TextEmbedding {
 
         let model_code = TextEmbedding::get_model_info(&model)?.model_code.clone();
         let all_dirs = get_cache_dirs();
-        let effective_dir = find_model_cache_dir(&model_code, &all_dirs)
-            .unwrap_or(cache_dir);
+        let effective_dir = find_model_cache_dir(&model_code, &all_dirs).unwrap_or(cache_dir);
         pull_from_hf(model_code, effective_dir, show_download_progress)
     }
 
