@@ -208,17 +208,23 @@ impl TextEmbedding {
             max_batch_size,
         }
     }
-    /// Return the TextEmbedding model's directory from cache or remote retrieval
+    /// Return the TextEmbedding model's directory from cache or remote retrieval.
+    ///
+    /// Searches all directories listed in `FASTEMBED_CACHE_DIR` (colon-separated)
+    /// before falling back to `cache_dir` for downloading.
     #[cfg(feature = "hf-hub")]
     fn retrieve_model(
         model: EmbeddingModel,
         cache_dir: PathBuf,
         show_download_progress: bool,
     ) -> anyhow::Result<ApiRepo> {
-        use crate::common::pull_from_hf;
+        use crate::common::{find_model_cache_dir, get_cache_dirs, pull_from_hf};
 
         let model_code = TextEmbedding::get_model_info(&model)?.model_code.clone();
-        pull_from_hf(model_code, cache_dir, show_download_progress)
+        let all_dirs = get_cache_dirs();
+        let effective_dir = find_model_cache_dir(&model_code, &all_dirs)
+            .unwrap_or(cache_dir);
+        pull_from_hf(model_code, effective_dir, show_download_progress)
     }
 
     pub fn get_default_pooling_method(model_name: &EmbeddingModel) -> Option<Pooling> {
