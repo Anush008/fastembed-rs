@@ -609,12 +609,15 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model: EmbeddingModel::JinaEmbeddingsV5Nano,
             dim: 768,
             description: String::from(
-                "Jina Embeddings v5 Nano — 768d, 32k context (external data)",
+                "Jina Embeddings v5 Nano — 768d, 32k context (external data). \
+                 Use 'query: ' / 'passage: ' prefixes for best retrieval quality.",
             ),
             model_code: String::from("jinaai/jina-embeddings-v5-text-nano-retrieval"),
             model_file: String::from("onnx/model_quantized.onnx"),
             additional_files: vec!["onnx/model_quantized.onnx_data".to_string()],
-            output_key: None,
+            // Model exposes a pre-pooled 'sentence_embedding' output [batch, 768];
+            // using it avoids applying pooling to the raw token sequence.
+            output_key: Some(crate::OutputKey::ByName("sentence_embedding")),
         },
     ];
 

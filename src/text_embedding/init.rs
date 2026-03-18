@@ -151,6 +151,11 @@ impl UserDefinedEmbeddingModel {
             .push(ExternalInitializerFile { file_name, buffer });
         self
     }
+
+    pub fn with_output_key(mut self, key: OutputKey) -> Self {
+        self.output_key = Some(key);
+        self
+    }
 }
 
 /// Rust representation of the TextEmbedding model
