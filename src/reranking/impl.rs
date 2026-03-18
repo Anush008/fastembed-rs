@@ -63,7 +63,13 @@ impl TextRerank {
 
         let threads = available_parallelism()?.get();
 
-        let cache = Cache::new(cache_dir);
+        let effective_dir = {
+            use crate::common::{find_model_cache_dir, get_cache_dirs};
+            let all_dirs = get_cache_dirs();
+            find_model_cache_dir(&model_name.to_string(), &all_dirs)
+                .unwrap_or(cache_dir)
+        };
+        let cache = Cache::new(effective_dir);
         let api = ApiBuilder::from_cache(cache)
             .with_progress(show_download_progress)
             .build()
