@@ -96,6 +96,22 @@ pub enum EmbeddingModel {
     SnowflakeArcticEmbedL,
     /// Quantized snowflake/snowflake-arctic-embed-l
     SnowflakeArcticEmbedLQ,
+
+    // ── Qwen3-Embedding-0.6B calibrated uint8 ──────────────────────────────
+    /// electroglyph/Qwen3-Embedding-0.6B-onnx-uint8 — calibrated dynamic uint8
+    Qwen3Embedding0_6BUint8,
+
+    // ── Snowflake Arctic Embed L v2 ─────────────────────────────────────────
+    /// Snowflake/snowflake-arctic-embed-l-v2.0 — quantized, 1024d, 8k context
+    SnowflakeArcticEmbedLV2,
+
+    // ── PIXIE-Rune-v1.0 ────────────────────────────────────────────────────
+    /// telepix/PIXIE-Rune-v1.0 — 1024d, 74 languages, 6k context (external data)
+    PixieRuneV1,
+
+    // ── Jina Embeddings v5 Nano ─────────────────────────────────────────────
+    /// jinaai/jina-embeddings-v5-text-nano-retrieval — 768d, 32k context
+    JinaEmbeddingsV5Nano,
 }
 
 /// Centralized function to initialize the models map.
@@ -509,6 +525,54 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model_file: String::from("onnx/model_quantized.onnx"),
             additional_files: Vec::new(),
             output_key: None,
+        },
+        // ── Qwen3-Embedding calibrated uint8 ─────────────────────────────────────
+        ModelInfo {
+            model: EmbeddingModel::Qwen3Embedding0_6BUint8,
+            dim: 1024,
+            description: String::from(
+                "Qwen3-Embedding-0.6B calibrated uint8 ONNX (electroglyph).                  Affine dequant: f32 = (u8 - 110) × 0.00273.",
+            ),
+            model_code: String::from("electroglyph/Qwen3-Embedding-0.6B-onnx-uint8"),
+            model_file: String::from("dynamic_uint8.onnx"),
+            additional_files: Vec::new(),
+            output_key: Some(crate::OutputKey::ByName("sentence_embedding_quantized")),
+        },
+        // ── Snowflake Arctic Embed L v2 ───────────────────────────────────────────
+        ModelInfo {
+            model: EmbeddingModel::SnowflakeArcticEmbedLV2,
+            dim: 1024,
+            description: String::from(
+                "Snowflake Arctic Embed L v2.0 — quantized, 1024d, 8k context",
+            ),
+            model_code: String::from("Snowflake/snowflake-arctic-embed-l-v2.0"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        // ── PIXIE-Rune-v1.0 ──────────────────────────────────────────────────────
+        ModelInfo {
+            model: EmbeddingModel::PixieRuneV1,
+            dim: 1024,
+            description: String::from(
+                "PIXIE-Rune-v1.0 — 1024d, 74 languages, 6k context (external data)",
+            ),
+            model_code: String::from("telepix/PIXIE-Rune-v1.0"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: vec!["onnx/model.onnx_data".to_string()],
+            output_key: None,
+        },
+        // ── Jina Embeddings v5 Nano ───────────────────────────────────────────────
+        ModelInfo {
+            model: EmbeddingModel::JinaEmbeddingsV5Nano,
+            dim: 768,
+            description: String::from(
+                "Jina Embeddings v5 Nano — 768d, 32k context (external data).                  Use 'Query: ' / 'Document: ' prefixes for best retrieval quality.",
+            ),
+            model_code: String::from("jinaai/jina-embeddings-v5-text-nano-retrieval"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+            additional_files: vec!["onnx/model_quantized.onnx_data".to_string()],
+            output_key: Some(crate::OutputKey::ByName("sentence_embedding")),
         },
     ];
 

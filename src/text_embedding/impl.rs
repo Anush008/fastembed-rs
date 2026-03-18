@@ -278,6 +278,18 @@ impl TextEmbedding {
             EmbeddingModel::SnowflakeArcticEmbedMLongQ => Some(Pooling::Cls),
             EmbeddingModel::SnowflakeArcticEmbedL => Some(Pooling::Cls),
             EmbeddingModel::SnowflakeArcticEmbedLQ => Some(Pooling::Cls),
+
+            // Calibrated uint8: affine dequant f32 = (u8 - 110) × 0.0027303685
+            // Parameters from the electroglyph model card (range [-0.301, 0.395])
+            EmbeddingModel::Qwen3Embedding0_6BUint8 => Some(Pooling::PrePooledU8 {
+                scale: 0.0027303685,
+                zero_point: 110,
+            }),
+            EmbeddingModel::SnowflakeArcticEmbedLV2 => Some(Pooling::Cls),
+            EmbeddingModel::PixieRuneV1 => Some(Pooling::Mean),
+            // Jina v5 Nano ships a pre-pooled 'sentence_embedding' output [batch, dim].
+            // Cls on a 2D tensor is a no-op pass-through.
+            EmbeddingModel::JinaEmbeddingsV5Nano => Some(Pooling::Cls),
         }
     }
 

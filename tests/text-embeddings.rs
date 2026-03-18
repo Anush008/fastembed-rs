@@ -77,6 +77,10 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         EmbeddingModel::SnowflakeArcticEmbedMLongQ => [0.20531628, 0.18564843, 0.14221531, 0.16035447],
         EmbeddingModel::SnowflakeArcticEmbedL => [0.4049112, 0.42825335, 0.46401042, 0.4064963],
         EmbeddingModel::SnowflakeArcticEmbedLQ => [0.40164998, 0.4278314, 0.4612437, 0.40060186],
+        EmbeddingModel::SnowflakeArcticEmbedLV2 => [0.26398557, 0.14880744, 0.13180876, 0.30424863],
+        EmbeddingModel::PixieRuneV1 => [0.21175426, 0.04924786, -0.04547663, 0.23019713],
+        EmbeddingModel::JinaEmbeddingsV5Nano => [-0.13502984, -0.39609835, 1.71589792, 0.97652829],
+        EmbeddingModel::Qwen3Embedding0_6BUint8 => [-3.61759973, -2.22492599, -2.60765219, -1.67113924],
         _ => panic!("Model {model} not found. If you have just inserted this `EmbeddingModel` variant, please update the expected embeddings."),
     };
 
