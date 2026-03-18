@@ -283,8 +283,9 @@ fn bench_all_local_models() {
     }
 
     // ── Jina Embeddings v5 Nano ──────────────────────────────────────────────
-    // Note: this model gives best results with "query: " / "passage: " prefixes;
-    // here we omit prefixes so all models are on equal footing.
+    // Run twice: without prefixes (symmetric, all models on equal footing) and
+    // with the recommended "query: " / "passage: " prefixes via embed_query() /
+    // embed() using the new with_query_prefix / with_doc_prefix builders.
     if let Some(snap) = hf_snap(&dir, "jinaai/jina-embeddings-v5-text-nano-retrieval") {
         if let Some(tokenizer_files) = tok(&snap) {
             let onnx_path = snap.join("onnx/model_quantized.onnx");
@@ -296,28 +297,26 @@ fn bench_all_local_models() {
                     .expect("failed to load Jina v5 Nano");
             results.push(evaluate("Jina-v5-Nano (no prefix)", &mut model));
 
-            // Also run with proper task prefixes to show the difference.
+            // Also run with proper task prefixes using the new embed_query() API.
             if let Some(snap2) = hf_snap(&dir, "jinaai/jina-embeddings-v5-text-nano-retrieval") {
                 if let Some(tf2) = tok(&snap2) {
                     let op2 = snap2.join("onnx/model_quantized.onnx");
                     let md2 = UserDefinedEmbeddingModel::from_file(op2, tf2)
                         .with_pooling(Pooling::Cls)
-                        .with_output_key(fastembed::OutputKey::ByName("sentence_embedding"));
+                        .with_output_key(fastembed::OutputKey::ByName("sentence_embedding"))
+                        .with_query_prefix("query: ")
+                        .with_doc_prefix("passage: ");
                     let mut m2 = TextEmbedding::try_new_from_user_defined(
                         md2,
                         InitOptionsUserDefined::new(),
                     )
                     .expect("failed to load Jina v5 Nano (prefixed)");
 
-                    // Build prefixed versions of corpus and queries.
-                    let prefixed_docs: Vec<String> =
-                        DOCS.iter().map(|d| format!("passage: {d}")).collect();
-                    let prefixed_queries: Vec<String> =
-                        QUERIES.iter().map(|q| format!("query: {q}")).collect();
-
                     let t0 = Instant::now();
-                    let doc_embs = m2.embed(prefixed_docs.iter().map(|s| s.as_str()).collect::<Vec<_>>(), Some(DOCS.len())).expect("doc embed");
-                    let query_embs = m2.embed(prefixed_queries.iter().map(|s| s.as_str()).collect::<Vec<_>>(), Some(QUERIES.len())).expect("query embed");
+                    // embed() now prepends "passage: " automatically via doc_prefix.
+                    let doc_embs = m2.embed(DOCS.to_vec(), Some(DOCS.len())).expect("doc embed");
+                    // embed_query() prepends "query: " automatically.
+                    let query_embs = m2.embed_query(QUERIES.to_vec(), Some(QUERIES.len())).expect("query embed");
                     let latency_ms = t0.elapsed().as_millis() as u64;
 
                     let rankings: Vec<Vec<(usize, f32)>> =

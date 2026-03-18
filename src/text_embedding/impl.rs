@@ -83,6 +83,8 @@ impl TextEmbedding {
             post_processing,
             TextEmbedding::get_quantization_mode(&model_name),
             model_info.output_key.clone(),
+            None,
+            None,
         ))
     }
 
@@ -133,16 +135,21 @@ impl TextEmbedding {
             model.pooling,
             model.quantization,
             model.output_key,
+            model.query_prefix,
+            model.doc_prefix,
         ))
     }
 
     /// Private method to return an instance
+    #[allow(clippy::too_many_arguments)]
     fn new(
         tokenizer: Tokenizer,
         session: Session,
         post_process: Option<Pooling>,
         quantization: QuantizationMode,
         output_key: Option<OutputKey>,
+        query_prefix: Option<String>,
+        doc_prefix: Option<String>,
     ) -> Self {
         let need_token_type_ids = session
             .inputs()
@@ -187,6 +194,22 @@ impl TextEmbedding {
             (0, 0)
         };
 
+        // Detect static batch dimension from `input_ids` shape.
+        // A positive (non-−1) batch dim means the model was exported with a fixed batch size.
+        let max_batch_size = session
+            .inputs()
+            .iter()
+            .find(|i| i.name() == "input_ids")
+            .and_then(|outlet| outlet.dtype().tensor_shape())
+            .and_then(|shape| {
+                let s: &[i64] = shape;
+                if !s.is_empty() && s[0] > 0 {
+                    Some(s[0] as usize)
+                } else {
+                    None // dynamic batch dimension
+                }
+            });
+
         Self {
             tokenizer,
             session,
@@ -199,6 +222,9 @@ impl TextEmbedding {
             pooling: post_process,
             quantization,
             output_key,
+            max_batch_size,
+            query_prefix,
+            doc_prefix,
         }
     }
     /// Return the TextEmbedding model's directory from cache or remote retrieval
@@ -394,6 +420,19 @@ impl TextEmbedding {
             _ => Ok(batch_size.unwrap_or(DEFAULT_BATCH_SIZE)),
         }?;
 
+        // Enforce static batch dimension if detected from the ONNX graph.
+        let batch_size = if let Some(max) = self.max_batch_size {
+            if batch_size > max {
+                return Err(anyhow::anyhow!(
+                    "This model was exported with a static batch size of {max}. \
+                     Pass `batch_size = Some({max})` (or embed fewer texts at a time)."
+                ));
+            }
+            batch_size.min(max)
+        } else {
+            batch_size
+        };
+
         let batches = texts
             .chunks(batch_size)
             .map(|batch| {
@@ -523,7 +562,49 @@ impl TextEmbedding {
         texts: impl AsRef<[S]>,
         batch_size: Option<usize>,
     ) -> Result<Vec<Embedding>> {
-        let batches = self.transform(texts.as_ref(), batch_size)?;
+        // Apply the document prefix if one is configured.
+        if let Some(ref prefix) = self.doc_prefix.clone() {
+            let prefixed: Vec<String> = texts
+                .as_ref()
+                .iter()
+                .map(|t| format!("{prefix}{}", t.as_ref()))
+                .collect();
+            return self.embed_raw(&prefixed, batch_size);
+        }
+        self.embed_raw(texts.as_ref(), batch_size)
+    }
+
+    /// Embed texts as queries, prepending [`query_prefix`](UserDefinedEmbeddingModel::query_prefix)
+    /// if one was configured on the model.
+    ///
+    /// For asymmetric retrieval models (e.g. Jina v5, E5-instruct) the query side
+    /// lives in a different embedding subspace from the document side.  Use this
+    /// method for search queries and [`embed`](Self::embed) for the corpus passages.
+    ///
+    /// If no `query_prefix` was set this is identical to `embed`.
+    pub fn embed_query<S: AsRef<str> + Send + Sync>(
+        &mut self,
+        texts: impl AsRef<[S]>,
+        batch_size: Option<usize>,
+    ) -> Result<Vec<Embedding>> {
+        if let Some(ref prefix) = self.query_prefix.clone() {
+            let prefixed: Vec<String> = texts
+                .as_ref()
+                .iter()
+                .map(|t| format!("{prefix}{}", t.as_ref()))
+                .collect();
+            return self.embed_raw(&prefixed, batch_size);
+        }
+        self.embed_raw(texts.as_ref(), batch_size)
+    }
+
+    /// Internal: run the embedding pipeline without any prefix handling.
+    fn embed_raw<S: AsRef<str> + Send + Sync>(
+        &mut self,
+        texts: &[S],
+        batch_size: Option<usize>,
+    ) -> Result<Vec<Embedding>> {
+        let batches = self.transform(texts, batch_size)?;
         if let Some(output_key) = &self.output_key {
             batches.export_with_transformer(output::transformer_with_precedence(
                 output_key,

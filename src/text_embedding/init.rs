@@ -87,6 +87,18 @@ pub struct UserDefinedEmbeddingModel {
     pub pooling: Option<Pooling>,
     pub quantization: QuantizationMode,
     pub output_key: Option<OutputKey>,
+    /// Optional prefix prepended to queries when using [`TextEmbedding::embed_query`].
+    ///
+    /// Many asymmetric retrieval models (e.g. Jina v5, E5-instruct) encode queries
+    /// and passages in different subspaces.  Setting this field enables a dedicated
+    /// `embed_query()` call that prepends the prefix automatically.
+    ///
+    /// Example: `"query: "` for Jina v5 Nano.
+    pub query_prefix: Option<String>,
+    /// Optional prefix prepended to documents when using [`TextEmbedding::embed`].
+    ///
+    /// Example: `"passage: "` for Jina v5 Nano.
+    pub doc_prefix: Option<String>,
 }
 
 /// Struct for adding external initializers to "bring your own" embedding models
@@ -112,6 +124,8 @@ impl UserDefinedEmbeddingModel {
             quantization: QuantizationMode::None,
             pooling: None,
             output_key: None,
+            query_prefix: None,
+            doc_prefix: None,
         }
     }
 
@@ -129,6 +143,8 @@ impl UserDefinedEmbeddingModel {
             quantization: QuantizationMode::None,
             pooling: None,
             output_key: None,
+            query_prefix: None,
+            doc_prefix: None,
         }
     }
 
@@ -154,6 +170,26 @@ impl UserDefinedEmbeddingModel {
 
     pub fn with_output_key(mut self, key: OutputKey) -> Self {
         self.output_key = Some(key);
+        self
+    }
+
+    /// Set a prefix that is prepended to every text when calling
+    /// [`TextEmbedding::embed_query`].
+    ///
+    /// Use this for asymmetric retrieval models that encode queries and
+    /// passages in different subspaces (e.g. `"query: "` for Jina v5 Nano,
+    /// `"Represent this sentence for searching relevant passages: "` for E5).
+    pub fn with_query_prefix(mut self, prefix: impl Into<String>) -> Self {
+        self.query_prefix = Some(prefix.into());
+        self
+    }
+
+    /// Set a prefix that is prepended to every text when calling
+    /// [`TextEmbedding::embed`] (the document / passage side).
+    ///
+    /// Example: `"passage: "` for Jina v5 Nano.
+    pub fn with_doc_prefix(mut self, prefix: impl Into<String>) -> Self {
+        self.doc_prefix = Some(prefix.into());
         self
     }
 }
@@ -188,4 +224,14 @@ pub struct TextEmbedding {
     pub(crate) kv_cache_head_dim: usize,
     pub(crate) quantization: QuantizationMode,
     pub(crate) output_key: Option<OutputKey>,
+    /// Maximum batch size the model accepts, or `None` if the batch dimension is dynamic.
+    ///
+    /// Auto-detected from the `input_ids` shape: a positive (non-−1) batch dimension
+    /// indicates a statically shaped export.  If set, `transform()` will clamp the
+    /// effective batch size and emit a clear error before hitting ORT.
+    pub(crate) max_batch_size: Option<usize>,
+    /// Prefix prepended to every text passed to [`TextEmbedding::embed_query`].
+    pub(crate) query_prefix: Option<String>,
+    /// Prefix prepended to every text passed to [`TextEmbedding::embed`].
+    pub(crate) doc_prefix: Option<String>,
 }
