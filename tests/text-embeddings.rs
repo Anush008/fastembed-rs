@@ -360,22 +360,21 @@ fn test_rerank() {
             );
             return;
         }
-        let mut result = match TextRerank::try_new(RerankInitOptions::new(
-            supported_model.model.clone(),
-        )) {
-            Ok(r) => r,
-            Err(e) if offline => {
-                eprintln!(
+        let mut result =
+            match TextRerank::try_new(RerankInitOptions::new(supported_model.model.clone())) {
+                Ok(r) => r,
+                Err(e) if offline => {
+                    eprintln!(
                     "SKIP reranker {} — load failed in offline mode (partial/corrupt cache): {}",
                     supported_model.model_code, e
                 );
-                return;
-            }
-            Err(e) => panic!(
-                "Expected reranker {} to load successfully: {}",
-                supported_model.model_code, e
-            ),
-        };
+                    return;
+                }
+                Err(e) => panic!(
+                    "Expected reranker {} to load successfully: {}",
+                    supported_model.model_code, e
+                ),
+            };
 
         let documents = vec![
             "hi",
@@ -703,4 +702,59 @@ fn clip_vit_b32_deterministic_across_calls() {
             );
         }
     }
+}
+
+/// Semantic quality test for Qwen3Embedding0_6BUint8.
+///
+/// Exact embedding sums are platform-dependent (ORT 1.20 on aarch64 vs ORT 1.23 on
+/// x86_64 differ by ~0.2-0.5 in the 1024-dim sum), so instead we verify retrieval
+/// ordering: a query must rank closer to its relevant passage than to an unrelated
+/// document.  This is architecture- and version-stable.
+///
+/// Uses the instruction prefix recommended by the model card:
+///   query   → "Instruct: <task>\nQuery: <text>"
+///   passage → plain text (no prefix)
+#[test]
+fn test_qwen3_uint8_semantic_retrieval() {
+    let model_code = "electroglyph/Qwen3-Embedding-0.6B-onnx-uint8";
+    if !model_is_available_offline(model_code) {
+        eprintln!("SKIP Qwen3Embedding0_6BUint8 — not in local cache (HF_HUB_OFFLINE=1)");
+        return;
+    }
+    let mut model =
+        match TextEmbedding::try_new(InitOptions::new(EmbeddingModel::Qwen3Embedding0_6BUint8)) {
+            Ok(m) => m,
+            Err(e) if std::env::var("HF_HUB_OFFLINE").as_deref() == Ok("1") => {
+                eprintln!("SKIP Qwen3Embedding0_6BUint8 — load failed offline: {e}");
+                return;
+            }
+            Err(e) => panic!("Qwen3Embedding0_6BUint8 failed to load: {e}"),
+        };
+
+    let query = "Instruct: Given a scientific question, retrieve passages that answer the question\nQuery: What causes mitosis?";
+    let relevant = "Mitosis is a type of cell division in which one cell divides into two identical daughter cells, driven by cyclin-dependent kinases.";
+    let unrelated = "The stock market saw significant volatility last week as inflation data surprised economists.";
+
+    let embeddings = model
+        .embed(vec![query, relevant, unrelated], None)
+        .expect("Qwen3Embedding0_6BUint8 embed should succeed");
+
+    assert_eq!(embeddings.len(), 3);
+    assert_eq!(embeddings[0].len(), 1024);
+
+    let cosine = |a: &[f32], b: &[f32]| -> f32 {
+        let dot: f32 = a.iter().zip(b).map(|(x, y)| x * y).sum();
+        let na: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
+        let nb: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
+        dot / (na * nb)
+    };
+
+    let sim_relevant = cosine(&embeddings[0], &embeddings[1]);
+    let sim_unrelated = cosine(&embeddings[0], &embeddings[2]);
+
+    assert!(
+        sim_relevant > sim_unrelated,
+        "Expected query to rank closer to its relevant passage (sim={sim_relevant:.4}) \
+         than to an unrelated document (sim={sim_unrelated:.4})"
+    );
 }
