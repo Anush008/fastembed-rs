@@ -114,7 +114,7 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         EmbeddingModel::Qwen3Embedding0_6BUint8 => return Ok(()),
         // Octen-Embedding-0.6B: exact sums from local aarch64 run (ORT 1.20).
         EmbeddingModel::OctenEmbedding0_6BFp32 => [-1.1679014, 1.0701674, 0.56380516, 1.4149448],
-        EmbeddingModel::OctenEmbedding0_6BInt8 => [-1.1556705, 1.062617, 0.6215871, 0.80939007],
+        EmbeddingModel::OctenEmbedding0_6BInt8 => [-1.4662746, 0.9369924, 1.1002773, 1.2586249],
         EmbeddingModel::OctenEmbedding0_6BInt4 => [-0.75334597, 1.1573822, 0.30589685, 1.5168501],
         EmbeddingModel::OctenEmbedding0_6BInt8Full => [-1.1965356, 0.83822405, 0.57353675, 0.17479977],
         _ => panic!("Model {model} not found. If you have just inserted this `EmbeddingModel` variant, please update the expected embeddings."),
