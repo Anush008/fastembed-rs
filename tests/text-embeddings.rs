@@ -20,8 +20,8 @@ fn model_is_available_offline(model_code: &str) -> bool {
         return true; // online mode: let hf-hub decide
     }
     let dir_name = format!("models--{}", model_code.replace('/', "--"));
-    let cache_dirs = std::env::var("FASTEMBED_CACHE_DIR")
-        .unwrap_or_else(|_| ".fastembed_cache".into());
+    let cache_dirs =
+        std::env::var("FASTEMBED_CACHE_DIR").unwrap_or_else(|_| ".fastembed_cache".into());
     for dir in cache_dirs.split(':').filter(|s| !s.is_empty()) {
         let refs_main = std::path::Path::new(dir).join(&dir_name).join("refs/main");
         if let Ok(hash) = std::fs::read_to_string(&refs_main) {
@@ -351,16 +351,27 @@ fn test_rerank() {
 
         let offline = std::env::var("HF_HUB_OFFLINE").as_deref() == Ok("1");
         if offline && !model_is_available_offline(&supported_model.model_code) {
-            eprintln!("SKIP reranker {} — not in local cache (HF_HUB_OFFLINE=1)", supported_model.model_code);
+            eprintln!(
+                "SKIP reranker {} — not in local cache (HF_HUB_OFFLINE=1)",
+                supported_model.model_code
+            );
             return;
         }
-        let mut result = match TextRerank::try_new(RerankInitOptions::new(supported_model.model.clone())) {
+        let mut result = match TextRerank::try_new(RerankInitOptions::new(
+            supported_model.model.clone(),
+        )) {
             Ok(r) => r,
             Err(e) if offline => {
-                eprintln!("SKIP reranker {} — load failed in offline mode (partial/corrupt cache): {}", supported_model.model_code, e);
+                eprintln!(
+                    "SKIP reranker {} — load failed in offline mode (partial/corrupt cache): {}",
+                    supported_model.model_code, e
+                );
                 return;
             }
-            Err(e) => panic!("Expected reranker {} to load successfully: {}", supported_model.model_code, e),
+            Err(e) => panic!(
+                "Expected reranker {} to load successfully: {}",
+                supported_model.model_code, e
+            ),
         };
 
         let documents = vec![

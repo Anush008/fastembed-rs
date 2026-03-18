@@ -481,21 +481,22 @@ impl TextEmbedding {
 
                 if self.need_task_id {
                     // task_id=1 selects the retrieval adapter (e.g. Jina-embeddings-v3).
-                    let task_id_array = Array::from_shape_vec(
-                        (batch_size,),
-                        vec![1i64; batch_size],
-                    )?;
-                    session_inputs.push((
-                        "task_id".into(),
-                        Value::from_array(task_id_array)?.into(),
-                    ));
+                    let task_id_array =
+                        Array::from_shape_vec((batch_size,), vec![1i64; batch_size])?;
+                    session_inputs
+                        .push(("task_id".into(), Value::from_array(task_id_array)?.into()));
                 }
 
                 if self.kv_cache_layers > 0 {
                     // Inject empty KV-cache tensors [batch, kv_heads, 0, head_dim] for each layer.
                     // Required by onnx-community-style decoder models that expect past_key_values.
                     for layer in 0..self.kv_cache_layers {
-                        let kv_shape = (batch_size, self.kv_cache_kv_heads, 0usize, self.kv_cache_head_dim);
+                        let kv_shape = (
+                            batch_size,
+                            self.kv_cache_kv_heads,
+                            0usize,
+                            self.kv_cache_head_dim,
+                        );
                         let k_empty = ndarray::Array4::<f32>::zeros(kv_shape);
                         let v_empty = ndarray::Array4::<f32>::zeros(kv_shape);
                         session_inputs.push((
