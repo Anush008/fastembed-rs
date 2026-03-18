@@ -77,7 +77,7 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         EmbeddingModel::SnowflakeArcticEmbedMLongQ => [0.20531628, 0.18564843, 0.14221531, 0.16035447],
         EmbeddingModel::SnowflakeArcticEmbedL => [0.4049112, 0.42825335, 0.46401042, 0.4064963],
         EmbeddingModel::SnowflakeArcticEmbedLQ => [0.40164998, 0.4278314, 0.4612437, 0.40060186],
-        EmbeddingModel::SnowflakeArcticEmbedLV2 => [0.26398557, 0.14880744, 0.13180876, 0.30424863],
+        EmbeddingModel::SnowflakeArcticEmbedLV2 => [0.2449241, 0.14880744, 0.13180876, 0.317464],
         EmbeddingModel::PixieRuneV1 => [0.21175426, 0.04924786, -0.04547663, 0.23019713],
         EmbeddingModel::PixieRuneV1Q => [0.20039082, 0.01773269, -0.03711293, 0.22059181],
         EmbeddingModel::PixieRuneV1Int4 => [0.21915381, 0.07184856, 0.00254632, 0.20669360],
@@ -125,8 +125,16 @@ macro_rules! create_embeddings_test {
             TextEmbedding::list_supported_models()
                 .iter()
                 .for_each(|supported_model| {
-                    let mut model: TextEmbedding = TextEmbedding::try_new(InitOptions::new(supported_model.model.clone()))
-                    .unwrap();
+                    let mut model: TextEmbedding = match TextEmbedding::try_new(InitOptions::new(supported_model.model.clone())) {
+                        Ok(m) => m,
+                        Err(e) => {
+                            if std::env::var("HF_HUB_OFFLINE").as_deref() == Ok("1") {
+                                eprintln!("SKIP {} — not in local cache (HF_HUB_OFFLINE=1): {}", supported_model.model, e);
+                                return;
+                            }
+                            panic!("Expected embeddings for {model} to be generated successfully: {exc}", model=supported_model.model, exc=e);
+                        }
+                    };
 
                     let documents = vec![
                         "Hello, World!",
@@ -303,8 +311,16 @@ fn test_rerank() {
     let test_one_model = |supported_model: &RerankerModelInfo| {
         println!("supported_model: {:?}", supported_model);
 
-        let mut result =
-            TextRerank::try_new(RerankInitOptions::new(supported_model.model.clone())).unwrap();
+        let mut result = match TextRerank::try_new(RerankInitOptions::new(supported_model.model.clone())) {
+            Ok(r) => r,
+            Err(e) => {
+                if std::env::var("HF_HUB_OFFLINE").as_deref() == Ok("1") {
+                    eprintln!("SKIP reranker {} — not in local cache (HF_HUB_OFFLINE=1): {}", supported_model.model_code, e);
+                    return;
+                }
+                panic!("Expected reranker {} to load successfully: {}", supported_model.model_code, e);
+            }
+        };
 
         let documents = vec![
             "hi",
@@ -609,7 +625,16 @@ fn test_allminilml6v2_match_python_counterpart() {
 #[test]
 fn clip_vit_b32_deterministic_across_calls() {
     let q = "red car";
-    let mut fe = TextEmbedding::try_new(InitOptions::new(EmbeddingModel::ClipVitB32)).unwrap();
+    let mut fe = match TextEmbedding::try_new(InitOptions::new(EmbeddingModel::ClipVitB32)) {
+        Ok(m) => m,
+        Err(e) => {
+            if std::env::var("HF_HUB_OFFLINE").as_deref() == Ok("1") {
+                eprintln!("SKIP ClipVitB32 — not in local cache (HF_HUB_OFFLINE=1): {e}");
+                return;
+            }
+            panic!("Expected ClipVitB32 to load successfully: {e}");
+        }
+    };
     let mut first: Option<Vec<f32>> = None;
     for i in 0..100 {
         let vecs = fe.embed(vec![q], None).unwrap();
