@@ -148,9 +148,10 @@ MODELS = [
         "model_code": "telepix/PIXIE-Rune-v1.0",
         "pool":       "mean",
         "variants": [
-            ("FP32 (ref)",  "onnx/model.onnx"),
-            ("INT8",        "onnx/model_quantized.onnx"),
-            ("INT4",        "onnx/model_int4.onnx"),
+            ("FP32 (ref)",              "onnx/model.onnx"),
+            ("INT8",                    "onnx/model_quantized.onnx"),
+            ("INT4 MatMul-only",        "onnx/model_int4_matmul_only.onnx"),
+            ("INT4+INT8 emb",           "onnx/model_int4.onnx"),
         ],
     },
     {
