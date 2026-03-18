@@ -201,10 +201,8 @@ fn test_jina_v5_nano() {
 
 /// Qwen3-Embedding-0.6B uint8 (electroglyph calibrated).
 ///
-/// This model outputs a pre-pooled `Tensor<u8>` embedding that requires
-/// affine dequantization: `f32 = (u8 - zero_point) * scale`.
-/// Standard fastembed f32 extraction therefore fails; we use `transform()` +
-/// `into_raw()` to access the u8 tensor directly and dequantize manually.
+/// Uses `Pooling::PrePooledU8` which handles u8 tensor extraction and affine
+/// dequantization (`f32 = (u8 - zero_point) × scale`) transparently via `embed()`.
 #[test]
 fn test_qwen3_uint8() {
     let dir = models_dir();
@@ -218,18 +216,18 @@ fn test_qwen3_uint8() {
     let tokenizer_files = tok(&snap).expect("Qwen3 uint8 tokenizer files missing");
     let onnx_path = snap.join("dynamic_uint8.onnx");
 
+    // Dequantization parameters from electroglyph model card:
+    // range [-0.3009805, 0.3952634] → scale=0.002730, zero_point=110
     let mut model = TextEmbedding::try_new_from_user_defined(
-        // Pooling doesn't matter here — we bypass embed() entirely.
         UserDefinedEmbeddingModel::from_file(onnx_path, tokenizer_files)
-            .with_pooling(Pooling::LastToken),
+            .with_pooling(Pooling::PrePooledU8 {
+                scale: 0.0027303685,
+                zero_point: 110,
+            })
+            .with_output_key(fastembed::OutputKey::ByName("sentence_embedding_quantized")),
         InitOptionsUserDefined::new(),
     )
     .expect("failed to load Qwen3 uint8");
-
-    // Dequantization parameters from electroglyph model card:
-    // range [-0.3009805, 0.3952634] → scale=0.002730, zero_point=110
-    const SCALE: f32 = 0.0027303685;
-    const ZERO: u8 = 110;
 
     let texts = vec![
         "Semantic search with neural embeddings",
@@ -238,53 +236,23 @@ fn test_qwen3_uint8() {
     ];
 
     let t0 = Instant::now();
-    let raw_output = model
-        .transform(&texts, Some(texts.len()))
-        .expect("transform failed");
+    let embs = model.embed(texts.clone(), Some(texts.len())).expect("embed failed");
+    let elapsed = t0.elapsed();
 
-    let mut embeddings: Vec<Vec<f32>> = Vec::new();
-    for batch in raw_output.into_raw() {
-        for (name, val) in &batch.outputs {
-            // The model outputs a pre-pooled uint8 tensor [batch, dim]
-            match val.try_extract_array::<u8>() {
-                Ok(u8_arr) => {
-                    let shape = u8_arr.shape().to_vec();
-                    println!("[Qwen3Uint8] output '{name}': shape {shape:?}  (u8, dequantizing)");
-                    for row in u8_arr.rows() {
-                        let mut float_vec: Vec<f32> = row
-                            .iter()
-                            .map(|&v| (v as f32 - ZERO as f32) * SCALE)
-                            .collect();
-                        // L2-normalise
-                        let norm: f32 = float_vec.iter().map(|x| x * x).sum::<f32>().sqrt();
-                        if norm > 1e-9 {
-                            float_vec.iter_mut().for_each(|x| *x /= norm);
-                        }
-                        embeddings.push(float_vec);
-                    }
-                }
-                Err(_) => {
-                    // Fallback: try f32 (would succeed if the model outputs float)
-                    if let Ok(arr) = val.try_extract_array::<f32>() {
-                        println!("[Qwen3Uint8] output '{name}': shape {:?}  (f32)", arr.shape());
-                    }
-                }
-            }
-        }
+    assert_eq!(embs.len(), texts.len(), "wrong embedding count");
+    for e in &embs {
+        let norm: f32 = e.iter().map(|x| x * x).sum::<f32>().sqrt();
+        assert!((norm - 1.0).abs() < 1e-3, "[Qwen3Uint8] embedding not unit-normalised (norm={norm:.6})");
     }
 
-    assert_eq!(embeddings.len(), texts.len(), "wrong embedding count");
-
-    let sim_pos = cosine(&embeddings[0], &embeddings[1]);
-    let sim_neg = cosine(&embeddings[0], &embeddings[2]);
+    let sim_pos = cosine(&embs[0], &embs[1]);
+    let sim_neg = cosine(&embs[0], &embs[2]);
     println!(
         "[Qwen3Uint8]  dim={}  latency={:.0?}  sim(semantic)={:.4}  sim(unrelated)={:.4}  ordering={}",
-        embeddings[0].len(),
-        t0.elapsed(),
-        sim_pos,
-        sim_neg,
+        embs[0].len(), elapsed, sim_pos, sim_neg,
         if sim_pos > sim_neg { "✓" } else { "✗" }
     );
+    assert!(sim_pos > sim_neg, "semantic ordering failed");
 }
 
 /// Octen-Embedding-0.6B INT8 — last-token pooling, loaded from flat local dir

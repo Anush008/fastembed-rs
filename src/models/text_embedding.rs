@@ -573,12 +573,14 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model: EmbeddingModel::Qwen3Embedding0_6BUint8,
             dim: 1024,
             description: String::from(
-                "Qwen3-Embedding-0.6B calibrated uint8 ONNX (electroglyph, compact)",
+                "Qwen3-Embedding-0.6B calibrated uint8 ONNX (electroglyph, compact). \
+                 Affine dequant: f32 = (u8 - 110) × 0.00273.",
             ),
             model_code: String::from("electroglyph/Qwen3-Embedding-0.6B-onnx-uint8"),
             model_file: String::from("dynamic_uint8.onnx"),
             additional_files: Vec::new(),
-            output_key: None,
+            // Model outputs a pre-pooled uint8 tensor under this key
+            output_key: Some(crate::OutputKey::ByName("sentence_embedding_quantized")),
         },
         // ── Snowflake Arctic Embed L v2 ───────────────────────────────────────────
         ModelInfo {

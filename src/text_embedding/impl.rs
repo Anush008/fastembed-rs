@@ -149,10 +149,53 @@ impl TextEmbedding {
             .iter()
             .any(|input| input.name() == "token_type_ids");
 
+        let need_position_ids = session
+            .inputs()
+            .iter()
+            .any(|input| input.name() == "position_ids");
+
+        let need_task_id = session
+            .inputs()
+            .iter()
+            .any(|input| input.name() == "task_id");
+
+        // Count KV-cache layer pairs by counting `past_key_values.N.key` inputs.
+        let kv_cache_layers = session
+            .inputs()
+            .iter()
+            .filter(|i| i.name().starts_with("past_key_values.") && i.name().ends_with(".key"))
+            .count();
+
+        // Auto-detect kv_heads and head_dim from the first key tensor's shape.
+        // Shape convention: [batch, kv_heads, seq, head_dim] — dims 1 and 3 are fixed.
+        let (kv_cache_kv_heads, kv_cache_head_dim) = if kv_cache_layers > 0 {
+            session
+                .inputs()
+                .iter()
+                .find(|i| i.name() == "past_key_values.0.key")
+                .and_then(|outlet| outlet.dtype().tensor_shape())
+                .and_then(|shape| {
+                    let s: &[i64] = shape;
+                    if s.len() == 4 && s[1] > 0 && s[3] > 0 {
+                        Some((s[1] as usize, s[3] as usize))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or((0, 0))
+        } else {
+            (0, 0)
+        };
+
         Self {
             tokenizer,
             session,
             need_token_type_ids,
+            need_position_ids,
+            need_task_id,
+            kv_cache_layers,
+            kv_cache_kv_heads,
+            kv_cache_head_dim,
             pooling: post_process,
             quantization,
             output_key,
@@ -233,7 +276,12 @@ impl TextEmbedding {
             EmbeddingModel::OctenEmbedding0_6BFp32 => Some(Pooling::LastToken),
             EmbeddingModel::OctenEmbedding0_6BInt8 => Some(Pooling::LastToken),
             EmbeddingModel::OctenEmbedding0_6BInt4 => Some(Pooling::LastToken),
-            EmbeddingModel::Qwen3Embedding0_6BUint8 => Some(Pooling::LastToken),
+            // Calibrated uint8 model: affine dequant f32 = (u8 - 110) * 0.0027303685
+            // Parameters from the electroglyph model card (range [-0.301, 0.395])
+            EmbeddingModel::Qwen3Embedding0_6BUint8 => Some(Pooling::PrePooledU8 {
+                scale: 0.0027303685,
+                zero_point: 110,
+            }),
 
             // CLS pooling
             EmbeddingModel::SnowflakeArcticEmbedLV2 => Some(Pooling::Cls),
@@ -396,6 +444,50 @@ impl TextEmbedding {
                         "token_type_ids".into(),
                         Value::from_array(token_type_ids_array)?.into(),
                     ));
+                }
+
+                if self.need_position_ids {
+                    // Build position_ids [[0, 1, ..., seq-1], ...] for each batch item.
+                    let pos_ids: Vec<i64> = (0..batch_size)
+                        .flat_map(|_| 0..encoding_length as i64)
+                        .collect();
+                    let position_ids_array =
+                        Array::from_shape_vec((batch_size, encoding_length), pos_ids)?;
+                    session_inputs.push((
+                        "position_ids".into(),
+                        Value::from_array(position_ids_array)?.into(),
+                    ));
+                }
+
+                if self.need_task_id {
+                    // task_id=1 selects the retrieval adapter (e.g. Jina-embeddings-v3).
+                    let task_id_array = Array::from_shape_vec(
+                        (batch_size,),
+                        vec![1i64; batch_size],
+                    )?;
+                    session_inputs.push((
+                        "task_id".into(),
+                        Value::from_array(task_id_array)?.into(),
+                    ));
+                }
+
+                if self.kv_cache_layers > 0 {
+                    // Inject empty KV-cache tensors [batch, kv_heads, 0, head_dim] for each layer.
+                    // This is required by onnx-community-style decoder models (e.g.
+                    // onnx-community/Qwen3-Embedding-0.6B) that expect past_key_values inputs.
+                    for layer in 0..self.kv_cache_layers {
+                        let kv_shape = (batch_size, self.kv_cache_kv_heads, 0usize, self.kv_cache_head_dim);
+                        let k_empty = ndarray::Array4::<f32>::zeros(kv_shape);
+                        let v_empty = ndarray::Array4::<f32>::zeros(kv_shape);
+                        session_inputs.push((
+                            format!("past_key_values.{}.key", layer).into(),
+                            Value::from_array(k_empty)?.into(),
+                        ));
+                        session_inputs.push((
+                            format!("past_key_values.{}.value", layer).into(),
+                            Value::from_array(v_empty)?.into(),
+                        ));
+                    }
                 }
 
                 let outputs_map = self

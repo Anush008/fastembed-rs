@@ -79,7 +79,7 @@ impl From<TextInitOptions> for InitOptionsUserDefined {
 /// models that ship an external `.onnx.data` companion: ONNX Runtime will
 /// resolve the companion automatically from the same directory, avoiding the
 /// need to read the whole file into RAM.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct UserDefinedEmbeddingModel {
     pub onnx_source: OnnxSource,
     pub external_initializers: Vec<ExternalInitializerFile>,
@@ -164,6 +164,28 @@ pub struct TextEmbedding {
     pub(crate) pooling: Option<Pooling>,
     pub(crate) session: Session,
     pub(crate) need_token_type_ids: bool,
+    /// Whether to inject `position_ids [[0,1,...,seq-1],...]` into session inputs.
+    ///
+    /// Required by decoder-style models such as Qwen3-Embedding and Octen that were
+    /// exported with dynamo and do not compute absolute positions internally.
+    pub(crate) need_position_ids: bool,
+    /// Whether to inject a `task_id` tensor into session inputs.
+    ///
+    /// Used by Jina-embeddings-v3 to select the correct LoRA adapter (`task_id=1`
+    /// selects the retrieval adapter).
+    pub(crate) need_task_id: bool,
+    /// Number of KV-cache layer pairs (0 = encoder model, no KV-cache needed).
+    ///
+    /// When > 0, empty `past_key_values.N.key/value` tensors of shape
+    /// `[batch, kv_heads, 0, head_dim]` are injected for each layer.
+    /// This is required by decoder-style models exported from `onnx-community`
+    /// (e.g. `onnx-community/Qwen3-Embedding-0.6B`).
+    pub(crate) kv_cache_layers: usize,
+    /// Number of KV heads per layer (auto-detected from the first
+    /// `past_key_values.0.key` input shape).
+    pub(crate) kv_cache_kv_heads: usize,
+    /// Head dimension (auto-detected from the `past_key_values.0.key` shape).
+    pub(crate) kv_cache_head_dim: usize,
     pub(crate) quantization: QuantizationMode,
     pub(crate) output_key: Option<OutputKey>,
 }
