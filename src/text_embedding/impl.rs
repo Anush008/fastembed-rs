@@ -299,6 +299,11 @@ impl TextEmbedding {
             // Jina v5 Nano ships a pre-pooled 'sentence_embedding' output [batch, dim].
             // Cls on a 2D tensor is a no-op pass-through.
             EmbeddingModel::JinaEmbeddingsV5Nano => Some(Pooling::Cls),
+            // Decoder-style models: take the last non-padding token
+            EmbeddingModel::OctenEmbedding0_6BFp32 => Some(Pooling::LastToken),
+            EmbeddingModel::OctenEmbedding0_6BInt8 => Some(Pooling::LastToken),
+            EmbeddingModel::OctenEmbedding0_6BInt4 => Some(Pooling::LastToken),
+            EmbeddingModel::OctenEmbedding0_6BInt8Full => Some(Pooling::LastToken),
         }
     }
 

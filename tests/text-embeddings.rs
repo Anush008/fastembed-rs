@@ -795,6 +795,18 @@ fn test_new_models_semantic_retrieval() {
             EmbeddingModel::JinaEmbeddingsV5Nano,
             "jinaai/jina-embeddings-v5-text-nano-retrieval",
         ),
+        (
+            EmbeddingModel::OctenEmbedding0_6BFp32,
+            "cstr/Octen-Embedding-0.6B-ONNX",
+        ),
+        (
+            EmbeddingModel::OctenEmbedding0_6BInt8,
+            "cstr/Octen-Embedding-0.6B-ONNX-INT8",
+        ),
+        (
+            EmbeddingModel::OctenEmbedding0_6BInt8Full,
+            "cstr/Octen-Embedding-0.6B-ONNX-INT8-FULL",
+        ),
     ];
 
     let query = "What causes cell division in multicellular organisms?";
@@ -820,9 +832,21 @@ fn test_new_models_semantic_retrieval() {
             Err(e) => panic!("{model_variant} failed to load: {e}"),
         };
 
-        let embeddings = model
-            .embed(vec![query, relevant, unrelated], None)
-            .unwrap_or_else(|e| panic!("{model_variant} embed failed: {e}"));
+        // Try batched first; fall back to one-by-one for models exported with
+        // a fixed batch size of 1 (e.g. OctenEmbedding0_6BInt8Full).
+        let embeddings = match model.embed(vec![query, relevant, unrelated], None) {
+            Ok(e) => e,
+            Err(_) => {
+                let mut out = Vec::new();
+                for text in &[query, relevant, unrelated] {
+                    let mut e = model
+                        .embed(vec![text], None)
+                        .unwrap_or_else(|e| panic!("{model_variant} embed failed: {e}"));
+                    out.push(e.remove(0));
+                }
+                out
+            }
+        };
 
         assert_eq!(
             embeddings.len(),
