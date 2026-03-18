@@ -295,6 +295,7 @@ impl TextEmbedding {
             EmbeddingModel::PixieRuneV1 => Some(Pooling::Mean),
             EmbeddingModel::PixieRuneV1Q => Some(Pooling::Mean),
             EmbeddingModel::PixieRuneV1Int4 => Some(Pooling::Mean),
+            EmbeddingModel::PixieRuneV1Int4Full => Some(Pooling::Mean),
             // Jina v5 Nano ships a pre-pooled 'sentence_embedding' output [batch, dim].
             // Cls on a 2D tensor is a no-op pass-through.
             EmbeddingModel::JinaEmbeddingsV5Nano => Some(Pooling::Cls),

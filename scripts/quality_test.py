@@ -152,6 +152,7 @@ MODELS = [
             ("INT8",                    "onnx/model_quantized.onnx"),
             ("INT4 MatMul-only",        "onnx/model_int4_matmul_only.onnx"),
             ("INT4+INT8 emb",           "onnx/model_int4.onnx"),
+            ("INT4 full",               "onnx/model_int4_full.onnx"),
         ],
     },
     {

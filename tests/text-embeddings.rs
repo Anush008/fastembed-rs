@@ -81,6 +81,7 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         EmbeddingModel::PixieRuneV1 => [0.21175426, 0.04924786, -0.04547663, 0.23019713],
         EmbeddingModel::PixieRuneV1Q => [0.20039082, 0.01773269, -0.03711293, 0.22059181],
         EmbeddingModel::PixieRuneV1Int4 => [0.21915381, 0.07184856, 0.00254632, 0.20669360],
+        EmbeddingModel::PixieRuneV1Int4Full => [0.21956415, 0.06691565, 0.00430743, 0.20492397],
         EmbeddingModel::JinaEmbeddingsV5Nano => [-0.13502984, -0.39609835, 1.71589792, 0.97652829],
         EmbeddingModel::Qwen3Embedding0_6BUint8 => [-3.61759973, -2.22492599, -2.60765219, -1.67113924],
         _ => panic!("Model {model} not found. If you have just inserted this `EmbeddingModel` variant, please update the expected embeddings."),
