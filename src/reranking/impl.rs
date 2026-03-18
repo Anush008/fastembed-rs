@@ -10,8 +10,9 @@ use std::thread::available_parallelism;
 #[cfg(feature = "hf-hub")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::load_tokenizer, models::reranking::reranker_model_list, RerankerModel,
-    RerankerModelInfo,
+    common::{load_tokenizer, OnnxSource},
+    models::reranking::reranker_model_list,
+    RerankerModel, RerankerModelInfo,
 };
 #[cfg(feature = "hf-hub")]
 use hf_hub::{api::sync::ApiBuilder, Cache};
@@ -21,7 +22,7 @@ use tokenizers::Tokenizer;
 #[cfg(feature = "hf-hub")]
 use super::RerankInitOptions;
 use super::{
-    OnnxSource, RerankInitOptionsUserDefined, RerankResult, TextRerank, UserDefinedRerankingModel,
+    RerankInitOptionsUserDefined, RerankResult, TextRerank, UserDefinedRerankingModel,
     DEFAULT_BATCH_SIZE,
 };
 

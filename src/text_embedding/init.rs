@@ -2,11 +2,12 @@
 //!
 
 use crate::{
-    common::TokenizerFiles,
+    common::{OnnxSource, TokenizerFiles},
     init::{HasMaxLength, InitOptionsWithLength},
     pooling::Pooling,
     EmbeddingModel, OutputKey, QuantizationMode,
 };
+use std::path::PathBuf;
 use ort::{execution_providers::ExecutionProviderDispatch, session::Session};
 use tokenizers::Tokenizer;
 
@@ -71,12 +72,16 @@ impl From<TextInitOptions> for InitOptionsUserDefined {
     }
 }
 
-/// Struct for "bring your own" embedding models
+/// Struct for "bring your own" embedding models.
 ///
-/// The onnx_file and tokenizer_files are expecting the files' bytes
+/// `onnx_source` can be either in-memory bytes ([`OnnxSource::Memory`]) or a
+/// filesystem path ([`OnnxSource::File`]).  Use the file variant for large
+/// models that ship an external `.onnx.data` companion: ONNX Runtime will
+/// resolve the companion automatically from the same directory, avoiding the
+/// need to read the whole file into RAM.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UserDefinedEmbeddingModel {
-    pub onnx_file: Vec<u8>,
+    pub onnx_source: OnnxSource,
     pub external_initializers: Vec<ExternalInitializerFile>,
     pub tokenizer_files: TokenizerFiles,
     pub pooling: Option<Pooling>,
@@ -95,9 +100,30 @@ pub struct ExternalInitializerFile {
 }
 
 impl UserDefinedEmbeddingModel {
+    /// Create a model from in-memory ONNX bytes.
+    ///
+    /// Use [`UserDefinedEmbeddingModel::from_file`] instead when the model has a
+    /// large external data file — that avoids loading the whole weight blob into RAM.
     pub fn new(onnx_file: Vec<u8>, tokenizer_files: TokenizerFiles) -> Self {
         Self {
-            onnx_file,
+            onnx_source: OnnxSource::Memory(onnx_file),
+            external_initializers: Vec::new(),
+            tokenizer_files,
+            quantization: QuantizationMode::None,
+            pooling: None,
+            output_key: None,
+        }
+    }
+
+    /// Create a model from an ONNX file on disk.
+    ///
+    /// ONNX Runtime will automatically pick up any companion `.onnx.data` file
+    /// that lives in the same directory, so you do not need to call
+    /// [`with_external_initializer`](Self::with_external_initializer) for the
+    /// weight blob.
+    pub fn from_file(path: PathBuf, tokenizer_files: TokenizerFiles) -> Self {
+        Self {
+            onnx_source: OnnxSource::File(path),
             external_initializers: Vec::new(),
             tokenizer_files,
             quantization: QuantizationMode::None,
@@ -116,6 +142,10 @@ impl UserDefinedEmbeddingModel {
         self
     }
 
+    /// Add an in-memory external initializer (weight blob).
+    ///
+    /// Only needed when using [`OnnxSource::Memory`].  For file-based models
+    /// ONNX Runtime resolves external data automatically.
     pub fn with_external_initializer(mut self, file_name: String, buffer: Vec<u8>) -> Self {
         self.external_initializers
             .push(ExternalInitializerFile { file_name, buffer });

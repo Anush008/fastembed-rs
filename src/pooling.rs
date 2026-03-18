@@ -4,6 +4,11 @@ use ndarray::{s, Array2, ArrayView, Dim, Dimension, IxDynImpl};
 pub enum Pooling {
     Cls,
     Mean,
+    /// Last-token pooling: takes the embedding at the last non-padding position.
+    ///
+    /// Required for decoder-style models such as Qwen3-Embedding, where the
+    /// final token carries the aggregated sequence representation.
+    LastToken,
 }
 
 impl Default for Pooling {
@@ -24,6 +29,38 @@ pub fn cls(tensor: &ArrayView<f32, Dim<IxDynImpl>>) -> anyhow::Result<Array2<f32
             shape = tensor.dim()
         ))),
     }
+}
+
+/// Pool by selecting the last non-padding token embedding per sample.
+///
+/// `attention_mask_array` must have shape `[batch, seq]` with 1 for real tokens
+/// and 0 for padding; the index of the last 1 is used as the token position.
+pub fn last_token(
+    token_embeddings: &ArrayView<f32, Dim<IxDynImpl>>,
+    attention_mask_array: Array2<i64>,
+) -> anyhow::Result<Array2<f32>> {
+    if token_embeddings.dim().ndim() == 2 {
+        return Ok(token_embeddings.slice(s![.., ..]).to_owned());
+    } else if token_embeddings.dim().ndim() != 3 {
+        return Err(anyhow::Error::msg(format!(
+            "Invalid output shape: {shape:?}. Expected 2D or 3D tensor.",
+            shape = token_embeddings.dim()
+        )));
+    }
+
+    let batch_size = token_embeddings.shape()[0];
+    let hidden_size = token_embeddings.shape()[2];
+    let mut result = Array2::zeros((batch_size, hidden_size));
+
+    for i in 0..batch_size {
+        let mask_sum = attention_mask_array.row(i).iter().filter(|&&v| v > 0).count();
+        let last_pos = if mask_sum > 0 { mask_sum - 1 } else { 0 };
+        result
+            .row_mut(i)
+            .assign(&token_embeddings.slice(s![i, last_pos, ..]));
+    }
+
+    Ok(result)
 }
 
 /// Pool the previous layer output by taking the element-wise arithmetic mean of the token-level embeddings after applying the attention mask.

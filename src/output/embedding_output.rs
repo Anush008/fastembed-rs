@@ -69,6 +69,9 @@ impl SingleBatchOutput {
         match pooling_opt.unwrap_or_default() {
             pooling::Pooling::Cls => pooling::cls(&tensor),
             pooling::Pooling::Mean => pooling::mean(&tensor, self.attention_mask_array.clone()),
+            pooling::Pooling::LastToken => {
+                pooling::last_token(&tensor, self.attention_mask_array.clone())
+            }
         }
     }
 }

@@ -96,6 +96,14 @@ pub enum EmbeddingModel {
     SnowflakeArcticEmbedL,
     /// Quantized snowflake/snowflake-arctic-embed-l
     SnowflakeArcticEmbedLQ,
+
+    // ── Octen-Embedding-0.6B (Qwen3-0.6B fine-tune, decoder, last-token pooling) ──
+    /// CrispStrobe/octen-embedding-0.6b-onnx — FP32 reference (2.4 GB, external data)
+    OctenEmbedding0_6BFp32,
+    /// CrispStrobe/octen-embedding-0.6b-onnx-int8 — INT8 per-channel (1.1 GB, recommended)
+    OctenEmbedding0_6BInt8,
+    /// CrispStrobe/octen-embedding-0.6b-onnx-int4 — INT4 MatMulNBits (0.9 GB, minimum RAM)
+    OctenEmbedding0_6BInt4,
 }
 
 /// Centralized function to initialize the models map.
@@ -508,6 +516,40 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model_code: String::from("snowflake/snowflake-arctic-embed-l"),
             model_file: String::from("onnx/model_quantized.onnx"),
             additional_files: Vec::new(),
+            output_key: None,
+        },
+        // ── Octen-Embedding-0.6B ─────────────────────────────────────────────────
+        ModelInfo {
+            model: EmbeddingModel::OctenEmbedding0_6BFp32,
+            dim: 1024,
+            description: String::from(
+                "Octen-Embedding-0.6B FP32 ONNX reference export (dynamo, dynamic batch)",
+            ),
+            model_code: String::from("CrispStrobe/octen-embedding-0.6b-onnx"),
+            model_file: String::from("model.onnx"),
+            additional_files: vec!["model.onnx.data".to_string()],
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::OctenEmbedding0_6BInt8,
+            dim: 1024,
+            description: String::from(
+                "Octen-Embedding-0.6B INT8 per-channel ONNX (dynamo, dynamic batch) — recommended",
+            ),
+            model_code: String::from("CrispStrobe/octen-embedding-0.6b-onnx-int8"),
+            model_file: String::from("model.int8.onnx"),
+            additional_files: vec!["model.int8.onnx.data".to_string()],
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::OctenEmbedding0_6BInt4,
+            dim: 1024,
+            description: String::from(
+                "Octen-Embedding-0.6B INT4 MatMulNBits ONNX (batch=1 only) — minimum RAM",
+            ),
+            model_code: String::from("CrispStrobe/octen-embedding-0.6b-onnx-int4"),
+            model_file: String::from("model.int4.onnx"),
+            additional_files: vec!["model.int4.onnx.data".to_string()],
             output_key: None,
         },
     ];

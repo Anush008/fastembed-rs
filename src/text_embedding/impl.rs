@@ -3,7 +3,7 @@
 #[cfg(feature = "hf-hub")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::load_tokenizer,
+    common::{load_tokenizer, OnnxSource},
     models::{text_embedding::models_list, ModelTrait},
     pooling::Pooling,
     Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, OutputKey, QuantizationMode,
@@ -101,19 +101,29 @@ impl TextEmbedding {
         let threads = available_parallelism()?.get();
 
         let session = {
-            let mut session_builder = Session::builder()?
+            let base_builder = Session::builder()?
                 .with_execution_providers(execution_providers)?
                 .with_optimization_level(GraphOptimizationLevel::Level3)?
                 .with_intra_threads(threads)?;
 
-            for external_initializer_file in model.external_initializers {
-                session_builder = session_builder.with_external_initializer_file_in_memory(
-                    external_initializer_file.file_name,
-                    external_initializer_file.buffer.into(),
-                )?;
+            match model.onnx_source {
+                OnnxSource::Memory(bytes) => {
+                    let mut session_builder = base_builder;
+                    for ext in model.external_initializers {
+                        session_builder =
+                            session_builder.with_external_initializer_file_in_memory(
+                                ext.file_name,
+                                ext.buffer.into(),
+                            )?;
+                    }
+                    session_builder.commit_from_memory(&bytes)?
+                }
+                OnnxSource::File(path) => {
+                    // ORT resolves the companion .onnx.data file automatically
+                    // from the same directory — no manual initializer setup needed.
+                    base_builder.commit_from_file(path)?
+                }
             }
-
-            session_builder.commit_from_memory(&model.onnx_file)?
         };
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
@@ -218,6 +228,11 @@ impl TextEmbedding {
             EmbeddingModel::SnowflakeArcticEmbedMLongQ => Some(Pooling::Cls),
             EmbeddingModel::SnowflakeArcticEmbedL => Some(Pooling::Cls),
             EmbeddingModel::SnowflakeArcticEmbedLQ => Some(Pooling::Cls),
+
+            // Decoder-style models: take the last non-padding token
+            EmbeddingModel::OctenEmbedding0_6BFp32 => Some(Pooling::LastToken),
+            EmbeddingModel::OctenEmbedding0_6BInt8 => Some(Pooling::LastToken),
+            EmbeddingModel::OctenEmbedding0_6BInt4 => Some(Pooling::LastToken),
         }
     }
 
