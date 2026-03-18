@@ -758,3 +758,94 @@ fn test_qwen3_uint8_semantic_retrieval() {
          than to an unrelated document (sim={sim_unrelated:.4})"
     );
 }
+
+/// Semantic retrieval quality test for all newly added models.
+///
+/// Verifies that cosine(query, relevant_passage) > cosine(query, unrelated_passage)
+/// for each model.  This is platform- and ORT-version-stable: only ordering matters,
+/// not exact float values.  Models not present in the local cache are skipped when
+/// HF_HUB_OFFLINE=1; CI always downloads and tests all of them.
+#[test]
+fn test_new_models_semantic_retrieval() {
+    fn cosine(a: &[f32], b: &[f32]) -> f32 {
+        let dot: f32 = a.iter().zip(b).map(|(x, y)| x * y).sum();
+        let na = a.iter().map(|x| x * x).sum::<f32>().sqrt();
+        let nb = b.iter().map(|x| x * x).sum::<f32>().sqrt();
+        if na == 0.0 || nb == 0.0 {
+            0.0
+        } else {
+            dot / (na * nb)
+        }
+    }
+
+    // (model variant, model_code for cache lookup)
+    let models: &[(EmbeddingModel, &str)] = &[
+        (EmbeddingModel::PixieRuneV1, "telepix/PIXIE-Rune-v1.0"),
+        (EmbeddingModel::PixieRuneV1Q, "cstr/PIXIE-Rune-v1.0-ONNX"),
+        (EmbeddingModel::PixieRuneV1Int4, "cstr/PIXIE-Rune-v1.0-ONNX"),
+        (
+            EmbeddingModel::PixieRuneV1Int4Full,
+            "cstr/PIXIE-Rune-v1.0-ONNX",
+        ),
+        (
+            EmbeddingModel::SnowflakeArcticEmbedLV2,
+            "Snowflake/snowflake-arctic-embed-l-v2.0",
+        ),
+        (
+            EmbeddingModel::JinaEmbeddingsV5Nano,
+            "jinaai/jina-embeddings-v5-text-nano-retrieval",
+        ),
+    ];
+
+    let query = "What causes cell division in multicellular organisms?";
+    let relevant = "Mitosis is the process by which a cell replicates its chromosomes and \
+                    divides into two identical daughter cells, regulated by cyclin-dependent kinases.";
+    let unrelated = "The stock market experienced sharp gains after the central bank \
+                     announced an unexpected interest rate cut.";
+
+    let offline = std::env::var("HF_HUB_OFFLINE").as_deref() == Ok("1");
+
+    for (model_variant, model_code) in models {
+        if offline && !model_is_available_offline(model_code) {
+            eprintln!("SKIP {model_variant} — not in local cache (HF_HUB_OFFLINE=1)");
+            continue;
+        }
+
+        let mut model = match TextEmbedding::try_new(InitOptions::new(model_variant.clone())) {
+            Ok(m) => m,
+            Err(e) if offline => {
+                eprintln!("SKIP {model_variant} — load failed in offline mode: {e}");
+                continue;
+            }
+            Err(e) => panic!("{model_variant} failed to load: {e}"),
+        };
+
+        let embeddings = model
+            .embed(vec![query, relevant, unrelated], None)
+            .unwrap_or_else(|e| panic!("{model_variant} embed failed: {e}"));
+
+        assert_eq!(
+            embeddings.len(),
+            3,
+            "{model_variant}: wrong embedding count"
+        );
+        let dim = TextEmbedding::get_model_info(model_variant)
+            .map(|i| i.dim)
+            .unwrap_or(1024);
+        assert_eq!(
+            embeddings[0].len(),
+            dim,
+            "{model_variant}: wrong embedding dimension"
+        );
+
+        let sim_relevant = cosine(&embeddings[0], &embeddings[1]);
+        let sim_unrelated = cosine(&embeddings[0], &embeddings[2]);
+
+        assert!(
+            sim_relevant > sim_unrelated,
+            "{model_variant}: query should rank closer to relevant passage \
+             (sim={sim_relevant:.4}) than unrelated (sim={sim_unrelated:.4})"
+        );
+        eprintln!("OK  {model_variant}: relevant={sim_relevant:.4}, unrelated={sim_unrelated:.4}");
+    }
+}
