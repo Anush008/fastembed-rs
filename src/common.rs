@@ -81,7 +81,10 @@ pub fn load_tokenizer_hf_hub(model_repo: ApiRepo, max_length: usize) -> Result<T
     let tokenizer_files: TokenizerFiles = TokenizerFiles {
         tokenizer_file: std::fs::read(model_repo.get("tokenizer.json")?)?,
         config_file: std::fs::read(&model_repo.get("config.json")?)?,
-        special_tokens_map_file: std::fs::read(&model_repo.get("special_tokens_map.json")?)?,
+        special_tokens_map_file: match model_repo.get("special_tokens_map.json") {
+            Ok(path) => std::fs::read(&path)?,
+            Err(_) => b"{}".to_vec(),
+        },
 
         tokenizer_config_file: std::fs::read(&model_repo.get("tokenizer_config.json")?)?,
     };
