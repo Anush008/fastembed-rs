@@ -49,6 +49,39 @@ impl SingleBatchOutput {
         ort_output.try_extract_array().map_err(anyhow::Error::new)
     }
 
+    /// Same as [`select_output`] but extracts as a uint8 array.
+    ///
+    /// Used for models (e.g. calibrated uint8 quantizations) whose output tensor
+    /// element type is `u8` rather than `f32`.
+    pub fn select_output_u8(
+        &self,
+        precedence: &impl OutputPrecedence,
+    ) -> anyhow::Result<ArrayView<'_, u8, Dim<IxDynImpl>>> {
+        let ort_output: &ort::value::Value = precedence
+            .key_precedence()
+            .find_map(|key| match key {
+                OutputKey::OnlyOne => {
+                    if self.outputs.len() == 1 {
+                        self.outputs.first().map(|(_, v)| v)
+                    } else {
+                        None
+                    }
+                }
+                OutputKey::ByOrder(idx) => self.outputs.get(*idx).map(|(_, v)| v),
+                OutputKey::ByName(name) => {
+                    self.outputs.iter().find(|(n, _)| n == name).map(|(_, v)| v)
+                }
+            })
+            .ok_or_else(|| {
+                anyhow::Error::msg(format!(
+                    "No suitable output found in the outputs. Available outputs: {:?}",
+                    self.outputs.iter().map(|(k, _)| k).collect::<Vec<_>>()
+                ))
+            })?;
+
+        ort_output.try_extract_array::<u8>().map_err(anyhow::Error::new)
+    }
+
     /// Select the output from the session outputs based on the given precedence and pool it.
     ///
     /// This function will pool the output based on the given pooling option, if any.
@@ -57,6 +90,14 @@ impl SingleBatchOutput {
         precedence: &impl OutputPrecedence,
         pooling_opt: Option<pooling::Pooling>,
     ) -> anyhow::Result<Array2<f32>> {
+        let pooling = pooling_opt.unwrap_or_default();
+
+        // PrePooledU8 requires a u8 extraction path; handle it before the f32 extraction below.
+        if let pooling::Pooling::PrePooledU8 { scale, zero_point } = pooling {
+            let u8_tensor = self.select_output_u8(precedence)?;
+            return pooling::dequant_u8(&u8_tensor, scale, zero_point);
+        }
+
         let tensor = self.select_output(precedence)?;
 
         // If there is none pooling, default to cls so as not to break the existing implementations
@@ -66,9 +107,13 @@ impl SingleBatchOutput {
         // - [] Update ``pooling::Pooling`` to include None type
         // - [] Change the line below to return output as is
         // - [] Release major version because of breaking changes
-        match pooling_opt.unwrap_or_default() {
+        match pooling {
             pooling::Pooling::Cls => pooling::cls(&tensor),
             pooling::Pooling::Mean => pooling::mean(&tensor, self.attention_mask_array.clone()),
+            pooling::Pooling::LastToken => {
+                pooling::last_token(&tensor, self.attention_mask_array.clone())
+            }
+            pooling::Pooling::PrePooledU8 { .. } => unreachable!(),
         }
     }
 }
