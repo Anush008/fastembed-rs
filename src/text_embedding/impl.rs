@@ -233,6 +233,14 @@ impl TextEmbedding {
             EmbeddingModel::OctenEmbedding0_6BFp32 => Some(Pooling::LastToken),
             EmbeddingModel::OctenEmbedding0_6BInt8 => Some(Pooling::LastToken),
             EmbeddingModel::OctenEmbedding0_6BInt4 => Some(Pooling::LastToken),
+            EmbeddingModel::Qwen3Embedding0_6BUint8 => Some(Pooling::LastToken),
+
+            // CLS pooling
+            EmbeddingModel::SnowflakeArcticEmbedLV2 => Some(Pooling::Cls),
+
+            // Mean pooling
+            EmbeddingModel::PixieRuneV1 => Some(Pooling::Mean),
+            EmbeddingModel::JinaEmbeddingsV5Nano => Some(Pooling::Mean),
         }
     }
 
