@@ -4,8 +4,9 @@ use crate::{
     RerankerModel, TokenizerFiles,
 };
 use ort::{execution_providers::ExecutionProviderDispatch, session::Session};
-use std::path::PathBuf;
 use tokenizers::Tokenizer;
+
+pub use crate::common::OnnxSource;
 
 #[derive(Debug)]
 pub struct TextRerank {
@@ -49,27 +50,6 @@ impl From<RerankInitOptions> for RerankInitOptionsUserDefined {
             execution_providers: options.execution_providers,
             max_length: options.max_length,
         }
-    }
-}
-
-/// Enum for the source of the onnx file
-///
-/// User-defined models can either be in memory or on disk
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum OnnxSource {
-    Memory(Vec<u8>),
-    File(PathBuf),
-}
-
-impl From<Vec<u8>> for OnnxSource {
-    fn from(bytes: Vec<u8>) -> Self {
-        OnnxSource::Memory(bytes)
-    }
-}
-
-impl From<PathBuf> for OnnxSource {
-    fn from(path: PathBuf) -> Self {
-        OnnxSource::File(path)
     }
 }
 
