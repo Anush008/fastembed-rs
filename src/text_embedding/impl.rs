@@ -284,11 +284,12 @@ impl TextEmbedding {
             EmbeddingModel::SnowflakeArcticEmbedL => Some(Pooling::Cls),
             EmbeddingModel::SnowflakeArcticEmbedLQ => Some(Pooling::Cls),
 
-            // Calibrated uint8: affine dequant f32 = (u8 - 110) × 0.0027303685
-            // Parameters from the electroglyph model card (range [-0.301, 0.395])
+            // Calibrated uint8: affine dequant f32 = (u8 - zp) × scale
+            // Parameters read from the QuantizeLinear initializers in dynamic_uint8.onnx
+            // (quant_scale = 0.0027450979687273502, quant_zero_point = 109)
             EmbeddingModel::Qwen3Embedding0_6BUint8 => Some(Pooling::PrePooledU8 {
-                scale: 0.0027303685,
-                zero_point: 110,
+                scale: 0.0027450979687273502,
+                zero_point: 109,
             }),
             EmbeddingModel::SnowflakeArcticEmbedLV2 => Some(Pooling::Cls),
             EmbeddingModel::PixieRuneV1 => Some(Pooling::Mean),
