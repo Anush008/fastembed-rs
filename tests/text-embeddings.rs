@@ -112,12 +112,11 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         // platform-dependent (macOS ARM vs Linux x86 ONNX Runtime differ by ~0.2–0.5).
         // We only verify shape/load success — skip exact sum check.
         EmbeddingModel::Qwen3Embedding0_6BUint8 => return Ok(()),
-        // Octen FP32 / INT8: exact sums from local aarch64 run (ORT 1.20).
+        // Octen-Embedding-0.6B: exact sums from local aarch64 run (ORT 1.20).
         EmbeddingModel::OctenEmbedding0_6BFp32 => [-1.1679014, 1.0701674, 0.56380516, 1.4149448],
         EmbeddingModel::OctenEmbedding0_6BInt8 => [-1.1556705, 1.062617, 0.6215871, 0.80939007],
-        // INT4 / INT8-Full: static batch=1 export; sums are platform-dependent.
-        EmbeddingModel::OctenEmbedding0_6BInt4 => return Ok(()),
-        EmbeddingModel::OctenEmbedding0_6BInt8Full => return Ok(()),
+        EmbeddingModel::OctenEmbedding0_6BInt4 => [-0.75334597, 1.1573822, 0.30589685, 1.5168501],
+        EmbeddingModel::OctenEmbedding0_6BInt8Full => [-1.1965356, 0.83822405, 0.57353675, 0.17479977],
         _ => panic!("Model {model} not found. If you have just inserted this `EmbeddingModel` variant, please update the expected embeddings."),
     };
 
@@ -192,15 +191,9 @@ macro_rules! create_embeddings_test {
                         // Otherwise, an error is expected
                         assert!(embeddings.is_err(), "Expected error for batch size < document count for {model} using dynamic quantization.", model=supported_model.model);
                     } else {
-                        let embeddings = match embeddings {
-                            Ok(e) => e,
-                            Err(exc) if exc.to_string().contains("Shape mismatch") => {
-                                // Model was exported with a static batch size; skip batch test.
-                                eprintln!("SKIP {} — static batch export, skipping batch test", supported_model.model);
-                                return;
-                            }
-                            Err(exc) => panic!("Expected embeddings for {model} to be generated successfully: {exc}", model=supported_model.model, exc=exc),
-                        };
+                        let embeddings = embeddings.unwrap_or_else(
+                            |exc| panic!("Expected embeddings for {model} to be generated successfully: {exc}", model=supported_model.model, exc=exc),
+                        );
                         assert_eq!(embeddings.len(), documents.len());
 
                         for embedding in &embeddings {
@@ -852,21 +845,9 @@ fn test_new_models_semantic_retrieval() {
             Err(e) => panic!("{model_variant} failed to load: {e}"),
         };
 
-        // Try batched first; fall back to one-by-one for models exported with
-        // a fixed batch size of 1 (e.g. OctenEmbedding0_6BInt8Full).
-        let embeddings = match model.embed(vec![query, relevant, unrelated], None) {
-            Ok(e) => e,
-            Err(_) => {
-                let mut out = Vec::new();
-                for text in &[query, relevant, unrelated] {
-                    let mut e = model
-                        .embed(vec![text], None)
-                        .unwrap_or_else(|e| panic!("{model_variant} embed failed: {e}"));
-                    out.push(e.remove(0));
-                }
-                out
-            }
-        };
+        let embeddings = model
+            .embed(vec![query, relevant, unrelated], None)
+            .unwrap_or_else(|e| panic!("{model_variant} embed failed: {e}"));
 
         assert_eq!(
             embeddings.len(),
