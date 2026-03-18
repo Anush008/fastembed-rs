@@ -110,6 +110,8 @@ pub enum EmbeddingModel {
     PixieRuneV1,
     /// Quantized telepix/PIXIE-Rune-v1.0 — 1024d, 74 languages, 6k context (INT8, self-contained)
     PixieRuneV1Q,
+    /// INT4 weight-only quantized telepix/PIXIE-Rune-v1.0 — 1024d, 74 languages, 6k context
+    PixieRuneV1Int4,
 
     // ── Jina Embeddings v5 Nano ─────────────────────────────────────────────
     /// jinaai/jina-embeddings-v5-text-nano-retrieval — 768d, 32k context
@@ -572,6 +574,17 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             ),
             model_code: String::from("telepix/PIXIE-Rune-v1.0"),
             model_file: String::from("onnx/model_quantized.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::PixieRuneV1Int4,
+            dim: 1024,
+            description: String::from(
+                "INT4 weight-only quantized PIXIE-Rune-v1.0 — 1024d, 74 languages, 6k context",
+            ),
+            model_code: String::from("telepix/PIXIE-Rune-v1.0"),
+            model_file: String::from("onnx/model_int4.onnx"),
             additional_files: Vec::new(),
             output_key: None,
         },
