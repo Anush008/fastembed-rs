@@ -574,7 +574,7 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             description: String::from(
                 "Quantized PIXIE-Rune-v1.0 — 1024d, 74 languages, 6k context (INT8, self-contained)",
             ),
-            model_code: String::from("telepix/PIXIE-Rune-v1.0"),
+            model_code: String::from("cstr/PIXIE-Rune-v1.0-ONNX"),
             model_file: String::from("onnx/model_quantized.onnx"),
             additional_files: Vec::new(),
             output_key: None,
@@ -585,7 +585,7 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             description: String::from(
                 "INT4 (MatMulNBits) + INT8 (embeddings) quantized PIXIE-Rune-v1.0 — 1024d, 74 languages, 6k context",
             ),
-            model_code: String::from("telepix/PIXIE-Rune-v1.0"),
+            model_code: String::from("cstr/PIXIE-Rune-v1.0-ONNX"),
             model_file: String::from("onnx/model_int4.onnx"),
             additional_files: Vec::new(),
             output_key: None,
@@ -596,7 +596,7 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             description: String::from(
                 "Fully INT4 quantized PIXIE-Rune-v1.0 — INT4 MatMul + INT4 word embeddings, 337 MB",
             ),
-            model_code: String::from("telepix/PIXIE-Rune-v1.0"),
+            model_code: String::from("cstr/PIXIE-Rune-v1.0-ONNX"),
             model_file: String::from("onnx/model_int4_full.onnx"),
             additional_files: Vec::new(),
             output_key: None,
