@@ -2,11 +2,12 @@
 //!
 
 use crate::{
-    common::TokenizerFiles,
+    common::{OnnxSource, TokenizerFiles},
     init::{HasMaxLength, InitOptionsWithLength},
     pooling::Pooling,
     EmbeddingModel, OutputKey, QuantizationMode,
 };
+use std::path::PathBuf;
 use ort::{execution_providers::ExecutionProviderDispatch, session::Session};
 use tokenizers::Tokenizer;
 
@@ -71,18 +72,33 @@ impl From<TextInitOptions> for InitOptionsUserDefined {
     }
 }
 
-/// Struct for "bring your own" embedding models
+/// Struct for "bring your own" embedding models.
 ///
-/// The onnx_file and tokenizer_files are expecting the files' bytes
-/// Note:  is not derived because [] contains .
+/// `onnx_source` can be either in-memory bytes ([`OnnxSource::Memory`]) or a
+/// filesystem path ([`OnnxSource::File`]).  Use the file variant for large
+/// models that ship an external `.onnx.data` companion: ONNX Runtime will
+/// resolve the companion automatically from the same directory, avoiding the
+/// need to read the whole file into RAM.
 #[derive(Debug, Clone, PartialEq)]
 pub struct UserDefinedEmbeddingModel {
-    pub onnx_file: Vec<u8>,
+    pub onnx_source: OnnxSource,
     pub external_initializers: Vec<ExternalInitializerFile>,
     pub tokenizer_files: TokenizerFiles,
     pub pooling: Option<Pooling>,
     pub quantization: QuantizationMode,
     pub output_key: Option<OutputKey>,
+    /// Optional prefix prepended to queries when using [`TextEmbedding::embed_query`].
+    ///
+    /// Many asymmetric retrieval models (e.g. Jina v5, E5-instruct) encode queries
+    /// and passages in different subspaces.  Setting this field enables a dedicated
+    /// `embed_query()` call that prepends the prefix automatically.
+    ///
+    /// Example: `"Query: "` for Jina v5 Nano.
+    pub query_prefix: Option<String>,
+    /// Optional prefix prepended to documents when using [`TextEmbedding::embed`].
+    ///
+    /// Example: `"Document: "` for Jina v5 Nano.
+    pub doc_prefix: Option<String>,
 }
 
 /// Struct for adding external initializers to "bring your own" embedding models
@@ -96,14 +112,39 @@ pub struct ExternalInitializerFile {
 }
 
 impl UserDefinedEmbeddingModel {
+    /// Create a model from in-memory ONNX bytes.
+    ///
+    /// Use [`UserDefinedEmbeddingModel::from_file`] instead when the model has a
+    /// large external data file — that avoids loading the whole weight blob into RAM.
     pub fn new(onnx_file: Vec<u8>, tokenizer_files: TokenizerFiles) -> Self {
         Self {
-            onnx_file,
+            onnx_source: OnnxSource::Memory(onnx_file),
             external_initializers: Vec::new(),
             tokenizer_files,
             quantization: QuantizationMode::None,
             pooling: None,
             output_key: None,
+            query_prefix: None,
+            doc_prefix: None,
+        }
+    }
+
+    /// Create a model from an ONNX file on disk.
+    ///
+    /// ONNX Runtime will automatically pick up any companion `.onnx.data` file
+    /// that lives in the same directory, so you do not need to call
+    /// [`with_external_initializer`](Self::with_external_initializer) for the
+    /// weight blob.
+    pub fn from_file(path: PathBuf, tokenizer_files: TokenizerFiles) -> Self {
+        Self {
+            onnx_source: OnnxSource::File(path),
+            external_initializers: Vec::new(),
+            tokenizer_files,
+            quantization: QuantizationMode::None,
+            pooling: None,
+            output_key: None,
+            query_prefix: None,
+            doc_prefix: None,
         }
     }
 
@@ -117,9 +158,38 @@ impl UserDefinedEmbeddingModel {
         self
     }
 
+    /// Add an in-memory external initializer (weight blob).
+    ///
+    /// Only needed when using [`OnnxSource::Memory`].  For file-based models
+    /// ONNX Runtime resolves external data automatically.
     pub fn with_external_initializer(mut self, file_name: String, buffer: Vec<u8>) -> Self {
         self.external_initializers
             .push(ExternalInitializerFile { file_name, buffer });
+        self
+    }
+
+    pub fn with_output_key(mut self, key: OutputKey) -> Self {
+        self.output_key = Some(key);
+        self
+    }
+
+    /// Set a prefix that is prepended to every text when calling
+    /// [`TextEmbedding::embed_query`].
+    ///
+    /// Use this for asymmetric retrieval models that encode queries and
+    /// passages in different subspaces (e.g. `"Query: "` for Jina v5 Nano,
+    /// `"Represent this sentence for searching relevant passages: "` for E5).
+    pub fn with_query_prefix(mut self, prefix: impl Into<String>) -> Self {
+        self.query_prefix = Some(prefix.into());
+        self
+    }
+
+    /// Set a prefix that is prepended to every text when calling
+    /// [`TextEmbedding::embed`] (the document / passage side).
+    ///
+    /// Example: `"Document: "` for Jina v5 Nano.
+    pub fn with_doc_prefix(mut self, prefix: impl Into<String>) -> Self {
+        self.doc_prefix = Some(prefix.into());
         self
     }
 }
@@ -132,8 +202,8 @@ pub struct TextEmbedding {
     pub(crate) need_token_type_ids: bool,
     /// Whether to inject `position_ids [[0,1,...,seq-1],...]` into session inputs.
     ///
-    /// Required by decoder-style models such as Qwen3-Embedding that were exported
-    /// with dynamo and do not compute absolute positions internally.
+    /// Required by decoder-style models such as Qwen3-Embedding and Octen that were
+    /// exported with dynamo and do not compute absolute positions internally.
     pub(crate) need_position_ids: bool,
     /// Whether to inject a `task_id` tensor into session inputs.
     ///
@@ -152,12 +222,16 @@ pub struct TextEmbedding {
     pub(crate) kv_cache_kv_heads: usize,
     /// Head dimension (auto-detected from the `past_key_values.0.key` shape).
     pub(crate) kv_cache_head_dim: usize,
+    pub(crate) quantization: QuantizationMode,
+    pub(crate) output_key: Option<OutputKey>,
     /// Maximum batch size the model accepts, or `None` if the batch dimension is dynamic.
     ///
     /// Auto-detected from the `input_ids` shape: a positive (non-−1) batch dimension
-    /// indicates a statically shaped export.  If set, `transform()` will emit a clear
-    /// error before hitting ORT.
+    /// indicates a statically shaped export.  If set, `transform()` will clamp the
+    /// effective batch size and emit a clear error before hitting ORT.
     pub(crate) max_batch_size: Option<usize>,
-    pub(crate) quantization: QuantizationMode,
-    pub(crate) output_key: Option<OutputKey>,
+    /// Prefix prepended to every text passed to [`TextEmbedding::embed_query`].
+    pub(crate) query_prefix: Option<String>,
+    /// Prefix prepended to every text passed to [`TextEmbedding::embed`].
+    pub(crate) doc_prefix: Option<String>,
 }

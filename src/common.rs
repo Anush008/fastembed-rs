@@ -1,11 +1,35 @@
 use anyhow::Result;
 #[cfg(feature = "hf-hub")]
 use hf_hub::api::sync::{ApiBuilder, ApiRepo};
-#[cfg(feature = "hf-hub")]
 use std::path::PathBuf;
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, Tokenizer, TruncationParams};
 
 const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
+
+/// Source for a user-supplied ONNX model file — either pre-loaded bytes or a
+/// filesystem path (preferred for large models with external data files, where
+/// loading into memory would double peak RAM usage).
+///
+/// When [`OnnxSource::File`] is used, ONNX Runtime resolves any companion
+/// `.onnx.data` file automatically from the same directory, so there is no
+/// need to pass external initializers separately.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OnnxSource {
+    Memory(Vec<u8>),
+    File(PathBuf),
+}
+
+impl From<Vec<u8>> for OnnxSource {
+    fn from(bytes: Vec<u8>) -> Self {
+        OnnxSource::Memory(bytes)
+    }
+}
+
+impl From<PathBuf> for OnnxSource {
+    fn from(path: PathBuf) -> Self {
+        OnnxSource::File(path)
+    }
+}
 
 pub fn get_cache_dir() -> String {
     std::env::var("FASTEMBED_CACHE_DIR").unwrap_or(DEFAULT_CACHE_DIR.into())

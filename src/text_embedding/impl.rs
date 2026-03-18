@@ -3,7 +3,7 @@
 #[cfg(feature = "hf-hub")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::load_tokenizer,
+    common::{load_tokenizer, OnnxSource},
     models::{text_embedding::models_list, ModelTrait},
     pooling::Pooling,
     Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, OutputKey, QuantizationMode,
@@ -83,6 +83,8 @@ impl TextEmbedding {
             post_processing,
             TextEmbedding::get_quantization_mode(&model_name),
             model_info.output_key.clone(),
+            None,
+            None,
         ))
     }
 
@@ -101,19 +103,29 @@ impl TextEmbedding {
         let threads = available_parallelism()?.get();
 
         let session = {
-            let mut session_builder = Session::builder()?
+            let base_builder = Session::builder()?
                 .with_execution_providers(execution_providers)?
                 .with_optimization_level(GraphOptimizationLevel::Level3)?
                 .with_intra_threads(threads)?;
 
-            for external_initializer_file in model.external_initializers {
-                session_builder = session_builder.with_external_initializer_file_in_memory(
-                    external_initializer_file.file_name,
-                    external_initializer_file.buffer.into(),
-                )?;
+            match model.onnx_source {
+                OnnxSource::Memory(bytes) => {
+                    let mut session_builder = base_builder;
+                    for ext in model.external_initializers {
+                        session_builder =
+                            session_builder.with_external_initializer_file_in_memory(
+                                ext.file_name,
+                                ext.buffer.into(),
+                            )?;
+                    }
+                    session_builder.commit_from_memory(&bytes)?
+                }
+                OnnxSource::File(path) => {
+                    // ORT resolves the companion .onnx.data file automatically
+                    // from the same directory — no manual initializer setup needed.
+                    base_builder.commit_from_file(path)?
+                }
             }
-
-            session_builder.commit_from_memory(&model.onnx_file)?
         };
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
@@ -123,6 +135,8 @@ impl TextEmbedding {
             model.pooling,
             model.quantization,
             model.output_key,
+            model.query_prefix,
+            model.doc_prefix,
         ))
     }
 
@@ -133,6 +147,8 @@ impl TextEmbedding {
         post_process: Option<Pooling>,
         quantization: QuantizationMode,
         output_key: Option<OutputKey>,
+        query_prefix: Option<String>,
+        doc_prefix: Option<String>,
     ) -> Self {
         let need_token_type_ids = session
             .inputs()
@@ -206,6 +222,8 @@ impl TextEmbedding {
             quantization,
             output_key,
             max_batch_size,
+            query_prefix,
+            doc_prefix,
         }
     }
     /// Return the TextEmbedding model's directory from cache or remote retrieval
@@ -513,16 +531,59 @@ impl TextEmbedding {
     ///
     /// The output is a [`Vec`] of [`Embedding`]s.
     ///
-    /// # Note
-    ///
-    /// This method is a higher level method than [`TextEmbedding::transform`] by utilizing
-    /// the default output precedence and array transformer for the [`TextEmbedding`] model.
+    /// If a `doc_prefix` was set on the model (via
+    /// [`UserDefinedEmbeddingModel::with_doc_prefix`]), it is prepended to every
+    /// text before embedding.  Use this for the passage / document side of
+    /// asymmetric retrieval models.
     pub fn embed<S: AsRef<str> + Send + Sync>(
         &mut self,
         texts: impl AsRef<[S]>,
         batch_size: Option<usize>,
     ) -> Result<Vec<Embedding>> {
-        let batches = self.transform(texts.as_ref(), batch_size)?;
+        // Apply the document prefix if one is configured.
+        if let Some(ref prefix) = self.doc_prefix.clone() {
+            let prefixed: Vec<String> = texts
+                .as_ref()
+                .iter()
+                .map(|t| format!("{prefix}{}", t.as_ref()))
+                .collect();
+            return self.embed_raw(&prefixed, batch_size);
+        }
+        self.embed_raw(texts.as_ref(), batch_size)
+    }
+
+    /// Embed texts as queries, prepending the `query_prefix` if one was
+    /// configured on the model.
+    ///
+    /// For asymmetric retrieval models (e.g. Jina v5, E5-instruct) the query
+    /// side lives in a different embedding subspace from the document side.
+    /// Use this method for search queries and [`embed`](Self::embed) for corpus
+    /// passages.
+    ///
+    /// If no `query_prefix` was set this is identical to `embed`.
+    pub fn embed_query<S: AsRef<str> + Send + Sync>(
+        &mut self,
+        texts: impl AsRef<[S]>,
+        batch_size: Option<usize>,
+    ) -> Result<Vec<Embedding>> {
+        if let Some(ref prefix) = self.query_prefix.clone() {
+            let prefixed: Vec<String> = texts
+                .as_ref()
+                .iter()
+                .map(|t| format!("{prefix}{}", t.as_ref()))
+                .collect();
+            return self.embed_raw(&prefixed, batch_size);
+        }
+        self.embed_raw(texts.as_ref(), batch_size)
+    }
+
+    /// Internal: run the embedding pipeline without any prefix handling.
+    fn embed_raw<S: AsRef<str> + Send + Sync>(
+        &mut self,
+        texts: &[S],
+        batch_size: Option<usize>,
+    ) -> Result<Vec<Embedding>> {
+        let batches = self.transform(texts, batch_size)?;
         if let Some(output_key) = &self.output_key {
             batches.export_with_transformer(output::transformer_with_precedence(
                 output_key,
