@@ -284,7 +284,7 @@ fn bench_all_local_models() {
 
     // ── Jina Embeddings v5 Nano ──────────────────────────────────────────────
     // Run twice: without prefixes (symmetric, all models on equal footing) and
-    // with the recommended "query: " / "passage: " prefixes via embed_query() /
+    // with the recommended "Query: " / "Document: " prefixes via embed_query() /
     // embed() using the new with_query_prefix / with_doc_prefix builders.
     if let Some(snap) = hf_snap(&dir, "jinaai/jina-embeddings-v5-text-nano-retrieval") {
         if let Some(tokenizer_files) = tok(&snap) {
@@ -304,8 +304,8 @@ fn bench_all_local_models() {
                     let md2 = UserDefinedEmbeddingModel::from_file(op2, tf2)
                         .with_pooling(Pooling::Cls)
                         .with_output_key(fastembed::OutputKey::ByName("sentence_embedding"))
-                        .with_query_prefix("query: ")
-                        .with_doc_prefix("passage: ");
+                        .with_query_prefix("Query: ")
+                        .with_doc_prefix("Document: ");
                     let mut m2 = TextEmbedding::try_new_from_user_defined(
                         md2,
                         InitOptionsUserDefined::new(),
@@ -313,9 +313,9 @@ fn bench_all_local_models() {
                     .expect("failed to load Jina v5 Nano (prefixed)");
 
                     let t0 = Instant::now();
-                    // embed() now prepends "passage: " automatically via doc_prefix.
+                    // embed() now prepends "Document: " automatically via doc_prefix.
                     let doc_embs = m2.embed(DOCS.to_vec(), Some(DOCS.len())).expect("doc embed");
-                    // embed_query() prepends "query: " automatically.
+                    // embed_query() prepends "Query: " automatically.
                     let query_embs = m2.embed_query(QUERIES.to_vec(), Some(QUERIES.len())).expect("query embed");
                     let latency_ms = t0.elapsed().as_millis() as u64;
 

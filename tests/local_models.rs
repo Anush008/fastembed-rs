@@ -1,10 +1,11 @@
-//! Integration tests for recently added model variants.
+//! Integration tests for locally cached model variants.
 //!
-//! All models are loaded from the shared local CrispSorter cache, so no
-//! network access is needed.  Any model not present on disk is skipped.
+//! Models are loaded from the directory pointed to by the `LOCAL_MODELS_DIR`
+//! environment variable.  If the variable is not set, or if a specific model
+//! is absent from that directory, the corresponding test is skipped.
 //!
 //! Run with:
-//!   cargo test --test local_models -- --nocapture
+//!   LOCAL_MODELS_DIR=/path/to/models cargo test --test local_models -- --nocapture
 
 use fastembed::{
     EmbeddingModel, InitOptionsUserDefined, Pooling, TextEmbedding, TextInitOptions, TokenizerFiles,
@@ -18,11 +19,10 @@ use std::{
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-const CRISP_MODELS: &str =
-    "Library/Application Support/com.christianstrobele.crispsorter/models";
-
-fn models_dir() -> PathBuf {
-    PathBuf::from(std::env::var("HOME").unwrap()).join(CRISP_MODELS)
+/// Returns the models directory from the `LOCAL_MODELS_DIR` env var, or `None`
+/// if the variable is not set.  Individual tests skip themselves when `None`.
+fn models_dir() -> Option<PathBuf> {
+    std::env::var("LOCAL_MODELS_DIR").ok().map(PathBuf::from)
 }
 
 /// Resolve the `snapshots/{hash}` directory for a HuggingFace model that is
@@ -97,10 +97,13 @@ fn smoke_test(label: &str, model: &mut TextEmbedding) {
 // ── tests using TextEmbedding::try_new() + local hf-hub cache ────────────────
 
 /// Snowflake Arctic Embed L v2 — CLS pooling, no external data.
-/// Loaded via try_new() pointing at the CrispSorter hf-hub cache.
+/// Loaded via try_new() pointing at the LOCAL_MODELS_DIR hf-hub cache.
 #[test]
 fn test_snowflake_arctic_l_v2() {
-    let dir = models_dir();
+    let Some(dir) = models_dir() else {
+        println!("SKIPPED — LOCAL_MODELS_DIR not set");
+        return;
+    };
     if hf_snap(&dir, "Snowflake/snowflake-arctic-embed-l-v2.0").is_none() {
         println!("SKIPPED — Snowflake Arctic-L v2 not in local cache");
         return;
@@ -122,7 +125,10 @@ fn test_snowflake_arctic_l_v2() {
 /// PIXIE-Rune-v1.0 — mean pooling, external data companion (onnx/model.onnx.data).
 #[test]
 fn test_pixie_rune_v1() {
-    let dir = models_dir();
+    let Some(dir) = models_dir() else {
+        println!("SKIPPED — LOCAL_MODELS_DIR not set");
+        return;
+    };
     let snap = match hf_snap(&dir, "telepix/PIXIE-Rune-v1.0") {
         Some(s) => s,
         None => {
@@ -148,11 +154,14 @@ fn test_pixie_rune_v1() {
 /// pre-pooled `sentence_embedding [batch, 768]`.  We select the latter via
 /// `with_output_key` to skip redundant pooling.
 ///
-/// Jina v5 retrieval models expect task prefixes ("query: " / "passage: ")
+/// Jina v5 retrieval models expect task prefixes ("Query: " / "Document: ")
 /// for best quality; without them similarities are near zero.
 #[test]
 fn test_jina_v5_nano() {
-    let dir = models_dir();
+    let Some(dir) = models_dir() else {
+        println!("SKIPPED — LOCAL_MODELS_DIR not set");
+        return;
+    };
     let snap = match hf_snap(&dir, "jinaai/jina-embeddings-v5-text-nano-retrieval") {
         Some(s) => s,
         None => {
@@ -174,9 +183,9 @@ fn test_jina_v5_nano() {
 
     // Task prefixes are required for meaningful retrieval quality.
     let sentences = vec![
-        "query: Semantic search with neural embeddings",
-        "query: Neural retrieval using dense vector representations",
-        "passage: The quick brown fox jumped over the lazy dog",
+        "Query: Semantic search with neural embeddings",
+        "Query: Neural retrieval using dense vector representations",
+        "Document: The quick brown fox jumped over the lazy dog",
     ];
 
     let t0 = Instant::now();
@@ -205,7 +214,10 @@ fn test_jina_v5_nano() {
 /// dequantization (`f32 = (u8 - zero_point) × scale`) transparently via `embed()`.
 #[test]
 fn test_qwen3_uint8() {
-    let dir = models_dir();
+    let Some(dir) = models_dir() else {
+        println!("SKIPPED — LOCAL_MODELS_DIR not set");
+        return;
+    };
     let snap = match hf_snap(&dir, "electroglyph/Qwen3-Embedding-0.6B-onnx-uint8") {
         Some(s) => s,
         None => {
@@ -260,7 +272,11 @@ fn test_qwen3_uint8() {
 /// the companion .onnx.data resolved automatically by ORT.
 #[test]
 fn test_octen_int8_local() {
-    let dir = models_dir().join("octen-embedding-0.6b-int8");
+    let Some(base) = models_dir() else {
+        println!("SKIPPED — LOCAL_MODELS_DIR not set");
+        return;
+    };
+    let dir = base.join("octen-embedding-0.6b-int8");
     if !dir.exists() {
         println!("SKIPPED — octen-embedding-0.6b-int8 not found");
         return;
@@ -280,7 +296,11 @@ fn test_octen_int8_local() {
 /// Octen-Embedding-0.6B INT4 (MatMulNBits) — last-token pooling, batch=1 only.
 #[test]
 fn test_octen_int4_local() {
-    let dir = models_dir().join("octen-embedding-0.6b-int4");
+    let Some(base) = models_dir() else {
+        println!("SKIPPED — LOCAL_MODELS_DIR not set");
+        return;
+    };
+    let dir = base.join("octen-embedding-0.6b-int4");
     if !dir.exists() {
         println!("SKIPPED — octen-embedding-0.6b-int4 not found");
         return;

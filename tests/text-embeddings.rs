@@ -77,9 +77,15 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         EmbeddingModel::SnowflakeArcticEmbedMLongQ => [0.20531628, 0.18564843, 0.14221531, 0.16035447],
         EmbeddingModel::SnowflakeArcticEmbedL => [0.4049112, 0.42825335, 0.46401042, 0.4064963],
         EmbeddingModel::SnowflakeArcticEmbedLQ => [0.40164998, 0.4278314, 0.4612437, 0.40060186],
-        // New model variant without expected embeddings registered yet — skip rather than panic.
-        // Add a new arm above once the expected embedding sums are known.
-        _ => return Ok(()),
+        EmbeddingModel::SnowflakeArcticEmbedLV2 => [0.26398557, 0.14880744, 0.13180876, 0.30424863],
+        EmbeddingModel::PixieRuneV1 => [0.21175426, 0.04924786, -0.04547663, 0.23019713],
+        EmbeddingModel::JinaEmbeddingsV5Nano => [-0.13502984, -0.39609835, 1.71589792, 0.97652829],
+        EmbeddingModel::Qwen3Embedding0_6BUint8 => [-3.61759973, -2.22492599, -2.60765219, -1.67113924],
+        EmbeddingModel::OctenEmbedding0_6BFp32 => [-1.16790140, 1.07016742, 0.56380516, 1.41494477],
+        EmbeddingModel::OctenEmbedding0_6BInt8 => [-1.15567052, 1.06261694, 0.62158710, 0.80939007],
+        // OctenEmbedding0_6BInt4 uses a static-batch=1 ONNX export and cannot be
+        // embedded in a 4-document batch; the verify step is skipped for this variant.
+        EmbeddingModel::OctenEmbedding0_6BInt4 => return Ok(()),
     };
 
     let mismatched_indices = embeddings

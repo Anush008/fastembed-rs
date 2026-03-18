@@ -612,7 +612,7 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             dim: 768,
             description: String::from(
                 "Jina Embeddings v5 Nano — 768d, 32k context (external data). \
-                 Use 'query: ' / 'passage: ' prefixes for best retrieval quality.",
+                 Use 'Query: ' / 'Document: ' prefixes for best retrieval quality.",
             ),
             model_code: String::from("jinaai/jina-embeddings-v5-text-nano-retrieval"),
             model_file: String::from("onnx/model_quantized.onnx"),

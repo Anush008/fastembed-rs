@@ -93,11 +93,11 @@ pub struct UserDefinedEmbeddingModel {
     /// and passages in different subspaces.  Setting this field enables a dedicated
     /// `embed_query()` call that prepends the prefix automatically.
     ///
-    /// Example: `"query: "` for Jina v5 Nano.
+    /// Example: `"Query: "` for Jina v5 Nano.
     pub query_prefix: Option<String>,
     /// Optional prefix prepended to documents when using [`TextEmbedding::embed`].
     ///
-    /// Example: `"passage: "` for Jina v5 Nano.
+    /// Example: `"Document: "` for Jina v5 Nano.
     pub doc_prefix: Option<String>,
 }
 
@@ -177,7 +177,7 @@ impl UserDefinedEmbeddingModel {
     /// [`TextEmbedding::embed_query`].
     ///
     /// Use this for asymmetric retrieval models that encode queries and
-    /// passages in different subspaces (e.g. `"query: "` for Jina v5 Nano,
+    /// passages in different subspaces (e.g. `"Query: "` for Jina v5 Nano,
     /// `"Represent this sentence for searching relevant passages: "` for E5).
     pub fn with_query_prefix(mut self, prefix: impl Into<String>) -> Self {
         self.query_prefix = Some(prefix.into());
@@ -187,7 +187,7 @@ impl UserDefinedEmbeddingModel {
     /// Set a prefix that is prepended to every text when calling
     /// [`TextEmbedding::embed`] (the document / passage side).
     ///
-    /// Example: `"passage: "` for Jina v5 Nano.
+    /// Example: `"Document: "` for Jina v5 Nano.
     pub fn with_doc_prefix(mut self, prefix: impl Into<String>) -> Self {
         self.doc_prefix = Some(prefix.into());
         self
