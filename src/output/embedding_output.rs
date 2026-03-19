@@ -79,7 +79,9 @@ impl SingleBatchOutput {
                 ))
             })?;
 
-        ort_output.try_extract_array::<u8>().map_err(anyhow::Error::new)
+        ort_output
+            .try_extract_array::<u8>()
+            .map_err(anyhow::Error::new)
     }
 
     /// Select the output from the session outputs based on the given precedence and pool it.

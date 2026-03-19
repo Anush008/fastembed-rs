@@ -112,8 +112,8 @@ impl TextEmbedding {
                 OnnxSource::Memory(bytes) => {
                     let mut session_builder = base_builder;
                     for ext in model.external_initializers {
-                        session_builder =
-                            session_builder.with_external_initializer_file_in_memory(
+                        session_builder = session_builder
+                            .with_external_initializer_file_in_memory(
                                 ext.file_name,
                                 ext.buffer.into(),
                             )?;
@@ -240,8 +240,7 @@ impl TextEmbedding {
 
         let model_code = TextEmbedding::get_model_info(&model)?.model_code.clone();
         let all_dirs = get_cache_dirs();
-        let effective_dir = find_model_cache_dir(&model_code, &all_dirs)
-            .unwrap_or(cache_dir);
+        let effective_dir = find_model_cache_dir(&model_code, &all_dirs).unwrap_or(cache_dir);
         pull_from_hf(model_code, effective_dir, show_download_progress)
     }
 
@@ -485,21 +484,22 @@ impl TextEmbedding {
 
                 if self.need_task_id {
                     // task_id=1 selects the retrieval adapter (e.g. Jina-embeddings-v3).
-                    let task_id_array = Array::from_shape_vec(
-                        (batch_size,),
-                        vec![1i64; batch_size],
-                    )?;
-                    session_inputs.push((
-                        "task_id".into(),
-                        Value::from_array(task_id_array)?.into(),
-                    ));
+                    let task_id_array =
+                        Array::from_shape_vec((batch_size,), vec![1i64; batch_size])?;
+                    session_inputs
+                        .push(("task_id".into(), Value::from_array(task_id_array)?.into()));
                 }
 
                 if self.kv_cache_layers > 0 {
                     // Inject empty KV-cache tensors [batch, kv_heads, 0, head_dim] for each layer.
                     // Required by onnx-community-style decoder models that expect past_key_values.
                     for layer in 0..self.kv_cache_layers {
-                        let kv_shape = (batch_size, self.kv_cache_kv_heads, 0usize, self.kv_cache_head_dim);
+                        let kv_shape = (
+                            batch_size,
+                            self.kv_cache_kv_heads,
+                            0usize,
+                            self.kv_cache_head_dim,
+                        );
                         let k_empty = ndarray::Array4::<f32>::zeros(kv_shape);
                         let v_empty = ndarray::Array4::<f32>::zeros(kv_shape);
                         session_inputs.push((

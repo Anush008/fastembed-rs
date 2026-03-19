@@ -61,7 +61,10 @@ pub fn get_cache_dirs() -> Vec<std::path::PathBuf> {
 /// snapshot for `model_code` (`models--{org}--{name}/refs/main` exists and
 /// the corresponding `snapshots/{hash}` directory is present).
 #[cfg(feature = "hf-hub")]
-pub fn find_model_cache_dir(model_code: &str, dirs: &[std::path::PathBuf]) -> Option<std::path::PathBuf> {
+pub fn find_model_cache_dir(
+    model_code: &str,
+    dirs: &[std::path::PathBuf],
+) -> Option<std::path::PathBuf> {
     let dir_name = format!("models--{}", model_code.replace('/', "--"));
     for dir in dirs {
         let refs_main = dir.join(&dir_name).join("refs/main");

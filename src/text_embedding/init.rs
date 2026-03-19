@@ -7,8 +7,8 @@ use crate::{
     pooling::Pooling,
     EmbeddingModel, OutputKey, QuantizationMode,
 };
-use std::path::PathBuf;
 use ort::{execution_providers::ExecutionProviderDispatch, session::Session};
+use std::path::PathBuf;
 use tokenizers::Tokenizer;
 
 use super::DEFAULT_MAX_LENGTH;
