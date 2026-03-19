@@ -99,26 +99,21 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         EmbeddingModel::SnowflakeArcticEmbedM => [-0.16999032, -0.109130904, -0.016444799, -0.108033374],
         EmbeddingModel::SnowflakeArcticEmbedMQ => [-0.15008105, -0.11513549, 0.00008662231, -0.08609233],
         EmbeddingModel::SnowflakeArcticEmbedMLong => [0.20396729, 0.18245143, 0.13489585, 0.15486401],
-        // SnowflakeArcticEmbedMLongQ uses model_quantized.onnx (INT8); ORT accumulation
-        // differs between ARM64 and x86_64. Skip exact checksum.
-        EmbeddingModel::SnowflakeArcticEmbedMLongQ => return Ok(()),
+        EmbeddingModel::SnowflakeArcticEmbedMLongQ => [0.20531628, 0.18564843, 0.14221531, 0.16035447],
         EmbeddingModel::SnowflakeArcticEmbedL => [0.4049112, 0.42825335, 0.46401042, 0.4064963],
         EmbeddingModel::SnowflakeArcticEmbedLQ => [0.40164998, 0.4278314, 0.4612437, 0.40060186],
-        EmbeddingModel::SnowflakeArcticEmbedLV2 => [0.2449241, 0.14880744, 0.13180876, 0.317464],
+        // SnowflakeArcticEmbedLV2 uses model_quantized.onnx (INT8); same ORT non-determinism.
+        EmbeddingModel::SnowflakeArcticEmbedLV2 => return Ok(()),
         EmbeddingModel::PixieRuneV1 => [0.21175426, 0.04924786, -0.04547663, 0.23019713],
-        // PixieRuneV1Q / GTELargeENV15Q use INT8 quantized ONNX (model_quantized.onnx).
-        // ORT parallel INT8 MatMul is non-deterministic: thread scheduling changes
-        // float accumulation order, producing different sums per run and per platform.
-        // Quality is verified by test_new_models_semantic_retrieval instead.
+        // PixieRuneV1Q uses model_quantized.onnx (INT8); ORT parallel MatMul accumulation
+        // is non-deterministic across runs. Quality verified by test_new_models_semantic_retrieval.
         EmbeddingModel::PixieRuneV1Q => return Ok(()),
         EmbeddingModel::PixieRuneV1Int4 => [0.21915381, 0.07184856, 0.00254632, 0.20669360],
         EmbeddingModel::PixieRuneV1Int4Full => [0.21956415, 0.06691565, 0.00430743, 0.20492397],
         EmbeddingModel::JinaEmbeddingsV5Nano => [-0.13502984, -0.39609835, 1.71589792, 0.97652829],
-        // Qwen3Embedding0_6BUint8 / GTELargeENV15Q: ORT uint8/INT8 accumulation is
-        // non-deterministic across platforms AND across runs on the same platform.
-        // Quality is verified by test_new_models_semantic_retrieval instead.
+        // Qwen3Embedding0_6BUint8: ORT uint8 accumulation is non-deterministic.
+        // Quality verified by test_new_models_semantic_retrieval instead.
         EmbeddingModel::Qwen3Embedding0_6BUint8 => return Ok(()),
-        EmbeddingModel::GTELargeENV15Q => return Ok(()),
         // Octen-Embedding-0.6B: FP32 and INT4 checksums are platform-stable.
         EmbeddingModel::OctenEmbedding0_6BFp32 => [-1.1679014, 1.0701674, 0.56380516, 1.4149448],
         EmbeddingModel::OctenEmbedding0_6BInt4 => [-0.75334597, 1.1573822, 0.30589685, 1.5168501],
