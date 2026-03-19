@@ -56,6 +56,11 @@
 - [**snowflake/snowflake-arctic-embed-m**](https://huggingface.co/snowflake/snowflake-arctic-embed-m)
 - [**snowflake/snowflake-arctic-embed-m-long**](https://huggingface.co/snowflake/snowflake-arctic-embed-m-long)
 - [**snowflake/snowflake-arctic-embed-l**](https://huggingface.co/snowflake/snowflake-arctic-embed-l)
+- [**Snowflake/snowflake-arctic-embed-l-v2.0**](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0) — 1024d, 8k context, CLS pooling
+- [**telepix/PIXIE-Rune-v1.0**](https://huggingface.co/telepix/PIXIE-Rune-v1.0) — 1024d, 74 languages, 6k context; also available as INT8 (`PixieRuneV1Q`) and INT4 (`PixieRuneV1Int4`, `PixieRuneV1Int4Full`) via [cstr/PIXIE-Rune-v1.0-ONNX](https://huggingface.co/cstr/PIXIE-Rune-v1.0-ONNX)
+- [**jinaai/jina-embeddings-v5-text-nano-retrieval**](https://huggingface.co/jinaai/jina-embeddings-v5-text-nano-retrieval) — 768d, multilingual, pre-pooled output
+- [**electroglyph/Qwen3-Embedding-0.6B-onnx-uint8**](https://huggingface.co/electroglyph/Qwen3-Embedding-0.6B-onnx-uint8) — 1024d, uint8 ONNX, decoder-style last-token pooling
+- [**cstr/Octen-Embedding-0.6B-ONNX**](https://huggingface.co/cstr/Octen-Embedding-0.6B-ONNX) — 1024d, FP32 and INT4 decoder embedding model (`OctenEmbedding0_6BFp32`, `OctenEmbedding0_6BInt4`); INT8-full variant via [cstr/Octen-Embedding-0.6B-ONNX-INT8-FULL](https://huggingface.co/cstr/Octen-Embedding-0.6B-ONNX-INT8-FULL)
 
 Quantized versions are also available for several models above (append `Q` to the model enum variant, e.g., `EmbeddingModel::BGESmallENV15Q`).
 
