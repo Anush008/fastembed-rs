@@ -301,7 +301,6 @@ impl TextEmbedding {
             EmbeddingModel::JinaEmbeddingsV5Nano => Some(Pooling::Cls),
             // Decoder-style models: take the last non-padding token
             EmbeddingModel::OctenEmbedding0_6BFp32 => Some(Pooling::LastToken),
-            EmbeddingModel::OctenEmbedding0_6BInt8 => Some(Pooling::LastToken),
             EmbeddingModel::OctenEmbedding0_6BInt4 => Some(Pooling::LastToken),
             EmbeddingModel::OctenEmbedding0_6BInt8Full => Some(Pooling::LastToken),
         }

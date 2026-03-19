@@ -122,9 +122,7 @@ pub enum EmbeddingModel {
     // ── Octen-Embedding-0.6B (Qwen3-0.6B fine-tune, decoder, last-token pooling) ──
     /// cstr/Octen-Embedding-0.6B-ONNX — FP32 reference (2.4 GB, external data)
     OctenEmbedding0_6BFp32,
-    /// cstr/Octen-Embedding-0.6B-ONNX-INT8 — INT8 per-channel (1.1 GB, recommended)
-    OctenEmbedding0_6BInt8,
-    /// cstr/octen-embedding-0.6b-onnx-int4 — INT4 MatMulNBits (0.9 GB, minimum RAM)
+    /// cstr/octen-embedding-0.6b-onnx-int4 — INT4 MatMulNBits block=32 (~0.9 GB)
     OctenEmbedding0_6BInt4,
     /// cstr/Octen-Embedding-0.6B-ONNX-INT8-FULL — INT8 incl. embedding table (~570 MB)
     OctenEmbedding0_6BInt8Full,
@@ -621,17 +619,6 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model_code: String::from("cstr/Octen-Embedding-0.6B-ONNX"),
             model_file: String::from("model.onnx"),
             additional_files: vec!["model.onnx.data".to_string()],
-            output_key: None,
-        },
-        ModelInfo {
-            model: EmbeddingModel::OctenEmbedding0_6BInt8,
-            dim: 1024,
-            description: String::from(
-                "Octen-Embedding-0.6B INT8 — 1024d, 32k context, last-token pooling (external data, 1.1 GB)",
-            ),
-            model_code: String::from("cstr/Octen-Embedding-0.6B-ONNX-INT8"),
-            model_file: String::from("model.int8.onnx"),
-            additional_files: vec!["model.int8.onnx.data".to_string()],
             output_key: None,
         },
         ModelInfo {
