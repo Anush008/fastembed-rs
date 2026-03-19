@@ -117,13 +117,10 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         // Octen-Embedding-0.6B: FP32 and INT4 checksums are platform-stable.
         EmbeddingModel::OctenEmbedding0_6BFp32 => [-1.1679014, 1.0701674, 0.56380516, 1.4149448],
         EmbeddingModel::OctenEmbedding0_6BInt4 => [-0.75334597, 1.1573822, 0.30589685, 1.5168501],
-        // INT8-Full quantizes the embedding (Gather) layer; ORT accumulates INT8 differently
-        // on x86_64 (CI/Linux) vs aarch64 (macOS), so we maintain both reference sets.
-        EmbeddingModel::OctenEmbedding0_6BInt8Full => if cfg!(target_arch = "x86_64") {
-            [-1.2555557, 0.5044924, 1.3543963, 0.34108192]
-        } else {
-            [-1.1965356, 0.83822405, 0.57353675, 0.17479977]
-        },
+        // INT8-Full: ORT INT8 accumulation varies across CPU microarchitectures even on the same
+        // ISA (e.g. AVX2 vs AVX-512 VNNI on x86_64). Skip exact checksum; quality is verified
+        // by test_new_models_semantic_retrieval instead.
+        EmbeddingModel::OctenEmbedding0_6BInt8Full => return Ok(()),
         _ => panic!("Model {model} not found. If you have just inserted this `EmbeddingModel` variant, please update the expected embeddings."),
     };
 
