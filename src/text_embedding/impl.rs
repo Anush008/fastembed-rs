@@ -288,7 +288,7 @@ impl TextEmbedding {
             // Parameters read from the QuantizeLinear initializers in dynamic_uint8.onnx
             // (quant_scale = 0.0027450979687273502, quant_zero_point = 109)
             EmbeddingModel::Qwen3Embedding0_6BUint8 => Some(Pooling::PrePooledU8 {
-                scale: 0.0027450979687273502,
+                scale: 0.002_745_098,
                 zero_point: 109,
             }),
             EmbeddingModel::SnowflakeArcticEmbedLV2 => Some(Pooling::Cls),
