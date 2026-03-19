@@ -50,9 +50,7 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         EmbeddingModel::GTEBaseENV15 => [-1.6900877, -1.7148916, -1.7333382, -1.5121834],
         EmbeddingModel::GTEBaseENV15Q => [-1.7032102, -1.7076654, -1.729326, -1.5317788],
         EmbeddingModel::GTELargeENV15 => [-1.6457459, -1.6582386, -1.6809471, -1.6070237],
-        // GTELargeENV15Q uses model_quantized.onnx; ORT INT8 sums differ between
-        // x86_64 (CI/Linux) and aarch64 (macOS). Skip exact checksum.
-        EmbeddingModel::GTELargeENV15Q => return Ok(()),
+        EmbeddingModel::GTELargeENV15Q => [-1.6044945, -1.6469251, -1.6828246, -1.6265479],
         EmbeddingModel::ModernBertEmbedLarge => [ 0.24799639, 0.32174295, 0.17255782, 0.32919246],
         EmbeddingModel::MultilingualE5Base => [-0.057211064, -0.14287914, -0.071678676, -0.17549144],
         EmbeddingModel::MultilingualE5Large => [-0.7473163, -0.76040405, -0.7537941, -0.72920954],
@@ -76,9 +74,7 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         EmbeddingModel::SnowflakeArcticEmbedM => [-0.16999032, -0.109130904, -0.016444799, -0.108033374],
         EmbeddingModel::SnowflakeArcticEmbedMQ => [-0.15008105, -0.11513549, 0.00008662231, -0.08609233],
         EmbeddingModel::SnowflakeArcticEmbedMLong => [0.20396729, 0.18245143, 0.13489585, 0.15486401],
-        // SnowflakeArcticEmbedMLongQ uses model_quantized.onnx (INT8); ORT accumulation
-        // differs between ARM64 and x86_64. Skip exact checksum.
-        EmbeddingModel::SnowflakeArcticEmbedMLongQ => return Ok(()),
+        EmbeddingModel::SnowflakeArcticEmbedMLongQ => [0.20531628, 0.18564843, 0.14221531, 0.16035447],
         EmbeddingModel::SnowflakeArcticEmbedL => [0.4049112, 0.42825335, 0.46401042, 0.4064963],
         EmbeddingModel::SnowflakeArcticEmbedLQ => [0.40164998, 0.4278314, 0.4612437, 0.40060186],
         _ => panic!("Model {model} not found. If you have just inserted this `EmbeddingModel` variant, please update the expected embeddings."),
