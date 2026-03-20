@@ -35,6 +35,13 @@ pub enum RerankerModel {
     MsMarcoMiniLML6V2,
     /// cross-encoder/ms-marco-MiniLM-L-12-v2 — 33M, English, high quality
     MsMarcoMiniLML12V2,
+    // ── nvidia/llama-nemotron-rerank-1b-v2 ────────────────────────────────────
+    /// nvidia/llama-nemotron-rerank-1b-v2 — 1B, multilingual, LLaMA-3.2 bidirectional (FP32)
+    LlamaNemotronRerank1BV2,
+    /// nvidia/llama-nemotron-rerank-1b-v2 — INT8 quantized
+    LlamaNemotronRerank1BV2Int8,
+    /// nvidia/llama-nemotron-rerank-1b-v2 — INT4 MatMul quantized
+    LlamaNemotronRerank1BV2Int4,
 }
 
 pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
@@ -158,6 +165,34 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_code: String::from("cross-encoder/ms-marco-MiniLM-L-12-v2"),
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec![],
+        },
+        // ── nvidia/llama-nemotron-rerank-1b-v2 ───────────────────────────────
+        RerankerModelInfo {
+            model: RerankerModel::LlamaNemotronRerank1BV2,
+            description: String::from(
+                "nvidia/llama-nemotron-rerank-1b-v2 — 1B LLaMA-3.2 bidirectional reranker, multilingual (FP32, 4.6 GB)",
+            ),
+            model_code: String::from("cstr/llama-nemotron-rerank-1b-v2-ONNX"),
+            model_file: String::from("model.onnx"),
+            additional_files: vec![String::from("model.onnx_data")],
+        },
+        RerankerModelInfo {
+            model: RerankerModel::LlamaNemotronRerank1BV2Int8,
+            description: String::from(
+                "nvidia/llama-nemotron-rerank-1b-v2 — 1B LLaMA-3.2 bidirectional reranker, multilingual (INT8, 1.2 GB)",
+            ),
+            model_code: String::from("cstr/llama-nemotron-rerank-1b-v2-ONNX"),
+            model_file: String::from("model_int8.onnx"),
+            additional_files: vec![],
+        },
+        RerankerModelInfo {
+            model: RerankerModel::LlamaNemotronRerank1BV2Int4,
+            description: String::from(
+                "nvidia/llama-nemotron-rerank-1b-v2 — 1B LLaMA-3.2 bidirectional reranker, multilingual (INT4, 1.5 GB)",
+            ),
+            model_code: String::from("cstr/llama-nemotron-rerank-1b-v2-ONNX"),
+            model_file: String::from("model_int4.onnx"),
+            additional_files: vec![String::from("model_int4.onnx.data")],
         },
     ];
     reranker_model_list
