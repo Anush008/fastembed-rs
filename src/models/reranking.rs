@@ -199,11 +199,11 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
         RerankerModelInfo {
             model: RerankerModel::LlamaNemotronRerank1BV2Int4Full,
             description: String::from(
-                "nvidia/llama-nemotron-rerank-1b-v2 — 1B LLaMA-3.2 bidirectional reranker, multilingual (INT4 MatMul + INT8 embedding, 1.2 GB)",
+                "nvidia/llama-nemotron-rerank-1b-v2 — 1B LLaMA-3.2 bidirectional reranker, multilingual (INT4 MatMul + INT8 embedding, 832 MB)",
             ),
             model_code: String::from("cstr/llama-nemotron-rerank-1b-v2-ONNX"),
             model_file: String::from("model_int4_full.onnx"),
-            additional_files: vec![String::from("model_int4_full.onnx.data")],
+            additional_files: vec![],
         },
     ];
     reranker_model_list
