@@ -105,6 +105,10 @@ pub enum EmbeddingModel {
     /// Snowflake/snowflake-arctic-embed-l-v2.0 — quantized, 1024d, 8k context
     SnowflakeArcticEmbedLV2,
 
+    // ── Snowflake Arctic Embed M v2 ─────────────────────────────────────────
+    /// Snowflake/snowflake-arctic-embed-m-v2.0 — quantized, 768d, 8k context
+    SnowflakeArcticEmbedMV2,
+
     // ── PIXIE-Rune-v1.0 ────────────────────────────────────────────────────
     /// telepix/PIXIE-Rune-v1.0 — 1024d, 74 languages, 6k context (external data)
     PixieRuneV1,
@@ -564,6 +568,18 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
                 "Snowflake Arctic Embed L v2.0 — quantized, 1024d, 8k context",
             ),
             model_code: String::from("Snowflake/snowflake-arctic-embed-l-v2.0"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        // ── Snowflake Arctic Embed M v2 ───────────────────────────────────────────
+        ModelInfo {
+            model: EmbeddingModel::SnowflakeArcticEmbedMV2,
+            dim: 768,
+            description: String::from(
+                "Snowflake Arctic Embed M v2.0 — quantized, 768d, 8k context, GTE architecture",
+            ),
+            model_code: String::from("Snowflake/snowflake-arctic-embed-m-v2.0"),
             model_file: String::from("onnx/model_quantized.onnx"),
             additional_files: Vec::new(),
             output_key: None,

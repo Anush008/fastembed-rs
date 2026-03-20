@@ -314,6 +314,8 @@ impl TextEmbedding {
                 zero_point: 109,
             }),
             EmbeddingModel::SnowflakeArcticEmbedLV2 => Some(Pooling::Cls),
+            // Snowflake Arctic Embed M v2: same GTE architecture as L v2, uses CLS pooling
+            EmbeddingModel::SnowflakeArcticEmbedMV2 => Some(Pooling::Cls),
             // PIXIE-Rune uses CLS pooling (pooling_mode_cls_token: true in 1_Pooling/config.json)
             EmbeddingModel::PixieRuneV1 => Some(Pooling::Cls),
             EmbeddingModel::PixieRuneV1Q => Some(Pooling::Cls),
