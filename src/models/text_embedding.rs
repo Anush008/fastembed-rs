@@ -115,6 +115,10 @@ pub enum EmbeddingModel {
     /// Fully INT4 quantized telepix/PIXIE-Rune-v1.0 — INT4 MatMul + INT4 word embeddings, 337 MB
     PixieRuneV1Int4Full,
 
+    // ── Jina Embeddings v3 ──────────────────────────────────────────────────
+    /// jinaai/jina-embeddings-v3 — 1024d, 8k context, XLM-R + LoRA task adapters
+    JinaEmbeddingsV3,
+
     // ── Jina Embeddings v5 Nano ─────────────────────────────────────────────
     /// jinaai/jina-embeddings-v5-text-nano-retrieval — 768d, 32k context
     JinaEmbeddingsV5Nano,
@@ -641,6 +645,20 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model_code: String::from("cstr/Octen-Embedding-0.6B-ONNX-INT8-FULL"),
             model_file: String::from("model.int8_full.onnx"),
             additional_files: vec!["model.int8_full.onnx.data".to_string()],
+            output_key: None,
+        },
+        // ── Jina Embeddings v3 ───────────────────────────────────────────────────
+        ModelInfo {
+            model: EmbeddingModel::JinaEmbeddingsV3,
+            dim: 1024,
+            description: String::from(
+                "Jina Embeddings v3 — 1024d, 8k context, XLM-R + LoRA task adapters. \
+                 task_id=1 (retrieval.passage) is injected automatically. \
+                 Use 'query: ' prefix for queries.",
+            ),
+            model_code: String::from("jinaai/jina-embeddings-v3"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: vec!["onnx/model.onnx_data".to_string()],
             output_key: None,
         },
         // ── Jina Embeddings v5 Nano ───────────────────────────────────────────────

@@ -104,12 +104,15 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         EmbeddingModel::SnowflakeArcticEmbedLQ => [0.40164998, 0.4278314, 0.4612437, 0.40060186],
         // SnowflakeArcticEmbedLV2 uses model_quantized.onnx (INT8); same ORT non-determinism.
         EmbeddingModel::SnowflakeArcticEmbedLV2 => return Ok(()),
-        EmbeddingModel::PixieRuneV1 => [0.21175426, 0.04924786, -0.04547663, 0.23019713],
+        // PixieRune uses CLS pooling (pooling_mode_cls_token: true).
+        EmbeddingModel::PixieRuneV1 => [0.2288776, 0.19070691, 0.14142901, 0.32406387],
         // PixieRuneV1Q uses model_quantized.onnx (INT8); ORT parallel MatMul accumulation
         // is non-deterministic across runs. Quality verified by test_new_models_semantic_retrieval.
         EmbeddingModel::PixieRuneV1Q => return Ok(()),
-        EmbeddingModel::PixieRuneV1Int4 => [0.21915381, 0.07184856, 0.00254632, 0.20669360],
-        EmbeddingModel::PixieRuneV1Int4Full => [0.21956415, 0.06691565, 0.00430743, 0.20492397],
+        EmbeddingModel::PixieRuneV1Int4 => [0.2858223, 0.22058362, 0.15294152, 0.31341535],
+        EmbeddingModel::PixieRuneV1Int4Full => [0.28613043, 0.21900642, 0.15266025, 0.31067854],
+        // Jina v3: mean pooling over text_embeds with task_id=1 (retrieval.passage adapter).
+        EmbeddingModel::JinaEmbeddingsV3 => [0.15385337, 0.06172323, -0.04699665, 0.38967043],
         EmbeddingModel::JinaEmbeddingsV5Nano => [-0.13502984, -0.39609835, 1.71589792, 0.97652829],
         // Qwen3Embedding0_6BUint8: ORT uint8 accumulation is non-deterministic.
         // Quality verified by test_new_models_semantic_retrieval instead.
@@ -799,6 +802,10 @@ fn test_new_models_semantic_retrieval() {
         (
             EmbeddingModel::SnowflakeArcticEmbedLV2,
             "Snowflake/snowflake-arctic-embed-l-v2.0",
+        ),
+        (
+            EmbeddingModel::JinaEmbeddingsV3,
+            "jinaai/jina-embeddings-v3",
         ),
         (
             EmbeddingModel::JinaEmbeddingsV5Nano,

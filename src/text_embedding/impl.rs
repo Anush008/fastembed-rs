@@ -292,10 +292,15 @@ impl TextEmbedding {
                 zero_point: 109,
             }),
             EmbeddingModel::SnowflakeArcticEmbedLV2 => Some(Pooling::Cls),
-            EmbeddingModel::PixieRuneV1 => Some(Pooling::Mean),
-            EmbeddingModel::PixieRuneV1Q => Some(Pooling::Mean),
-            EmbeddingModel::PixieRuneV1Int4 => Some(Pooling::Mean),
-            EmbeddingModel::PixieRuneV1Int4Full => Some(Pooling::Mean),
+            // PIXIE-Rune uses CLS pooling (pooling_mode_cls_token: true in 1_Pooling/config.json)
+            EmbeddingModel::PixieRuneV1 => Some(Pooling::Cls),
+            EmbeddingModel::PixieRuneV1Q => Some(Pooling::Cls),
+            EmbeddingModel::PixieRuneV1Int4 => Some(Pooling::Cls),
+            EmbeddingModel::PixieRuneV1Int4Full => Some(Pooling::Cls),
+            // Jina v3: XLM-R + LoRA adapters. task_id=1 (retrieval.passage) is injected
+            // automatically (need_task_id auto-detected from ONNX inputs). Mean pooling
+            // over the 3D `text_embeds` output [batch, seq, 1024].
+            EmbeddingModel::JinaEmbeddingsV3 => Some(Pooling::Mean),
             // Jina v5 Nano ships a pre-pooled 'sentence_embedding' output [batch, dim].
             // Cls on a 2D tensor is a no-op pass-through.
             EmbeddingModel::JinaEmbeddingsV5Nano => Some(Pooling::Cls),
@@ -485,11 +490,11 @@ impl TextEmbedding {
                 }
 
                 if self.need_task_id {
-                    // task_id=1 selects the retrieval adapter (e.g. Jina-embeddings-v3).
-                    let task_id_array =
-                        Array::from_shape_vec((batch_size,), vec![1i64; batch_size])?;
+                    // task_id=1 selects the retrieval.passage LoRA adapter.
+                    // Jina-embeddings-v3 expects a scalar (0-D) int64 tensor, not [batch].
+                    let task_id_scalar = ndarray::arr0(1i64);
                     session_inputs
-                        .push(("task_id".into(), Value::from_array(task_id_array)?.into()));
+                        .push(("task_id".into(), Value::from_array(task_id_scalar)?.into()));
                 }
 
                 if self.kv_cache_layers > 0 {
