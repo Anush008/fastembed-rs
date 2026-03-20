@@ -40,9 +40,7 @@ pub enum RerankerModel {
     LlamaNemotronRerank1BV2,
     /// nvidia/llama-nemotron-rerank-1b-v2 — INT8 quantized
     LlamaNemotronRerank1BV2Int8,
-    /// nvidia/llama-nemotron-rerank-1b-v2 — INT4 MatMul quantized
-    LlamaNemotronRerank1BV2Int4,
-    /// nvidia/llama-nemotron-rerank-1b-v2 — INT4 MatMul + INT8 embedding quantized
+    /// nvidia/llama-nemotron-rerank-1b-v2 — INT4 MatMul + INT8 embedding (832 MB)
     LlamaNemotronRerank1BV2Int4Full,
 }
 
@@ -186,15 +184,6 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_code: String::from("cstr/llama-nemotron-rerank-1b-v2-ONNX"),
             model_file: String::from("model_int8.onnx"),
             additional_files: vec![],
-        },
-        RerankerModelInfo {
-            model: RerankerModel::LlamaNemotronRerank1BV2Int4,
-            description: String::from(
-                "nvidia/llama-nemotron-rerank-1b-v2 — 1B LLaMA-3.2 bidirectional reranker, multilingual (INT4 MatMul, 1.5 GB)",
-            ),
-            model_code: String::from("cstr/llama-nemotron-rerank-1b-v2-ONNX"),
-            model_file: String::from("model_int4.onnx"),
-            additional_files: vec![String::from("model_int4.onnx.data")],
         },
         RerankerModelInfo {
             model: RerankerModel::LlamaNemotronRerank1BV2Int4Full,
