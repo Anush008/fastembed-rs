@@ -69,6 +69,7 @@ impl TextEmbedding {
 
         // prioritise loading pooling config if available, if not (thanks qdrant!), look for it in hardcoded
         let post_processing = TextEmbedding::get_default_pooling_method(&model_name);
+        let prefix = TextEmbedding::get_prefix(&model_name);
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
@@ -83,6 +84,7 @@ impl TextEmbedding {
             post_processing,
             TextEmbedding::get_quantization_mode(&model_name),
             model_info.output_key.clone(),
+            prefix,
         ))
     }
 
@@ -123,6 +125,7 @@ impl TextEmbedding {
             model.pooling,
             model.quantization,
             model.output_key,
+            None,
         ))
     }
 
@@ -133,6 +136,7 @@ impl TextEmbedding {
         post_process: Option<Pooling>,
         quantization: QuantizationMode,
         output_key: Option<OutputKey>,
+        prefix: Option<&'static str>,
     ) -> Self {
         let need_token_type_ids = session
             .inputs()
@@ -206,6 +210,7 @@ impl TextEmbedding {
             quantization,
             output_key,
             max_batch_size,
+            prefix,
         }
     }
     /// Return the TextEmbedding model's directory from cache or remote retrieval.
@@ -224,6 +229,23 @@ impl TextEmbedding {
         let all_dirs = get_cache_dirs();
         let effective_dir = find_model_cache_dir(&model_code, &all_dirs).unwrap_or(cache_dir);
         pull_from_hf(model_code, effective_dir, show_download_progress)
+    }
+
+    /// Return the static text prefix to prepend to every input for this model, if any.
+    ///
+    /// Models that require a fixed task prefix on all inputs (e.g. Jina-embeddings-v5
+    /// variants that need `"Document: "` for symmetric retrieval) should be listed here.
+    ///
+    /// For asymmetric retrieval with separate query and document prefixes, callers should
+    /// prepend the appropriate prefix themselves before passing text to `embed()`.
+    pub fn get_prefix(model_name: &EmbeddingModel) -> Option<&'static str> {
+        match model_name {
+            // Jina-v5 nano (and other task-specific variants) require a task prefix on every
+            // input.  "Document: " is used as the default for symmetric embedding (indexing).
+            // For query encoding, prepend "Query: " to your input strings before embed().
+            EmbeddingModel::JinaEmbeddingsV5Nano => Some("Document: "),
+            _ => None,
+        }
     }
 
     pub fn get_default_pooling_method(model_name: &EmbeddingModel) -> Option<Pooling> {
@@ -427,8 +449,17 @@ impl TextEmbedding {
         let batches = texts
             .chunks(batch_size)
             .map(|batch| {
-                // Encode the texts in the batch
-                let inputs = batch.iter().map(|text| text.as_ref()).collect();
+                // Encode the texts in the batch, prepending prefix if set
+                let prefixed: Vec<String>;
+                let inputs: Vec<&str> = if let Some(pfx) = self.prefix {
+                    prefixed = batch
+                        .iter()
+                        .map(|text| format!("{}{}", pfx, text.as_ref()))
+                        .collect();
+                    prefixed.iter().map(|s| s.as_str()).collect()
+                } else {
+                    batch.iter().map(|text| text.as_ref()).collect()
+                };
                 let encodings = self.tokenizer.encode_batch(inputs, true).map_err(|e| {
                     anyhow::Error::msg(e.to_string()).context("Failed to encode the batch.")
                 })?;

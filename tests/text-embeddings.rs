@@ -113,7 +113,7 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         EmbeddingModel::PixieRuneV1Int4Full => [0.28613043, 0.21900642, 0.15266025, 0.31067854],
         // Jina v3: mean pooling over text_embeds with task_id=1 (retrieval.passage adapter).
         EmbeddingModel::JinaEmbeddingsV3 => [0.15385337, 0.06172323, -0.04699665, 0.38967043],
-        EmbeddingModel::JinaEmbeddingsV5Nano => [-0.13502984, -0.39609835, 1.71589792, 0.97652829],
+        EmbeddingModel::JinaEmbeddingsV5Nano => [-0.19138229, -0.5062168, -0.5869839, -0.8267475],
         // Qwen3Embedding0_6BUint8: ORT uint8 accumulation is non-deterministic.
         // Quality verified by test_new_models_semantic_retrieval instead.
         EmbeddingModel::Qwen3Embedding0_6BUint8 => return Ok(()),

@@ -160,4 +160,11 @@ pub struct TextEmbedding {
     pub(crate) max_batch_size: Option<usize>,
     pub(crate) quantization: QuantizationMode,
     pub(crate) output_key: Option<OutputKey>,
+    /// Optional text prefix prepended to every input before tokenization.
+    ///
+    /// Used by models that require a task-specific prefix on all inputs, such as
+    /// Jina-embeddings-v5 (`"Document: "`) or for symmetric retrieval use cases.
+    /// For asymmetric retrieval (different query/document prefixes) callers should
+    /// add the appropriate prefix to their input strings before calling `embed()`.
+    pub(crate) prefix: Option<&'static str>,
 }
