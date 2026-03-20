@@ -444,6 +444,7 @@ fn test_rerank() {
     };
     TextRerank::list_supported_models()
         .iter()
+        .filter(|m| !m.large)
         .for_each(test_one_model);
 }
 

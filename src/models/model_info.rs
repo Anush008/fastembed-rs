@@ -22,4 +22,7 @@ pub struct RerankerModelInfo {
     pub model_code: String,
     pub model_file: String,
     pub additional_files: Vec<String>,
+    /// If true, this model is too large for automated CI tests and is excluded from the default
+    /// test loop. Users can still load it explicitly.
+    pub large: bool,
 }
