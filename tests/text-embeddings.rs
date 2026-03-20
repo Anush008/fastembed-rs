@@ -125,6 +125,7 @@ fn verify_embeddings(model: &EmbeddingModel, embeddings: &[Embedding]) -> Result
         // ISA (e.g. AVX2 vs AVX-512 VNNI on x86_64). Skip exact checksum; quality is verified
         // by test_new_models_semantic_retrieval instead.
         EmbeddingModel::OctenEmbedding0_6BInt8Full => return Ok(()),
+        EmbeddingModel::OctenEmbedding0_6BInt4Full => return Ok(()),
         // F2LLM-v2-0.6B: same Qwen3 architecture; INT8 and INT8-Full skip exact checksum.
         // All variants verified by test_new_models_semantic_retrieval.
         EmbeddingModel::F2LlmV2_0_6BFp32 => return Ok(()),
@@ -836,6 +837,10 @@ fn test_new_models_semantic_retrieval() {
         (
             EmbeddingModel::OctenEmbedding0_6BInt8Full,
             "cstr/Octen-Embedding-0.6B-ONNX-INT8-FULL",
+        ),
+        (
+            EmbeddingModel::OctenEmbedding0_6BInt4Full,
+            "cstr/Octen-Embedding-0.6B-ONNX-INT4-FULL",
         ),
         (
             EmbeddingModel::F2LlmV2_0_6BFp32,

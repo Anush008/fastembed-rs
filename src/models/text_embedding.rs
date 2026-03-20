@@ -134,6 +134,8 @@ pub enum EmbeddingModel {
     OctenEmbedding0_6BInt4,
     /// cstr/Octen-Embedding-0.6B-ONNX-INT8-FULL — INT8 incl. embedding table (~570 MB)
     OctenEmbedding0_6BInt8Full,
+    /// cstr/Octen-Embedding-0.6B-ONNX-INT4-FULL — INT4 MatMul + INT8 Gather (~434 MB)
+    OctenEmbedding0_6BInt4Full,
 
     // ── F2LLM-v2-0.6B (Qwen3-1024d fine-tune, decoder, last-token pooling) ──────
     /// cstr/F2LLM-v2-0.6B-ONNX — FP32 reference (2.4 GB, external data)
@@ -671,6 +673,17 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model_code: String::from("cstr/Octen-Embedding-0.6B-ONNX-INT8-FULL"),
             model_file: String::from("model.int8_full.onnx"),
             additional_files: vec!["model.int8_full.onnx.data".to_string()],
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::OctenEmbedding0_6BInt4Full,
+            dim: 1024,
+            description: String::from(
+                "Octen-Embedding-0.6B INT4-Full — 1024d, 32k context, last-token pooling (INT4 MatMul + INT8 Gather, external data, ~434 MB)",
+            ),
+            model_code: String::from("cstr/Octen-Embedding-0.6B-ONNX-INT4-FULL"),
+            model_file: String::from("model.int4_full.onnx"),
+            additional_files: vec!["model.int4_full.onnx.data".to_string()],
             output_key: None,
         },
         // ── F2LLM-v2-0.6B ────────────────────────────────────────────────────────
