@@ -63,6 +63,7 @@
 - [**electroglyph/Qwen3-Embedding-0.6B-onnx-uint8**](https://huggingface.co/electroglyph/Qwen3-Embedding-0.6B-onnx-uint8) — 1024d, uint8 ONNX, decoder-style last-token pooling
 - [**cstr/Octen-Embedding-0.6B-ONNX**](https://huggingface.co/cstr/Octen-Embedding-0.6B-ONNX) — 1024d, FP32 and INT4 decoder embedding model (`OctenEmbedding0_6BFp32`, `OctenEmbedding0_6BInt4`); INT8-full (~570 MB, `OctenEmbedding0_6BInt8Full`) and INT4-full (~434 MB, `OctenEmbedding0_6BInt4Full`, INT4 MatMul + INT8 embedding table) variants also available
 - [**cstr/F2LLM-v2-0.6B-ONNX**](https://huggingface.co/cstr/F2LLM-v2-0.6B-ONNX) — 1024d, 200+ languages, Qwen3 decoder, last-token pooling; available as FP32 (`F2LlmV2_0_6BFp32`), INT8 (`F2LlmV2_0_6BInt8`), INT4 (`F2LlmV2_0_6BInt4`), and INT8-full (`F2LlmV2_0_6BInt8Full`) via [cstr/F2LLM-v2-0.6B-ONNX-INT8](https://huggingface.co/cstr/F2LLM-v2-0.6B-ONNX-INT8), [cstr/F2LLM-v2-0.6B-ONNX-INT4](https://huggingface.co/cstr/F2LLM-v2-0.6B-ONNX-INT4), [cstr/F2LLM-v2-0.6B-ONNX-INT8-FULL](https://huggingface.co/cstr/F2LLM-v2-0.6B-ONNX-INT8-FULL)
+- [**jinaai/jina-embeddings-v5-text-small-retrieval**](https://huggingface.co/jinaai/jina-embeddings-v5-text-small-retrieval) — 677M, 1024d, 32k context, 119+ languages, Qwen3-based, last-token pooling (`JinaEmbeddingsV5Small`); #9 on MTEB reranking. Prepend `"Query: "` to queries and `"Document: "` to passages. Supports `.rerank()` via `TextEmbedding::rerank()`.
 
 Quantized versions are also available for several models above (append `Q` to the model enum variant, e.g., `EmbeddingModel::BGESmallENV15Q`).
 
@@ -139,6 +140,35 @@ let documents = vec![
  println!("Embeddings length: {}", embeddings.len()); // -> Embeddings length: 4
  println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 384
 ```
+
+### Bi-Encoder Reranking
+
+Any `TextEmbedding` model can rank documents against a query using cosine similarity of L2-normalised embeddings — the same approach used in MTEB's reranking benchmark:
+
+```rust
+use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
+
+let mut model = TextEmbedding::try_new(
+    InitOptions::new(EmbeddingModel::JinaEmbeddingsV5Small),
+)?;
+
+let results = model.rerank(
+    "Query: what is machine learning?",
+    vec![
+        "Document: Machine learning is a subset of artificial intelligence.",
+        "Document: The weather in Paris is mild in spring.",
+        "Document: Neural networks learn patterns from training data.",
+    ],
+    Some(2),  // top-n
+    true,     // return document text
+)?;
+
+for r in &results {
+    println!("{:.3}  {}", r.score, r.document.as_deref().unwrap_or(""));
+}
+```
+
+Returns the same `Vec<RerankResult>` type as `TextRerank`, sorted by score descending.
 
 ### Qwen3 Embeddings
 

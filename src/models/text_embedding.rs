@@ -146,6 +146,11 @@ pub enum EmbeddingModel {
     F2LlmV2_0_6BInt4,
     /// cstr/F2LLM-v2-0.6B-ONNX-INT8-FULL — INT8 incl. embedding table (~600 MB)
     F2LlmV2_0_6BInt8Full,
+
+    // ── Jina Embeddings v5 text-small (Qwen3-0.6B, 1024d, last-token pooling) ──
+    /// jinaai/jina-embeddings-v5-text-small-retrieval — 677M, 1024d, 32k context, multilingual
+    /// Prepend "Query: " to queries and "Document: " to documents for retrieval.
+    JinaEmbeddingsV5Small,
 }
 
 /// Centralized function to initialize the models map.
@@ -729,6 +734,18 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model_code: String::from("cstr/F2LLM-v2-0.6B-ONNX-INT8-FULL"),
             model_file: String::from("model.int8_full.onnx"),
             additional_files: vec!["model.int8_full.onnx.data".to_string()],
+            output_key: None,
+        },
+        // ── Jina Embeddings v5 text-small ────────────────────────────────────────
+        ModelInfo {
+            model: EmbeddingModel::JinaEmbeddingsV5Small,
+            dim: 1024,
+            description: String::from(
+                "jina-embeddings-v5-text-small-retrieval — 677M, 1024d, 32k context, 119+ languages, last-token pooling (FP32, ~2.5 GB). Prepend \"Query: \" to queries, \"Document: \" to passages.",
+            ),
+            model_code: String::from("jinaai/jina-embeddings-v5-text-small-retrieval"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: vec!["onnx/model.onnx_data".to_string()],
             output_key: None,
         },
         // ── Jina Embeddings v3 ───────────────────────────────────────────────────

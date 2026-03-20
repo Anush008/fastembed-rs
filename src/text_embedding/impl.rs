@@ -7,7 +7,7 @@ use crate::{
     models::{text_embedding::models_list, ModelTrait},
     pooling::Pooling,
     Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, OutputKey, QuantizationMode,
-    SingleBatchOutput,
+    RerankResult, SingleBatchOutput,
 };
 #[cfg(feature = "hf-hub")]
 use anyhow::Context;
@@ -338,6 +338,7 @@ impl TextEmbedding {
             EmbeddingModel::F2LlmV2_0_6BInt8 => Some(Pooling::LastToken),
             EmbeddingModel::F2LlmV2_0_6BInt4 => Some(Pooling::LastToken),
             EmbeddingModel::F2LlmV2_0_6BInt8Full => Some(Pooling::LastToken),
+            EmbeddingModel::JinaEmbeddingsV5Small => Some(Pooling::LastToken),
         }
     }
 
@@ -604,5 +605,55 @@ impl TextEmbedding {
                 self.pooling.clone(),
             ))
         }
+    }
+
+    /// Rerank documents against a query using bi-encoder cosine similarity.
+    ///
+    /// Both query and documents are embedded with this model and ranked by
+    /// cosine similarity (dot product of L2-normalised embeddings).
+    ///
+    /// For asymmetric retrieval models (e.g. `JinaEmbeddingsV5Small`) prepend
+    /// task-specific prefixes manually: `"Query: <text>"` for the query and
+    /// `"Document: <text>"` for documents.
+    pub fn rerank<S: AsRef<str> + Send + Sync>(
+        &mut self,
+        query: impl AsRef<str>,
+        documents: impl AsRef<[S]>,
+        top_n: Option<usize>,
+        return_documents: bool,
+    ) -> Result<Vec<RerankResult>> {
+        let documents = documents.as_ref();
+        let query_str = query.as_ref();
+
+        let query_embs = self.embed(std::slice::from_ref(&query_str), None)?;
+        let query_emb = &query_embs[0];
+
+        let doc_embs = self.embed(documents, None)?;
+
+        let mut results: Vec<RerankResult> = doc_embs
+            .iter()
+            .enumerate()
+            .map(|(i, doc_emb)| {
+                let score: f32 =
+                    query_emb.iter().zip(doc_emb.iter()).map(|(a, b)| a * b).sum();
+                RerankResult {
+                    document: if return_documents {
+                        Some(documents[i].as_ref().to_string())
+                    } else {
+                        None
+                    },
+                    score,
+                    index: i,
+                }
+            })
+            .collect();
+
+        results.sort_by(|a, b| a.score.total_cmp(&b.score).reverse());
+
+        if let Some(n) = top_n {
+            results.truncate(n);
+        }
+
+        Ok(results)
     }
 }
