@@ -92,7 +92,7 @@ Quantized versions are also available for several models above (append `Q` to th
 - [**mixedbread-ai/mxbai-rerank-large-v1**](https://huggingface.co/mixedbread-ai/mxbai-rerank-large-v1) — 560M, English, DeBERTa-v3-large (`MxbaiRerankLargeV1`, INT8: `MxbaiRerankLargeV1Q`)
 - [**cross-encoder/ms-marco-MiniLM-L-6-v2**](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2) — 22M, English, very fast (`MsMarcoMiniLML6V2`)
 - [**cross-encoder/ms-marco-MiniLM-L-12-v2**](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-12-v2) — 33M, English (`MsMarcoMiniLML12V2`)
-- [**nvidia/llama-nemotron-rerank-1b-v2**](https://huggingface.co/nvidia/llama-nemotron-rerank-1b-v2) — 1B, multilingual, LLaMA-3.2 bidirectional; FP32 (`LlamaNemotronRerank1BV2`) / INT8 (`LlamaNemotronRerank1BV2Int8`) / INT4 (`LlamaNemotronRerank1BV2Int4`)
+- [**nvidia/llama-nemotron-rerank-1b-v2**](https://huggingface.co/nvidia/llama-nemotron-rerank-1b-v2) — 1B, multilingual, LLaMA-3.2 bidirectional; FP32 (`LlamaNemotronRerank1BV2`) / INT8 (`LlamaNemotronRerank1BV2Int8`) / INT4 (`LlamaNemotronRerank1BV2Int4`) / INT4+INT8-emb (`LlamaNemotronRerank1BV2Int4Full`)
 
 ## ✊ Support
 
