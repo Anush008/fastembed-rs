@@ -68,6 +68,13 @@ pub enum EmbeddingModel {
     GTELargeENV15,
     /// Quantized Alibaba-NLP/gte-large-en-v1.5
     GTELargeENV15Q,
+    // ── GTE ModernBERT ──────────────────────────────────────────────────────
+    /// Alibaba-NLP/gte-modernbert-base — 149M, 768d, 8192 tokens, CLS pooling (FP32, 596 MB)
+    GteModernBertBase,
+    /// Alibaba-NLP/gte-modernbert-base — INT8 quantized (150 MB)
+    GteModernBertBaseQ,
+    /// Alibaba-NLP/gte-modernbert-base — Q4F16 quantized (140 MB)
+    GteModernBertBaseQ4F16,
     /// Qdrant/clip-ViT-B-32-text
     ClipVitB32,
     /// jinaai/jina-embeddings-v2-base-code
@@ -434,6 +441,40 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             description: String::from("Quantized Large multilingual embedding model from Alibaba"),
             model_code: String::from("Alibaba-NLP/gte-large-en-v1.5"),
             model_file: String::from("onnx/model_quantized.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        // ── GTE ModernBERT ─────────────────────────────────────────────────
+        ModelInfo {
+            model: EmbeddingModel::GteModernBertBase,
+            dim: 768,
+            description: String::from(
+                "gte-modernbert-base — 149M, 768d, 8192 tokens, English, CLS pooling (FP32, 596 MB)",
+            ),
+            model_code: String::from("Alibaba-NLP/gte-modernbert-base"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::GteModernBertBaseQ,
+            dim: 768,
+            description: String::from(
+                "gte-modernbert-base INT8 — 149M, 768d, 8192 tokens, English, CLS pooling (150 MB)",
+            ),
+            model_code: String::from("Alibaba-NLP/gte-modernbert-base"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::GteModernBertBaseQ4F16,
+            dim: 768,
+            description: String::from(
+                "gte-modernbert-base Q4F16 — 149M, 768d, 8192 tokens, English, CLS pooling (140 MB)",
+            ),
+            model_code: String::from("Alibaba-NLP/gte-modernbert-base"),
+            model_file: String::from("onnx/model_q4f16.onnx"),
             additional_files: Vec::new(),
             output_key: None,
         },

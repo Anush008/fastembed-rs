@@ -287,6 +287,9 @@ impl TextEmbedding {
             EmbeddingModel::GTEBaseENV15Q => Some(Pooling::Cls),
             EmbeddingModel::GTELargeENV15 => Some(Pooling::Cls),
             EmbeddingModel::GTELargeENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::GteModernBertBase => Some(Pooling::Cls),
+            EmbeddingModel::GteModernBertBaseQ => Some(Pooling::Cls),
+            EmbeddingModel::GteModernBertBaseQ4F16 => Some(Pooling::Cls),
 
             EmbeddingModel::ClipVitB32 => Some(Pooling::Mean),
 
