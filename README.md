@@ -85,7 +85,7 @@ Quantized versions are also available for several models above (append `Q` to th
 - [**BAAI/bge-reranker-base**](https://huggingface.co/BAAI/bge-reranker-base) - Default — English + Chinese
 - [**BAAI/bge-reranker-v2-m3**](https://huggingface.co/BAAI/bge-reranker-v2-m3) — multilingual (`BGERerankerV2M3`)
 - [**jinaai/jina-reranker-v1-turbo-en**](https://huggingface.co/jinaai/jina-reranker-v1-turbo-en) — English (`JINARerankerV1TurboEn`)
-- [**jinaai/jina-reranker-v2-base-multilingual**](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual) — multilingual (`JINARerankerV2BaseMultiligual`)
+- [**jinaai/jina-reranker-v2-base-multilingual**](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual) — 278M, multilingual, 1024 tokens (`JINARerankerV2BaseMultiligual`; INT8: `JINARerankerV2BaseMultilingualInt8`; FP16: `JINARerankerV2BaseMultilingualFp16`)
 - [**mixedbread-ai/mxbai-rerank-xsmall-v1**](https://huggingface.co/mixedbread-ai/mxbai-rerank-xsmall-v1) — 33M, English, fast (`MxbaiRerankXsmallV1`, INT8: `MxbaiRerankXsmallV1Q`)
 - [**mixedbread-ai/mxbai-rerank-base-v1**](https://huggingface.co/mixedbread-ai/mxbai-rerank-base-v1) — 86M, English (`MxbaiRerankBaseV1`, INT8: `MxbaiRerankBaseV1Q`)
 - [**mixedbread-ai/mxbai-rerank-large-v1**](https://huggingface.co/mixedbread-ai/mxbai-rerank-large-v1) — 560M, English, DeBERTa-v3-large (`MxbaiRerankLargeV1`, INT8: `MxbaiRerankLargeV1Q`)

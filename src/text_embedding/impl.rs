@@ -634,8 +634,11 @@ impl TextEmbedding {
             .iter()
             .enumerate()
             .map(|(i, doc_emb)| {
-                let score: f32 =
-                    query_emb.iter().zip(doc_emb.iter()).map(|(a, b)| a * b).sum();
+                let score: f32 = query_emb
+                    .iter()
+                    .zip(doc_emb.iter())
+                    .map(|(a, b)| a * b)
+                    .sum();
                 RerankResult {
                     document: if return_documents {
                         Some(documents[i].as_ref().to_string())

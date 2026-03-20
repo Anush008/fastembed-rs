@@ -11,8 +11,12 @@ pub enum RerankerModel {
     BGERerankerV2M3,
     /// jinaai/jina-reranker-v1-turbo-en
     JINARerankerV1TurboEn,
-    /// jinaai/jina-reranker-v2-base-multilingual
+    /// jinaai/jina-reranker-v2-base-multilingual — FP32
     JINARerankerV2BaseMultiligual,
+    /// jinaai/jina-reranker-v2-base-multilingual — INT8 quantized
+    JINARerankerV2BaseMultilingualInt8,
+    /// jinaai/jina-reranker-v2-base-multilingual — FP16
+    JINARerankerV2BaseMultilingualFp16,
     // ── mixedbread-ai mxbai-rerank ────────────────────────────────────────────
     /// mixedbread-ai/mxbai-rerank-xsmall-v1 — 33M, English, 512 tokens
     MxbaiRerankXsmallV1,
@@ -58,9 +62,29 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
         },
         RerankerModelInfo {
             model: RerankerModel::JINARerankerV2BaseMultiligual,
-            description: String::from("Jina reranker v2, multilingual"),
+            description: String::from(
+                "Jina reranker v2, multilingual — 278M, 1024 tokens, XLM-RoBERTa (FP32)",
+            ),
             model_code: String::from("jinaai/jina-reranker-v2-base-multilingual"),
             model_file: String::from("onnx/model.onnx"),
+            additional_files: vec![],
+        },
+        RerankerModelInfo {
+            model: RerankerModel::JINARerankerV2BaseMultilingualInt8,
+            description: String::from(
+                "Jina reranker v2, multilingual — 278M, 1024 tokens, XLM-RoBERTa (INT8)",
+            ),
+            model_code: String::from("jinaai/jina-reranker-v2-base-multilingual"),
+            model_file: String::from("onnx/model_int8.onnx"),
+            additional_files: vec![],
+        },
+        RerankerModelInfo {
+            model: RerankerModel::JINARerankerV2BaseMultilingualFp16,
+            description: String::from(
+                "Jina reranker v2, multilingual — 278M, 1024 tokens, XLM-RoBERTa (FP16)",
+            ),
+            model_code: String::from("jinaai/jina-reranker-v2-base-multilingual"),
+            model_file: String::from("onnx/model_fp16.onnx"),
             additional_files: vec![],
         },
         // ── mxbai-rerank ─────────────────────────────────────────────────────
@@ -130,9 +154,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
         },
         RerankerModelInfo {
             model: RerankerModel::MsMarcoMiniLML12V2,
-            description: String::from(
-                "ms-marco-MiniLM-L-12-v2 — 33M, English, BERT cross-encoder",
-            ),
+            description: String::from("ms-marco-MiniLM-L-12-v2 — 33M, English, BERT cross-encoder"),
             model_code: String::from("cross-encoder/ms-marco-MiniLM-L-12-v2"),
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec![],
