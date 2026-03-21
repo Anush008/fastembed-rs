@@ -217,7 +217,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_code: String::from("Alibaba-NLP/gte-reranker-modernbert-base"),
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec![],
-            large: false,
+            large: true,
             prompt_template: None,
         },
         RerankerModelInfo {
@@ -228,7 +228,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_code: String::from("Alibaba-NLP/gte-reranker-modernbert-base"),
             model_file: String::from("onnx/model_int8.onnx"),
             additional_files: vec![],
-            large: false,
+            large: true,
             prompt_template: None,
         },
         RerankerModelInfo {
@@ -239,7 +239,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_code: String::from("Alibaba-NLP/gte-reranker-modernbert-base"),
             model_file: String::from("onnx/model_q4f16.onnx"),
             additional_files: vec![],
-            large: false,
+            large: true,
             prompt_template: None,
         },
         // ── nvidia/llama-nemotron-rerank-1b-v2 ───────────────────────────────
