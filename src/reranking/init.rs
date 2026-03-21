@@ -12,6 +12,8 @@ pub struct TextRerank {
     pub tokenizer: Tokenizer,
     pub(crate) session: Session,
     pub(crate) need_token_type_ids: bool,
+    /// Max token length passed to the tokenizer (used for doc pre-truncation with templates).
+    pub(crate) max_length: usize,
     /// Optional prompt template applied before tokenization (e.g. for Qwen3-based rerankers).
     pub(crate) prompt_template: Option<String>,
 }
