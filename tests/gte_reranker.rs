@@ -1,36 +1,42 @@
-use std::path::Path;
+#![cfg(feature = "hf-hub")]
 
-use fastembed::{
-    OnnxSource, RerankInitOptionsUserDefined, TextRerank, TokenizerFiles, UserDefinedRerankingModel,
-};
+use fastembed::{RerankInitOptions, RerankerModel, TextRerank};
 
-const GTE_SNAP: &str = "/Volumes/backups/ai/models--Alibaba-NLP--gte-reranker-modernbert-base/snapshots/f7481e6055501a30fb19d090657df9ec1f79ab2c";
-
-fn load_tokenizer_files(dir: &str) -> TokenizerFiles {
-    let read = |name: &str| std::fs::read(format!("{}/{}", dir, name)).unwrap();
-    TokenizerFiles {
-        tokenizer_file: read("tokenizer.json"),
-        config_file: read("config.json"),
-        special_tokens_map_file: read("special_tokens_map.json"),
-        tokenizer_config_file: read("tokenizer_config.json"),
+fn model_is_available_offline(model_code: &str) -> bool {
+    if std::env::var("HF_HUB_OFFLINE").as_deref() != Ok("1") {
+        return true;
     }
+    let dir_name = format!("models--{}", model_code.replace('/', "--"));
+    let cache_dirs =
+        std::env::var("FASTEMBED_CACHE_DIR").unwrap_or_else(|_| ".fastembed_cache".into());
+    for dir in cache_dirs.split(':').filter(|s| !s.is_empty()) {
+        let refs_main = std::path::Path::new(dir)
+            .join(&dir_name)
+            .join("refs/main");
+        if let Ok(hash) = std::fs::read_to_string(&refs_main) {
+            let snap = std::path::Path::new(dir)
+                .join(&dir_name)
+                .join("snapshots")
+                .join(hash.trim());
+            if snap.exists() {
+                return true;
+            }
+        }
+    }
+    false
 }
 
-/// Quick smoke test for the three gte-reranker-modernbert-base variants.
-/// Skipped automatically if the local model snapshot is not available.
+/// Smoke test for gte-reranker-modernbert-base variants.
+/// Marked #[ignore] because these are large models (150–600 MB).
+/// Run with: cargo test gte_reranker -- --include-ignored
+#[ignore]
 #[test]
 fn test_gte_reranker_modernbert_base() {
-    let models: &[(&str, &str)] = &[
-        ("GteRerankerModernBertBase (FP32)", "onnx/model.onnx"),
-        ("GteRerankerModernBertBaseQ (INT8)", "onnx/model_int8.onnx"),
-        ("GteRerankerModernBertBaseQ4F16 (Q4F16)", "onnx/model_q4f16.onnx"),
+    let models = [
+        RerankerModel::GteRerankerModernBertBase,
+        RerankerModel::GteRerankerModernBertBaseQ,
+        RerankerModel::GteRerankerModernBertBaseQ4F16,
     ];
-
-    let snap = Path::new(GTE_SNAP);
-    if !snap.exists() {
-        eprintln!("SKIP gte_reranker tests — local snapshot not found at {GTE_SNAP}");
-        return;
-    }
 
     let documents = vec![
         "hi",
@@ -40,28 +46,31 @@ fn test_gte_reranker_modernbert_base() {
         "kind of mammal",
     ];
 
-    for (name, model_file) in models {
-        let onnx_path = snap.join(model_file);
-        if !onnx_path.exists() {
-            eprintln!("SKIP {name} — {onnx_path:?} not found");
+    for model in &models {
+        let info = TextRerank::get_model_info(model);
+        println!("Testing {:?}", model);
+
+        let offline = std::env::var("HF_HUB_OFFLINE").as_deref() == Ok("1");
+        if offline && !model_is_available_offline(&info.model_code) {
+            eprintln!(
+                "SKIP {:?} — not in local cache (HF_HUB_OFFLINE=1)",
+                model
+            );
             continue;
         }
 
-        println!("Testing {name}");
-
-        let model = UserDefinedRerankingModel::new(
-            OnnxSource::File(onnx_path),
-            load_tokenizer_files(GTE_SNAP),
-        );
-
-        let mut opts = RerankInitOptionsUserDefined::default();
-        opts.max_length = 512;
-        let mut reranker = TextRerank::try_new_from_user_defined(model, opts)
-            .unwrap_or_else(|e| panic!("Failed to load {name}: {e}"));
+        let mut reranker = match TextRerank::try_new(RerankInitOptions::new(model.clone())) {
+            Ok(r) => r,
+            Err(e) if offline => {
+                eprintln!("SKIP {:?} — load failed in offline mode: {}", model, e);
+                continue;
+            }
+            Err(e) => panic!("Failed to load {:?}: {}", model, e),
+        };
 
         let results = reranker
             .rerank("what is panda?", documents.clone(), true, None)
-            .unwrap_or_else(|e| panic!("{name} rerank failed: {e}"));
+            .unwrap_or_else(|e| panic!("{:?} rerank failed: {}", model, e));
 
         assert_eq!(results.len(), documents.len());
 
@@ -70,12 +79,14 @@ fn test_gte_reranker_modernbert_base() {
         assert!(
             top == "panda is an animal"
                 || top == "The giant panda, sometimes called a panda bear or simply panda, is a bear species endemic to China.",
-            "{name}: unexpected top result: {top:?}"
+            "{:?}: unexpected top result: {:?}",
+            model,
+            top
         );
-        assert_ne!(top, second, "{name}: top two results are identical");
+        assert_ne!(top, second, "{:?}: top two results are identical", model);
         println!(
-            "  {name} PASS — top: {top:?} (score={:.4})",
-            results[0].score
+            "  {:?} PASS — top: {:?} (score={:.4})",
+            model, top, results[0].score
         );
     }
 }
