@@ -150,14 +150,14 @@ impl TextRerank {
                     .iter()
                     .map(|d| tmpl.replace("{query}", q).replace("{doc}", d.as_ref()))
                     .collect();
-                self.tokenizer
-                    .encode_batch(formatted, true)
-                    .map_err(|e| anyhow::Error::msg(e.to_string()).context("Failed to encode batch"))?
+                self.tokenizer.encode_batch(formatted, true).map_err(|e| {
+                    anyhow::Error::msg(e.to_string()).context("Failed to encode batch")
+                })?
             } else {
                 let inputs = batch.iter().map(|d| (q, d.as_ref())).collect();
-                self.tokenizer
-                    .encode_batch(inputs, true)
-                    .map_err(|e| anyhow::Error::msg(e.to_string()).context("Failed to encode batch"))?
+                self.tokenizer.encode_batch(inputs, true).map_err(|e| {
+                    anyhow::Error::msg(e.to_string()).context("Failed to encode batch")
+                })?
             };
 
             let encoding_length = encodings
@@ -211,9 +211,15 @@ impl TextRerank {
                 }
                 Err(_) => {
                     // FP16 fallback: extract as half::f16 then convert
-                    let (shape, data) = logits_value
-                        .try_extract_tensor::<half::f16>()
-                        .map_err(|e| anyhow::Error::msg(format!("Failed to extract logits tensor: {}", e)))?;
+                    let (shape, data) =
+                        logits_value
+                            .try_extract_tensor::<half::f16>()
+                            .map_err(|e| {
+                                anyhow::Error::msg(format!(
+                                    "Failed to extract logits tensor: {}",
+                                    e
+                                ))
+                            })?;
                     let cols = shape[1] as usize;
                     (0..batch_size).map(|i| data[i * cols].to_f32()).collect()
                 }

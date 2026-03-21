@@ -10,9 +10,7 @@ fn model_is_available_offline(model_code: &str) -> bool {
     let cache_dirs =
         std::env::var("FASTEMBED_CACHE_DIR").unwrap_or_else(|_| ".fastembed_cache".into());
     for dir in cache_dirs.split(':').filter(|s| !s.is_empty()) {
-        let refs_main = std::path::Path::new(dir)
-            .join(&dir_name)
-            .join("refs/main");
+        let refs_main = std::path::Path::new(dir).join(&dir_name).join("refs/main");
         if let Ok(hash) = std::fs::read_to_string(&refs_main) {
             let snap = std::path::Path::new(dir)
                 .join(&dir_name)
@@ -52,10 +50,7 @@ fn test_gte_reranker_modernbert_base() {
 
         let offline = std::env::var("HF_HUB_OFFLINE").as_deref() == Ok("1");
         if offline && !model_is_available_offline(&info.model_code) {
-            eprintln!(
-                "SKIP {:?} — not in local cache (HF_HUB_OFFLINE=1)",
-                model
-            );
+            eprintln!("SKIP {:?} — not in local cache (HF_HUB_OFFLINE=1)", model);
             continue;
         }
 

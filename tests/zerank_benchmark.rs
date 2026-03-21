@@ -1,5 +1,5 @@
 use fastembed::{
-    OnnxSource, RerankInitOptionsUserDefined, TokenizerFiles, TextRerank, UserDefinedRerankingModel,
+    OnnxSource, RerankInitOptionsUserDefined, TextRerank, TokenizerFiles, UserDefinedRerankingModel,
 };
 use std::time::Instant;
 
@@ -27,7 +27,10 @@ fn load_tokenizer_files() -> TokenizerFiles {
 #[test]
 fn test_zerank_small_benchmark() {
     let models: &[(&str, &str)] = &[
-        ("INT8", "/Volumes/backups/ai/zerank_onnx_int8/model_int8.onnx"),
+        (
+            "INT8",
+            "/Volumes/backups/ai/zerank_onnx_int8/model_int8.onnx",
+        ),
         ("FP16", "/private/tmp/zerank_export/zerank_onnx/model.onnx"),
     ];
 
@@ -48,10 +51,8 @@ fn test_zerank_small_benchmark() {
 
         println!("\nLoading zerank-1-small ({label}) from {path}...");
         let load_start = Instant::now();
-        let model = UserDefinedRerankingModel::new(
-            OnnxSource::File(path.into()),
-            load_tokenizer_files(),
-        );
+        let model =
+            UserDefinedRerankingModel::new(OnnxSource::File(path.into()), load_tokenizer_files());
         let mut opts = RerankInitOptionsUserDefined::default();
         opts.max_length = 512;
         opts.prompt_template = Some(ZERANK_TEMPLATE.to_string());
