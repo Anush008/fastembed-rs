@@ -42,6 +42,20 @@ pub enum RerankerModel {
     LlamaNemotronRerank1BV2Int8,
     /// nvidia/llama-nemotron-rerank-1b-v2 — INT4 MatMul + INT8 embedding (832 MB)
     LlamaNemotronRerank1BV2Int4Full,
+    // ── Alibaba-NLP/gte-reranker-modernbert-base ──────────────────────────────
+    /// Alibaba-NLP/gte-reranker-modernbert-base — 149M, English, 8192 tokens (FP32, 596 MB)
+    GteRerankerModernBertBase,
+    /// Alibaba-NLP/gte-reranker-modernbert-base — INT8 quantized (150 MB)
+    GteRerankerModernBertBaseQ,
+    /// Alibaba-NLP/gte-reranker-modernbert-base — Q4F16 quantized (140 MB)
+    GteRerankerModernBertBaseQ4F16,
+    // ── zeroentropy/zerank-1-small ────────────────────────────────────────────
+    /// zeroentropy/zerank-1-small — 1.7B Qwen3, multilingual reranker (FP16, ~3.2 GB)
+    ZerankSmall,
+    /// zeroentropy/zerank-1-small — INT8 weight-only quantized (~2.5 GB)
+    ZerankSmallInt8,
+    /// zeroentropy/zerank-1-small — INT4 MatMulNBits quantized (~1.3 GB)
+    ZerankSmallInt4,
 }
 
 pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
@@ -53,6 +67,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec![],
             large: false,
+            prompt_template: None,
         },
         RerankerModelInfo {
             model: RerankerModel::BGERerankerV2M3,
@@ -61,6 +76,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("model.onnx"),
             additional_files: vec![String::from("model.onnx.data")],
             large: false,
+            prompt_template: None,
         },
         RerankerModelInfo {
             model: RerankerModel::JINARerankerV1TurboEn,
@@ -69,6 +85,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec![],
             large: false,
+            prompt_template: None,
         },
         RerankerModelInfo {
             model: RerankerModel::JINARerankerV2BaseMultiligual,
@@ -79,6 +96,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec![],
             large: false,
+            prompt_template: None,
         },
         RerankerModelInfo {
             model: RerankerModel::JINARerankerV2BaseMultilingualInt8,
@@ -89,6 +107,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("onnx/model_int8.onnx"),
             additional_files: vec![],
             large: false,
+            prompt_template: None,
         },
         RerankerModelInfo {
             model: RerankerModel::JINARerankerV2BaseMultilingualFp16,
@@ -99,6 +118,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("onnx/model_fp16.onnx"),
             additional_files: vec![],
             large: false,
+            prompt_template: None,
         },
         // ── mxbai-rerank ─────────────────────────────────────────────────────
         RerankerModelInfo {
@@ -110,6 +130,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec![],
             large: false,
+            prompt_template: None,
         },
         RerankerModelInfo {
             model: RerankerModel::MxbaiRerankXsmallV1Q,
@@ -120,6 +141,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("onnx/model_quantized.onnx"),
             additional_files: vec![],
             large: false,
+            prompt_template: None,
         },
         RerankerModelInfo {
             model: RerankerModel::MxbaiRerankBaseV1,
@@ -130,6 +152,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec![],
             large: false,
+            prompt_template: None,
         },
         RerankerModelInfo {
             model: RerankerModel::MxbaiRerankBaseV1Q,
@@ -140,6 +163,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("onnx/model_quantized.onnx"),
             additional_files: vec![],
             large: false,
+            prompt_template: None,
         },
         RerankerModelInfo {
             model: RerankerModel::MxbaiRerankLargeV1,
@@ -150,6 +174,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec![],
             large: false,
+            prompt_template: None,
         },
         RerankerModelInfo {
             model: RerankerModel::MxbaiRerankLargeV1Q,
@@ -160,6 +185,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("onnx/model_quantized.onnx"),
             additional_files: vec![],
             large: false,
+            prompt_template: None,
         },
         // ── ms-marco MiniLM ───────────────────────────────────────────────────
         RerankerModelInfo {
@@ -171,6 +197,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec![],
             large: false,
+            prompt_template: None,
         },
         RerankerModelInfo {
             model: RerankerModel::MsMarcoMiniLML12V2,
@@ -179,6 +206,41 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec![],
             large: false,
+            prompt_template: None,
+        },
+        // ── Alibaba-NLP/gte-reranker-modernbert-base ─────────────────────────
+        RerankerModelInfo {
+            model: RerankerModel::GteRerankerModernBertBase,
+            description: String::from(
+                "gte-reranker-modernbert-base — 149M, English, 8192 tokens, ModernBERT cross-encoder (FP32, 596 MB)",
+            ),
+            model_code: String::from("Alibaba-NLP/gte-reranker-modernbert-base"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: vec![],
+            large: false,
+            prompt_template: None,
+        },
+        RerankerModelInfo {
+            model: RerankerModel::GteRerankerModernBertBaseQ,
+            description: String::from(
+                "gte-reranker-modernbert-base — 149M, English, 8192 tokens, ModernBERT cross-encoder (INT8, 150 MB)",
+            ),
+            model_code: String::from("Alibaba-NLP/gte-reranker-modernbert-base"),
+            model_file: String::from("onnx/model_int8.onnx"),
+            additional_files: vec![],
+            large: false,
+            prompt_template: None,
+        },
+        RerankerModelInfo {
+            model: RerankerModel::GteRerankerModernBertBaseQ4F16,
+            description: String::from(
+                "gte-reranker-modernbert-base — 149M, English, 8192 tokens, ModernBERT cross-encoder (Q4F16, 140 MB)",
+            ),
+            model_code: String::from("Alibaba-NLP/gte-reranker-modernbert-base"),
+            model_file: String::from("onnx/model_q4f16.onnx"),
+            additional_files: vec![],
+            large: false,
+            prompt_template: None,
         },
         // ── nvidia/llama-nemotron-rerank-1b-v2 ───────────────────────────────
         RerankerModelInfo {
@@ -190,6 +252,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("model.onnx"),
             additional_files: vec![String::from("model.onnx_data")],
             large: true,
+            prompt_template: None,
         },
         RerankerModelInfo {
             model: RerankerModel::LlamaNemotronRerank1BV2Int8,
@@ -200,6 +263,7 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("model_int8.onnx"),
             additional_files: vec![],
             large: true,
+            prompt_template: None,
         },
         RerankerModelInfo {
             model: RerankerModel::LlamaNemotronRerank1BV2Int4Full,
@@ -210,6 +274,47 @@ pub fn reranker_model_list() -> Vec<RerankerModelInfo> {
             model_file: String::from("model_int4_full.onnx"),
             additional_files: vec![],
             large: true,
+            prompt_template: None,
+        },
+        // ── zeroentropy/zerank-1-small ────────────────────────────────────
+        RerankerModelInfo {
+            model: RerankerModel::ZerankSmall,
+            description: String::from(
+                "zeroentropy/zerank-1-small — 1.7B Qwen3 reranker, multilingual (FP16, ~3.2 GB)",
+            ),
+            model_code: String::from("cstr/zerank-1-small-ONNX"),
+            model_file: String::from("model.onnx"),
+            additional_files: vec![String::from("model.onnx_data")],
+            large: true,
+            prompt_template: Some(String::from(
+                "<|im_start|>user\nQuery: {query}\nDocument: {doc}\nRelevant:<|im_end|>\n<|im_start|>assistant\n",
+            )),
+        },
+        RerankerModelInfo {
+            model: RerankerModel::ZerankSmallInt8,
+            description: String::from(
+                "zeroentropy/zerank-1-small — 1.7B Qwen3 reranker, multilingual (INT8, ~2.5 GB)",
+            ),
+            model_code: String::from("cstr/zerank-1-small-ONNX"),
+            model_file: String::from("model_int8.onnx"),
+            additional_files: vec![String::from("model_int8.onnx_data")],
+            large: true,
+            prompt_template: Some(String::from(
+                "<|im_start|>user\nQuery: {query}\nDocument: {doc}\nRelevant:<|im_end|>\n<|im_start|>assistant\n",
+            )),
+        },
+        RerankerModelInfo {
+            model: RerankerModel::ZerankSmallInt4,
+            description: String::from(
+                "zeroentropy/zerank-1-small — 1.7B Qwen3 reranker, multilingual (INT4, ~1.3 GB)",
+            ),
+            model_code: String::from("cstr/zerank-1-small-ONNX"),
+            model_file: String::from("model_int4_full.onnx"),
+            additional_files: vec![],
+            large: true,
+            prompt_template: Some(String::from(
+                "<|im_start|>user\nQuery: {query}\nDocument: {doc}\nRelevant:<|im_end|>\n<|im_start|>assistant\n",
+            )),
         },
     ];
     reranker_model_list

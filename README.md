@@ -87,12 +87,14 @@ Quantized versions are also available for several models above (append `Q` to th
 - [**BAAI/bge-reranker-v2-m3**](https://huggingface.co/BAAI/bge-reranker-v2-m3) — multilingual (`BGERerankerV2M3`)
 - [**jinaai/jina-reranker-v1-turbo-en**](https://huggingface.co/jinaai/jina-reranker-v1-turbo-en) — English (`JINARerankerV1TurboEn`)
 - [**jinaai/jina-reranker-v2-base-multilingual**](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual) — 278M, multilingual, 1024 tokens (`JINARerankerV2BaseMultiligual`; INT8: `JINARerankerV2BaseMultilingualInt8`; FP16: `JINARerankerV2BaseMultilingualFp16`)
+- [**Alibaba-NLP/gte-reranker-modernbert-base**](https://huggingface.co/Alibaba-NLP/gte-reranker-modernbert-base) — 149M, English, 8192 tokens, ModernBERT cross-encoder, BEIR 56.73 (`GteRerankerModernBertBase`; INT8 150 MB: `GteRerankerModernBertBaseQ`; Q4F16 140 MB: `GteRerankerModernBertBaseQ4F16`)
 - [**mixedbread-ai/mxbai-rerank-xsmall-v1**](https://huggingface.co/mixedbread-ai/mxbai-rerank-xsmall-v1) — 33M, English, fast (`MxbaiRerankXsmallV1`, INT8: `MxbaiRerankXsmallV1Q`)
 - [**mixedbread-ai/mxbai-rerank-base-v1**](https://huggingface.co/mixedbread-ai/mxbai-rerank-base-v1) — 86M, English (`MxbaiRerankBaseV1`, INT8: `MxbaiRerankBaseV1Q`)
 - [**mixedbread-ai/mxbai-rerank-large-v1**](https://huggingface.co/mixedbread-ai/mxbai-rerank-large-v1) — 560M, English, DeBERTa-v3-large (`MxbaiRerankLargeV1`, INT8: `MxbaiRerankLargeV1Q`)
 - [**cross-encoder/ms-marco-MiniLM-L-6-v2**](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2) — 22M, English, very fast (`MsMarcoMiniLML6V2`)
 - [**cross-encoder/ms-marco-MiniLM-L-12-v2**](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-12-v2) — 33M, English (`MsMarcoMiniLML12V2`)
 - [**nvidia/llama-nemotron-rerank-1b-v2**](https://huggingface.co/nvidia/llama-nemotron-rerank-1b-v2) — 1B, multilingual, LLaMA-3.2 bidirectional; FP32 4.6 GB (`LlamaNemotronRerank1BV2`) / INT8 1.2 GB (`LlamaNemotronRerank1BV2Int8`) / INT4+INT8-emb 832 MB (`LlamaNemotronRerank1BV2Int4Full`)
+- [**zeroentropy/zerank-1-small**](https://huggingface.co/zeroentropy/zerank-1-small) — 1.7B Qwen3-based reranker, multilingual, top BEIR scores; FP16 ~3.2 GB (`ZerankSmall`) / INT8 ~2.5 GB (`ZerankSmallInt8`) / INT4 ~1.3 GB (`ZerankSmallInt4`)
 
 ## ✊ Support
 
