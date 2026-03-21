@@ -37,6 +37,17 @@ fn model_is_available_offline(model_code: &str) -> bool {
     false
 }
 
+/// Models that require downloading >1 GB additional data files — excluded from
+/// default CI runs to avoid timeouts / disk-space exhaustion.
+fn is_large_embedding_model(model_code: &str) -> bool {
+    matches!(
+        model_code,
+        "jinaai/jina-embeddings-v3"
+            | "jinaai/jina-embeddings-v5-text-small-retrieval"
+            | "jinaai/jina-embeddings-v5-text-nano-retrieval"
+    )
+}
+
 /// A small epsilon value for floating point comparisons.
 const EPS: f32 = 1e-2;
 
@@ -184,6 +195,15 @@ macro_rules! create_embeddings_test {
                     let offline = std::env::var("HF_HUB_OFFLINE").as_deref() == Ok("1");
                     if offline && !model_is_available_offline(&supported_model.model_code) {
                         eprintln!("SKIP {} — not in local cache (HF_HUB_OFFLINE=1)", supported_model.model);
+                        return;
+                    }
+                    if std::env::var("CI").is_ok()
+                        && is_large_embedding_model(&supported_model.model_code)
+                    {
+                        eprintln!(
+                            "SKIP {} — large model (>1 GB additional data) excluded from CI",
+                            supported_model.model
+                        );
                         return;
                     }
                     let mut model: TextEmbedding = match TextEmbedding::try_new(InitOptions::new(supported_model.model.clone())) {
