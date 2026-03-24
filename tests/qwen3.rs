@@ -2,7 +2,7 @@
 #![cfg(feature = "qwen3")]
 
 use candle_core::{DType, Device};
-use fastembed::{Qwen3TextEmbedding, Qwen3VLEmbedding};
+use fastembed::{Qwen3TextEmbedding, Qwen3VLEmbedding, ZembedTextEmbedding};
 
 const REPO_06B: &str = "Qwen/Qwen3-Embedding-0.6B";
 const REPO_4B: &str = "Qwen/Qwen3-Embedding-4B";
@@ -201,4 +201,40 @@ fn qwen3_vl_2b_image_embed() {
         (image_dot - expected_dot_from_python).abs() < 1e-2,
         "image cosine mismatch: got {image_dot}, expected {expected_dot_from_python}"
     );
+}
+
+#[test]
+fn zembed1_embed() {
+    if std::env::var("RUN_ZEMBED").is_err() {
+        return;
+    }
+    
+    let device = Device::Cpu;
+    let model = ZembedTextEmbedding::from_hf("zeroentropy/zembed-1", &device, DType::F32, 2048).expect("load model");
+
+    let queries = ["What is the capital of China?", "Explain gravity"];
+    let documents = [
+        "Beijing is the capital of China.",
+        "Gravity is a force that attracts objects toward each other.",
+    ];
+
+    let all_texts: Vec<&str> = queries.iter().chain(documents.iter()).copied().collect();
+    
+    // Check default embedding (no projection)
+    let embeddings = model.embed(&all_texts, None).expect("embed");
+
+    assert_eq!(embeddings.len(), all_texts.len());
+    for emb in &embeddings {
+        assert_eq!(emb.len(), 2560);
+        let norm: f32 = emb.iter().map(|x| x * x).sum::<f32>().sqrt();
+        assert!((norm - 1.0).abs() < 1e-4, "expected L2-normalized, got {norm}");
+    }
+
+    // Check with requested dimensional truncation
+    let truncated_embeddings = model.embed(&all_texts, Some(1280)).expect("embed truncated");
+    for emb in &truncated_embeddings {
+        assert_eq!(emb.len(), 1280);
+        let norm: f32 = emb.iter().map(|x| x * x).sum::<f32>().sqrt();
+        assert!((norm - 1.0).abs() < 1e-4, "expected L2-normalized, got {norm}");
+    }
 }
