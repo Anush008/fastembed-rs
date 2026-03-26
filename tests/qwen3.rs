@@ -208,9 +208,10 @@ fn zembed1_embed() {
     if std::env::var("RUN_ZEMBED").is_err() {
         return;
     }
-    
+
     let device = Device::Cpu;
-    let model = ZembedTextEmbedding::from_hf("zeroentropy/zembed-1", &device, DType::F32, 2048).expect("load model");
+    let model = ZembedTextEmbedding::from_hf("zeroentropy/zembed-1", &device, DType::F32, 2048)
+        .expect("load model");
 
     let queries = ["What is the capital of China?", "Explain gravity"];
     let documents = [
@@ -219,7 +220,7 @@ fn zembed1_embed() {
     ];
 
     let all_texts: Vec<&str> = queries.iter().chain(documents.iter()).copied().collect();
-    
+
     // Check default embedding (no projection)
     let embeddings = model.embed(&all_texts, None).expect("embed");
 
@@ -227,14 +228,22 @@ fn zembed1_embed() {
     for emb in &embeddings {
         assert_eq!(emb.len(), 2560);
         let norm: f32 = emb.iter().map(|x| x * x).sum::<f32>().sqrt();
-        assert!((norm - 1.0).abs() < 1e-4, "expected L2-normalized, got {norm}");
+        assert!(
+            (norm - 1.0).abs() < 1e-4,
+            "expected L2-normalized, got {norm}"
+        );
     }
 
     // Check with requested dimensional truncation
-    let truncated_embeddings = model.embed(&all_texts, Some(1280)).expect("embed truncated");
+    let truncated_embeddings = model
+        .embed(&all_texts, Some(1280))
+        .expect("embed truncated");
     for emb in &truncated_embeddings {
         assert_eq!(emb.len(), 1280);
         let norm: f32 = emb.iter().map(|x| x * x).sum::<f32>().sqrt();
-        assert!((norm - 1.0).abs() < 1e-4, "expected L2-normalized, got {norm}");
+        assert!(
+            (norm - 1.0).abs() < 1e-4,
+            "expected L2-normalized, got {norm}"
+        );
     }
 }

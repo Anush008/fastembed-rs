@@ -1176,7 +1176,13 @@ impl ZembedTextEmbedding {
 
         let encodings = self
             .tokenizer
-            .encode_batch(augmented_texts.iter().map(|s| s.as_str()).collect::<Vec<_>>(), true)
+            .encode_batch(
+                augmented_texts
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect::<Vec<_>>(),
+                true,
+            )
             .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
 
         let batch_size = encodings.len();
@@ -1203,7 +1209,7 @@ impl ZembedTextEmbedding {
         // Last token pooling
         let pooled = hidden.i((.., seq_len - 1))?;
 
-        // MRL projection/truncation 
+        // MRL projection/truncation
         let pooled = if let Some(d) = dim {
             pooled.narrow(1, 0, d)?
         } else {
