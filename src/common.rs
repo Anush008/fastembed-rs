@@ -23,11 +23,9 @@ pub fn get_cache_dir() -> String {
 /// in order; the first one that contains the requested model is used.  If no
 /// directory contains the model it is downloaded into the first directory.
 pub fn get_cache_dirs() -> Vec<std::path::PathBuf> {
-    std::env::var("FASTEMBED_CACHE_DIR")
-        .unwrap_or_else(|_| DEFAULT_CACHE_DIR.into())
-        .split(':')
-        .filter(|s| !s.is_empty())
-        .map(std::path::PathBuf::from)
+    let val = std::env::var("FASTEMBED_CACHE_DIR").unwrap_or_else(|_| DEFAULT_CACHE_DIR.into());
+    std::env::split_paths(&val)
+        .filter(|p| !p.as_os_str().is_empty())
         .collect()
 }
 
