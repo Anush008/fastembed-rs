@@ -23,7 +23,28 @@ impl SingleBatchOutput {
         &self,
         precedence: &impl OutputPrecedence,
     ) -> anyhow::Result<ArrayView<'_, f32, Dim<IxDynImpl>>> {
-        let ort_output: &ort::value::Value = precedence
+        self.find_ort_output(precedence)?
+            .try_extract_array()
+            .map_err(anyhow::Error::new)
+    }
+
+    /// Same as [`select_output`] but extracts as a uint8 array.
+    ///
+    /// Used for models (e.g. calibrated uint8 quantizations) whose output tensor
+    /// element type is `u8` rather than `f32`.
+    pub fn select_output_u8(
+        &self,
+        precedence: &impl OutputPrecedence,
+    ) -> anyhow::Result<ArrayView<'_, u8, Dim<IxDynImpl>>> {
+        self.find_ort_output(precedence)?
+            .try_extract_array::<u8>()
+            .map_err(anyhow::Error::new)
+    }
+    fn find_ort_output(
+        &self,
+        precedence: &impl OutputPrecedence,
+    ) -> anyhow::Result<&ort::value::Value> {
+        precedence
             .key_precedence()
             .find_map(|key| match key {
                 // Only select the sole output if and only if there is exactly one.
@@ -44,44 +65,7 @@ impl SingleBatchOutput {
                     "No suitable output found in the outputs. Available outputs: {:?}",
                     self.outputs.iter().map(|(k, _)| k).collect::<Vec<_>>()
                 ))
-            })?;
-
-        ort_output.try_extract_array().map_err(anyhow::Error::new)
-    }
-
-    /// Same as [`select_output`] but extracts as a uint8 array.
-    ///
-    /// Used for models (e.g. calibrated uint8 quantizations) whose output tensor
-    /// element type is `u8` rather than `f32`.
-    pub fn select_output_u8(
-        &self,
-        precedence: &impl OutputPrecedence,
-    ) -> anyhow::Result<ArrayView<'_, u8, Dim<IxDynImpl>>> {
-        let ort_output: &ort::value::Value = precedence
-            .key_precedence()
-            .find_map(|key| match key {
-                OutputKey::OnlyOne => {
-                    if self.outputs.len() == 1 {
-                        self.outputs.first().map(|(_, v)| v)
-                    } else {
-                        None
-                    }
-                }
-                OutputKey::ByOrder(idx) => self.outputs.get(*idx).map(|(_, v)| v),
-                OutputKey::ByName(name) => {
-                    self.outputs.iter().find(|(n, _)| n == name).map(|(_, v)| v)
-                }
             })
-            .ok_or_else(|| {
-                anyhow::Error::msg(format!(
-                    "No suitable output found in the outputs. Available outputs: {:?}",
-                    self.outputs.iter().map(|(k, _)| k).collect::<Vec<_>>()
-                ))
-            })?;
-
-        ort_output
-            .try_extract_array::<u8>()
-            .map_err(anyhow::Error::new)
     }
 
     /// Select the output from the session outputs based on the given precedence and pool it.
