@@ -1131,6 +1131,100 @@ impl Qwen3TextEmbedding {
     }
 }
 
+/// high-level embedding wrapper tailored for zeroentropy/zembed-1 which is based on qwen3.
+/// this wrapper handles the specific requirement of appending `<|im_end|>\n` to all texts
+/// and supports Matryoshka dimensional truncation before normalization
+pub struct ZembedTextEmbedding {
+    model: Qwen3Model,
+    tokenizer: tokenizers::Tokenizer,
+}
+
+impl ZembedTextEmbedding {
+    #[cfg(feature = "hf-hub")]
+    pub fn from_hf(
+        repo_id: &str,
+        device: &Device,
+        dtype: DType,
+        max_length: usize,
+    ) -> Result<Self> {
+        let base = Qwen3TextEmbedding::from_hf(repo_id, device, dtype, max_length)?;
+        Ok(Self {
+            model: base.model,
+            tokenizer: base.tokenizer,
+        })
+    }
+
+    pub fn config(&self) -> &Config {
+        self.model.config()
+    }
+
+    pub fn device(&self) -> &Device {
+        self.model.device()
+    }
+
+    /// Embed a batch of texts, appending `<|im_end|>\n` as required by zembed-1.
+    /// Supports dimensionality reduction (Matryoshka truncation) prior to L2 normalization.
+    pub fn embed<S: AsRef<str>>(&self, texts: &[S], dim: Option<usize>) -> Result<Vec<Vec<f32>>> {
+        if texts.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let augmented_texts: Vec<String> = texts
+            .iter()
+            .map(|t| format!("{}<|im_end|>\n", t.as_ref()))
+            .collect();
+
+        let encodings = self
+            .tokenizer
+            .encode_batch(
+                augmented_texts
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect::<Vec<_>>(),
+                true,
+            )
+            .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
+
+        let batch_size = encodings.len();
+        let seq_len = encodings[0].len();
+
+        let mut input_ids_vec: Vec<u32> = Vec::with_capacity(batch_size * seq_len);
+        let mut attention_mask_vec: Vec<f32> = Vec::with_capacity(batch_size * seq_len);
+
+        for enc in &encodings {
+            input_ids_vec.extend(enc.get_ids().iter().copied());
+            attention_mask_vec.extend(enc.get_attention_mask().iter().map(|&m| m as f32));
+        }
+
+        let device = self.model.device();
+        let input_ids = Tensor::from_vec(input_ids_vec, (batch_size, seq_len), device)?;
+        let attention_mask_2d =
+            Tensor::from_vec(attention_mask_vec, (batch_size, seq_len), device)?;
+
+        let attention_mask_4d = build_attention_mask_4d(&attention_mask_2d)?;
+
+        // Forward pass -> [B, T, H]
+        let hidden = self.model.forward(&input_ids, Some(&attention_mask_4d))?;
+
+        // Last token pooling
+        let pooled = hidden.i((.., seq_len - 1))?;
+
+        // MRL projection/truncation
+        let pooled = if let Some(d) = dim {
+            pooled.narrow(1, 0, d)?
+        } else {
+            pooled
+        };
+
+        // L2 normalize
+        let normalized = l2_normalize(&pooled)?;
+
+        let normalized = normalized.to_dtype(DType::F32)?;
+        let data = normalized.to_vec2::<f32>()?;
+        Ok(data)
+    }
+}
+
 /// Multimodal embedding wrapper for Qwen3-VL embedding checkpoints.
 ///
 /// This supports text-only and image-only inputs. Image+text mixed inputs can be

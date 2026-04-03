@@ -53,6 +53,7 @@
 - [**Qwen/Qwen3-Embedding-4B**](https://huggingface.co/Qwen/Qwen3-Embedding-4B) - requires `qwen3` feature (candle backend)
 - [**Qwen/Qwen3-Embedding-8B**](https://huggingface.co/Qwen/Qwen3-Embedding-8B) - requires `qwen3` feature (candle backend)
 - [**Qwen/Qwen3-VL-Embedding-2B**](https://huggingface.co/Qwen/Qwen3-VL-Embedding-2B) - requires `qwen3` feature (candle backend, multimodal via `Qwen3VLEmbedding`)
+- [**zeroentropy/zembed-1**](https://huggingface.co/zeroentropy/zembed-1) - requires `qwen3` feature (candle backend, via `ZembedTextEmbedding`)
 - [**snowflake/snowflake-arctic-embed-xs**](https://huggingface.co/snowflake/snowflake-arctic-embed-xs)
 - [**snowflake/snowflake-arctic-embed-s**](https://huggingface.co/snowflake/snowflake-arctic-embed-s)
 - [**snowflake/snowflake-arctic-embed-m**](https://huggingface.co/snowflake/snowflake-arctic-embed-m)
@@ -191,6 +192,26 @@ let text_embeddings = model.embed_texts(&["query: blue cat", "query: red cat"])?
 
 println!("Image embeddings: {}", image_embeddings.len());
 println!("Text embeddings: {}", text_embeddings.len());
+```
+
+For **zeroentropy/zembed-1**, use `ZembedTextEmbedding` which natively supports Matryoshka dimension truncation and optimal prompt formatting:
+
+```rust
+use candle_core::{DType, Device};
+use fastembed::ZembedTextEmbedding;
+
+let device = Device::Cpu;
+let model = ZembedTextEmbedding::from_hf(
+    "zeroentropy/zembed-1",
+    &device,
+    DType::F32,
+    2048,
+)?;
+
+// Shrink the embedding via Matryoshka (MRL) projection to any size (e.g., 2560, 1280, 640)
+// by passing the desired dimension to the `embed` method!
+let embeddings = model.embed(&["This natively runs in FastEmbed without ONNX!"], Some(1280))?;
+println!("Embedding dimension: {}", embeddings[0].len());
 ```
 
 ### Nomic Embed Text v2 MoE
