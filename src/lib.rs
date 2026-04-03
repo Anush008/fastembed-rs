@@ -67,7 +67,9 @@ mod text_embedding;
 
 pub use ort::execution_providers::ExecutionProviderDispatch;
 
-pub use crate::common::{get_cache_dir, Embedding, Error, SparseEmbedding, TokenizerFiles};
+pub use crate::common::{
+    get_cache_dir, Embedding, Error, OnnxSource, SparseEmbedding, TokenizerFiles,
+};
 pub use crate::models::{
     model_info::ModelInfo, model_info::RerankerModelInfo, quantization::QuantizationMode,
 };
@@ -83,7 +85,8 @@ pub use crate::models::text_embedding::EmbeddingModel;
 #[deprecated(note = "use `TextInitOptions` instead")]
 pub use crate::text_embedding::TextInitOptions as InitOptions;
 pub use crate::text_embedding::{
-    InitOptionsUserDefined, TextEmbedding, TextInitOptions, UserDefinedEmbeddingModel,
+    ExternalInitializerFile, InitOptionsUserDefined, TextEmbedding, TextInitOptions,
+    UserDefinedEmbeddingModel,
 };
 
 // For Sparse Text Embedding
@@ -102,7 +105,7 @@ pub use crate::models::image_embedding::ImageEmbeddingModel;
 // For Reranking
 pub use crate::models::reranking::RerankerModel;
 pub use crate::reranking::{
-    OnnxSource, RerankInitOptions, RerankInitOptionsUserDefined, RerankResult, TextRerank,
+    RerankInitOptions, RerankInitOptionsUserDefined, RerankResult, TextRerank,
     UserDefinedRerankingModel,
 };
 

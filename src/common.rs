@@ -1,14 +1,81 @@
 use anyhow::Result;
 #[cfg(feature = "hf-hub")]
 use hf_hub::api::sync::{ApiBuilder, ApiRepo};
-#[cfg(feature = "hf-hub")]
 use std::path::PathBuf;
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, Tokenizer, TruncationParams};
 
 const DEFAULT_CACHE_DIR: &str = ".fastembed_cache";
 
+/// Source for a user-supplied ONNX model file — either pre-loaded bytes or a
+/// filesystem path (preferred for large models with external data files, where
+/// loading into memory would double peak RAM usage).
+///
+/// When [`OnnxSource::File`] is used, ONNX Runtime resolves any companion
+/// `.onnx.data` file automatically from the same directory, so there is no
+/// need to pass external initializers separately.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OnnxSource {
+    Memory(Vec<u8>),
+    File(PathBuf),
+}
+
+impl From<Vec<u8>> for OnnxSource {
+    fn from(bytes: Vec<u8>) -> Self {
+        OnnxSource::Memory(bytes)
+    }
+}
+
+impl From<PathBuf> for OnnxSource {
+    fn from(path: PathBuf) -> Self {
+        OnnxSource::File(path)
+    }
+}
+
+/// Returns the first configured cache directory (backwards-compatible).
 pub fn get_cache_dir() -> String {
-    std::env::var("FASTEMBED_CACHE_DIR").unwrap_or(DEFAULT_CACHE_DIR.into())
+    get_cache_dirs()
+        .into_iter()
+        .next()
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|| DEFAULT_CACHE_DIR.into())
+}
+
+/// Returns all configured cache directories.
+///
+/// `FASTEMBED_CACHE_DIR` may be a single path or a colon-separated list of
+/// paths (e.g. `"/fast/cache:/slow/backup"`).  The directories are searched
+/// in order; the first one that contains the requested model is used.  If no
+/// directory contains the model it is downloaded into the first directory.
+pub fn get_cache_dirs() -> Vec<std::path::PathBuf> {
+    std::env::var("FASTEMBED_CACHE_DIR")
+        .unwrap_or_else(|_| DEFAULT_CACHE_DIR.into())
+        .split(':')
+        .filter(|s| !s.is_empty())
+        .map(std::path::PathBuf::from)
+        .collect()
+}
+
+/// Search `dirs` for an already-cached hf-hub model snapshot.
+///
+/// Returns the first directory whose hf-hub layout contains a complete
+/// snapshot for `model_code` (`models--{org}--{name}/refs/main` exists and
+/// the corresponding `snapshots/{hash}` directory is present).
+#[cfg(feature = "hf-hub")]
+pub fn find_model_cache_dir(
+    model_code: &str,
+    dirs: &[std::path::PathBuf],
+) -> Option<std::path::PathBuf> {
+    let dir_name = format!("models--{}", model_code.replace('/', "--"));
+    for dir in dirs {
+        let refs_main = dir.join(&dir_name).join("refs/main");
+        if let Ok(hash) = std::fs::read_to_string(&refs_main) {
+            let snap = dir.join(&dir_name).join("snapshots").join(hash.trim());
+            if snap.exists() {
+                return Some(dir.clone());
+            }
+        }
+    }
+    None
 }
 
 pub struct SparseEmbedding {
