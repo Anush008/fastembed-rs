@@ -7,7 +7,7 @@ use crate::{
     models::{text_embedding::models_list, ModelTrait},
     pooling::Pooling,
     Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, OutputKey, QuantizationMode,
-    SingleBatchOutput,
+    RerankResult, SingleBatchOutput,
 };
 #[cfg(feature = "hf-hub")]
 use anyhow::Context;
@@ -69,6 +69,7 @@ impl TextEmbedding {
 
         // prioritise loading pooling config if available, if not (thanks qdrant!), look for it in hardcoded
         let post_processing = TextEmbedding::get_default_pooling_method(&model_name);
+        let prefix = TextEmbedding::get_prefix(&model_name);
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)?
@@ -83,6 +84,7 @@ impl TextEmbedding {
             post_processing,
             TextEmbedding::get_quantization_mode(&model_name),
             model_info.output_key.clone(),
+            prefix,
         ))
     }
 
@@ -123,6 +125,7 @@ impl TextEmbedding {
             model.pooling,
             model.quantization,
             model.output_key,
+            None,
         ))
     }
 
@@ -133,32 +136,116 @@ impl TextEmbedding {
         post_process: Option<Pooling>,
         quantization: QuantizationMode,
         output_key: Option<OutputKey>,
+        prefix: Option<&'static str>,
     ) -> Self {
         let need_token_type_ids = session
             .inputs()
             .iter()
             .any(|input| input.name() == "token_type_ids");
 
+        let need_position_ids = session
+            .inputs()
+            .iter()
+            .any(|input| input.name() == "position_ids");
+
+        let need_task_id = session
+            .inputs()
+            .iter()
+            .any(|input| input.name() == "task_id");
+
+        // Count KV-cache layer pairs by counting `past_key_values.N.key` inputs.
+        let kv_cache_layers = session
+            .inputs()
+            .iter()
+            .filter(|i| i.name().starts_with("past_key_values.") && i.name().ends_with(".key"))
+            .count();
+
+        // Auto-detect kv_heads and head_dim from the first key tensor's shape.
+        // Shape convention: [batch, kv_heads, seq, head_dim] — dims 1 and 3 are fixed.
+        let (kv_cache_kv_heads, kv_cache_head_dim) = if kv_cache_layers > 0 {
+            session
+                .inputs()
+                .iter()
+                .find(|i| i.name() == "past_key_values.0.key")
+                .and_then(|outlet| outlet.dtype().tensor_shape())
+                .and_then(|shape| {
+                    let s: &[i64] = shape;
+                    if s.len() == 4 && s[1] > 0 && s[3] > 0 {
+                        Some((s[1] as usize, s[3] as usize))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or((0, 0))
+        } else {
+            (0, 0)
+        };
+
+        // Detect static batch dimension from `input_ids` shape.
+        // A positive (non-−1) batch dim means the model was exported with a fixed batch size.
+        let max_batch_size = session
+            .inputs()
+            .iter()
+            .find(|i| i.name() == "input_ids")
+            .and_then(|outlet| outlet.dtype().tensor_shape())
+            .and_then(|shape| {
+                let s: &[i64] = shape;
+                if !s.is_empty() && s[0] > 0 {
+                    Some(s[0] as usize)
+                } else {
+                    None // dynamic batch dimension
+                }
+            });
+
         Self {
             tokenizer,
             session,
             need_token_type_ids,
+            need_position_ids,
+            need_task_id,
+            kv_cache_layers,
+            kv_cache_kv_heads,
+            kv_cache_head_dim,
             pooling: post_process,
             quantization,
             output_key,
+            max_batch_size,
+            prefix,
         }
     }
-    /// Return the TextEmbedding model's directory from cache or remote retrieval
+    /// Return the TextEmbedding model's directory from cache or remote retrieval.
+    ///
+    /// Searches all directories listed in `FASTEMBED_CACHE_DIR` (colon-separated)
+    /// before falling back to `cache_dir` for downloading.
     #[cfg(feature = "hf-hub")]
     fn retrieve_model(
         model: EmbeddingModel,
         cache_dir: PathBuf,
         show_download_progress: bool,
     ) -> anyhow::Result<ApiRepo> {
-        use crate::common::pull_from_hf;
+        use crate::common::{find_model_cache_dir, get_cache_dirs, pull_from_hf};
 
         let model_code = TextEmbedding::get_model_info(&model)?.model_code.clone();
-        pull_from_hf(model_code, cache_dir, show_download_progress)
+        let all_dirs = get_cache_dirs();
+        let effective_dir = find_model_cache_dir(&model_code, &all_dirs).unwrap_or(cache_dir);
+        pull_from_hf(model_code, effective_dir, show_download_progress)
+    }
+
+    /// Return the static text prefix to prepend to every input for this model, if any.
+    ///
+    /// Models that require a fixed task prefix on all inputs (e.g. Jina-embeddings-v5
+    /// variants that need `"Document: "` for symmetric retrieval) should be listed here.
+    ///
+    /// For asymmetric retrieval with separate query and document prefixes, callers should
+    /// prepend the appropriate prefix themselves before passing text to `embed()`.
+    pub fn get_prefix(model_name: &EmbeddingModel) -> Option<&'static str> {
+        match model_name {
+            // Jina-v5 nano (and other task-specific variants) require a task prefix on every
+            // input.  "Document: " is used as the default for symmetric embedding (indexing).
+            // For query encoding, prepend "Query: " to your input strings before embed().
+            EmbeddingModel::JinaEmbeddingsV5Nano => Some("Document: "),
+            _ => None,
+        }
     }
 
     pub fn get_default_pooling_method(model_name: &EmbeddingModel) -> Option<Pooling> {
@@ -200,6 +287,9 @@ impl TextEmbedding {
             EmbeddingModel::GTEBaseENV15Q => Some(Pooling::Cls),
             EmbeddingModel::GTELargeENV15 => Some(Pooling::Cls),
             EmbeddingModel::GTELargeENV15Q => Some(Pooling::Cls),
+            EmbeddingModel::GteModernBertBase => Some(Pooling::Cls),
+            EmbeddingModel::GteModernBertBaseQ => Some(Pooling::Cls),
+            EmbeddingModel::GteModernBertBaseQ4F16 => Some(Pooling::Cls),
 
             EmbeddingModel::ClipVitB32 => Some(Pooling::Mean),
 
@@ -218,6 +308,43 @@ impl TextEmbedding {
             EmbeddingModel::SnowflakeArcticEmbedMLongQ => Some(Pooling::Cls),
             EmbeddingModel::SnowflakeArcticEmbedL => Some(Pooling::Cls),
             EmbeddingModel::SnowflakeArcticEmbedLQ => Some(Pooling::Cls),
+
+            // Calibrated uint8: affine dequant f32 = (u8 - zp) × scale
+            // Parameters read from the QuantizeLinear initializers in dynamic_uint8.onnx
+            // (quant_scale = 0.0027450979687273502, quant_zero_point = 109)
+            EmbeddingModel::Qwen3Embedding0_6BUint8 => Some(Pooling::PrePooledU8 {
+                scale: 0.002_745_098,
+                zero_point: 109,
+            }),
+            EmbeddingModel::SnowflakeArcticEmbedLV2 => Some(Pooling::Cls),
+            // Snowflake Arctic Embed M v2: same GTE architecture as L v2, uses CLS pooling
+            EmbeddingModel::SnowflakeArcticEmbedMV2 => Some(Pooling::Cls),
+            // PIXIE-Rune uses CLS pooling (pooling_mode_cls_token: true in 1_Pooling/config.json)
+            EmbeddingModel::PixieRuneV1 => Some(Pooling::Cls),
+            EmbeddingModel::PixieRuneV1Q => Some(Pooling::Cls),
+            EmbeddingModel::PixieRuneV1Int4 => Some(Pooling::Cls),
+            EmbeddingModel::PixieRuneV1Int4Full => Some(Pooling::Cls),
+            // Jina v3: XLM-R + LoRA adapters. task_id=1 (retrieval.passage) is injected
+            // automatically (need_task_id auto-detected from ONNX inputs). Mean pooling
+            // over the 3D `text_embeds` output [batch, seq, 1024].
+            EmbeddingModel::JinaEmbeddingsV3 => Some(Pooling::Mean),
+            // Jina v5 Nano ships a pre-pooled 'sentence_embedding' output [batch, dim].
+            // Cls on a 2D tensor is a no-op pass-through.
+            EmbeddingModel::JinaEmbeddingsV5Nano => Some(Pooling::Cls),
+            // Decoder-style models: take the last non-padding token
+            EmbeddingModel::OctenEmbedding0_6BFp32 => Some(Pooling::LastToken),
+            EmbeddingModel::OctenEmbedding0_6BInt4 => Some(Pooling::LastToken),
+            EmbeddingModel::OctenEmbedding0_6BInt8Full => Some(Pooling::LastToken),
+            EmbeddingModel::OctenEmbedding0_6BInt4Full => Some(Pooling::LastToken),
+            // F2LLM-v2-0.6B: same Qwen3 decoder architecture, last-token pooling
+            EmbeddingModel::F2LlmV2_0_6BFp32 => Some(Pooling::LastToken),
+            EmbeddingModel::F2LlmV2_0_6BInt8 => Some(Pooling::LastToken),
+            EmbeddingModel::F2LlmV2_0_6BInt4 => Some(Pooling::LastToken),
+            EmbeddingModel::F2LlmV2_0_6BInt8Full => Some(Pooling::LastToken),
+            EmbeddingModel::JinaEmbeddingsV5Small => Some(Pooling::LastToken),
+            // Harrier decoder-only: pre-pooled `sentence_embedding` output, last-token as fallback
+            EmbeddingModel::HarrierOSSV1_270M => Some(Pooling::LastToken),
+            EmbeddingModel::HarrierOSSV1_270MQ => Some(Pooling::LastToken),
         }
     }
 
@@ -251,6 +378,7 @@ impl TextEmbedding {
             EmbeddingModel::SnowflakeArcticEmbedMQ => QuantizationMode::Dynamic,
             EmbeddingModel::SnowflakeArcticEmbedMLongQ => QuantizationMode::Dynamic,
             EmbeddingModel::SnowflakeArcticEmbedLQ => QuantizationMode::Dynamic,
+            EmbeddingModel::HarrierOSSV1_270MQ => QuantizationMode::Dynamic,
             _ => QuantizationMode::None,
         }
     }
@@ -321,11 +449,33 @@ impl TextEmbedding {
             _ => Ok(batch_size.unwrap_or(DEFAULT_BATCH_SIZE)),
         }?;
 
+        // Enforce static batch dimension if detected from the ONNX graph.
+        let batch_size = if let Some(max) = self.max_batch_size {
+            if batch_size > max {
+                return Err(anyhow::anyhow!(
+                    "This model was exported with a static batch size of {max}. \
+                     Pass `batch_size = Some({max})` (or embed fewer texts at a time)."
+                ));
+            }
+            batch_size.min(max)
+        } else {
+            batch_size
+        };
+
         let batches = texts
             .chunks(batch_size)
             .map(|batch| {
-                // Encode the texts in the batch
-                let inputs = batch.iter().map(|text| text.as_ref()).collect();
+                // Encode the texts in the batch, prepending prefix if set
+                let prefixed: Vec<String>;
+                let inputs: Vec<&str> = if let Some(pfx) = self.prefix {
+                    prefixed = batch
+                        .iter()
+                        .map(|text| format!("{}{}", pfx, text.as_ref()))
+                        .collect();
+                    prefixed.iter().map(|s| s.as_str()).collect()
+                } else {
+                    batch.iter().map(|text| text.as_ref()).collect()
+                };
                 let encodings = self.tokenizer.encode_batch(inputs, true).map_err(|e| {
                     anyhow::Error::msg(e.to_string()).context("Failed to encode the batch.")
                 })?;
@@ -373,6 +523,50 @@ impl TextEmbedding {
                     ));
                 }
 
+                if self.need_position_ids {
+                    // Build position_ids [[0, 1, ..., seq-1], ...] for each batch item.
+                    let pos_ids: Vec<i64> = (0..batch_size)
+                        .flat_map(|_| 0..encoding_length as i64)
+                        .collect();
+                    let position_ids_array =
+                        Array::from_shape_vec((batch_size, encoding_length), pos_ids)?;
+                    session_inputs.push((
+                        "position_ids".into(),
+                        Value::from_array(position_ids_array)?.into(),
+                    ));
+                }
+
+                if self.need_task_id {
+                    // task_id=1 selects the retrieval.passage LoRA adapter.
+                    // Jina-embeddings-v3 expects a scalar (0-D) int64 tensor, not [batch].
+                    let task_id_scalar = ndarray::arr0(1i64);
+                    session_inputs
+                        .push(("task_id".into(), Value::from_array(task_id_scalar)?.into()));
+                }
+
+                if self.kv_cache_layers > 0 {
+                    // Inject empty KV-cache tensors [batch, kv_heads, 0, head_dim] for each layer.
+                    // Required by onnx-community-style decoder models that expect past_key_values.
+                    for layer in 0..self.kv_cache_layers {
+                        let kv_shape = (
+                            batch_size,
+                            self.kv_cache_kv_heads,
+                            0usize,
+                            self.kv_cache_head_dim,
+                        );
+                        let k_empty = ndarray::Array4::<f32>::zeros(kv_shape);
+                        let v_empty = ndarray::Array4::<f32>::zeros(kv_shape);
+                        session_inputs.push((
+                            format!("past_key_values.{}.key", layer).into(),
+                            Value::from_array(k_empty)?.into(),
+                        ));
+                        session_inputs.push((
+                            format!("past_key_values.{}.value", layer).into(),
+                            Value::from_array(v_empty)?.into(),
+                        ));
+                    }
+                }
+
                 let outputs_map = self
                     .session
                     .run(session_inputs)
@@ -418,5 +612,58 @@ impl TextEmbedding {
                 self.pooling.clone(),
             ))
         }
+    }
+
+    /// Rerank documents against a query using bi-encoder cosine similarity.
+    ///
+    /// Both query and documents are embedded with this model and ranked by
+    /// cosine similarity (dot product of L2-normalised embeddings).
+    ///
+    /// For asymmetric retrieval models (e.g. `JinaEmbeddingsV5Small`) prepend
+    /// task-specific prefixes manually: `"Query: <text>"` for the query and
+    /// `"Document: <text>"` for documents.
+    pub fn rerank<S: AsRef<str> + Send + Sync>(
+        &mut self,
+        query: impl AsRef<str>,
+        documents: impl AsRef<[S]>,
+        top_n: Option<usize>,
+        return_documents: bool,
+    ) -> Result<Vec<RerankResult>> {
+        let documents = documents.as_ref();
+        let query_str = query.as_ref();
+
+        let query_embs = self.embed(std::slice::from_ref(&query_str), None)?;
+        let query_emb = &query_embs[0];
+
+        let doc_embs = self.embed(documents, None)?;
+
+        let mut results: Vec<RerankResult> = doc_embs
+            .iter()
+            .enumerate()
+            .map(|(i, doc_emb)| {
+                let score: f32 = query_emb
+                    .iter()
+                    .zip(doc_emb.iter())
+                    .map(|(a, b)| a * b)
+                    .sum();
+                RerankResult {
+                    document: if return_documents {
+                        Some(documents[i].as_ref().to_string())
+                    } else {
+                        None
+                    },
+                    score,
+                    index: i,
+                }
+            })
+            .collect();
+
+        results.sort_by(|a, b| a.score.total_cmp(&b.score).reverse());
+
+        if let Some(n) = top_n {
+            results.truncate(n);
+        }
+
+        Ok(results)
     }
 }

@@ -74,7 +74,8 @@ impl From<TextInitOptions> for InitOptionsUserDefined {
 /// Struct for "bring your own" embedding models
 ///
 /// The onnx_file and tokenizer_files are expecting the files' bytes
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Note:  is not derived because [] contains .
+#[derive(Debug, Clone, PartialEq)]
 pub struct UserDefinedEmbeddingModel {
     pub onnx_file: Vec<u8>,
     pub external_initializers: Vec<ExternalInitializerFile>,
@@ -129,6 +130,41 @@ pub struct TextEmbedding {
     pub(crate) pooling: Option<Pooling>,
     pub(crate) session: Session,
     pub(crate) need_token_type_ids: bool,
+    /// Whether to inject `position_ids [[0,1,...,seq-1],...]` into session inputs.
+    ///
+    /// Required by decoder-style models such as Qwen3-Embedding that were exported
+    /// with dynamo and do not compute absolute positions internally.
+    pub(crate) need_position_ids: bool,
+    /// Whether to inject a `task_id` tensor into session inputs.
+    ///
+    /// Used by Jina-embeddings-v3 to select the correct LoRA adapter (`task_id=1`
+    /// selects the retrieval adapter).
+    pub(crate) need_task_id: bool,
+    /// Number of KV-cache layer pairs (0 = encoder model, no KV-cache needed).
+    ///
+    /// When > 0, empty `past_key_values.N.key/value` tensors of shape
+    /// `[batch, kv_heads, 0, head_dim]` are injected for each layer.
+    /// This is required by decoder-style models exported from `onnx-community`
+    /// (e.g. `onnx-community/Qwen3-Embedding-0.6B`).
+    pub(crate) kv_cache_layers: usize,
+    /// Number of KV heads per layer (auto-detected from the first
+    /// `past_key_values.0.key` input shape).
+    pub(crate) kv_cache_kv_heads: usize,
+    /// Head dimension (auto-detected from the `past_key_values.0.key` shape).
+    pub(crate) kv_cache_head_dim: usize,
+    /// Maximum batch size the model accepts, or `None` if the batch dimension is dynamic.
+    ///
+    /// Auto-detected from the `input_ids` shape: a positive (non-−1) batch dimension
+    /// indicates a statically shaped export.  If set, `transform()` will emit a clear
+    /// error before hitting ORT.
+    pub(crate) max_batch_size: Option<usize>,
     pub(crate) quantization: QuantizationMode,
     pub(crate) output_key: Option<OutputKey>,
+    /// Optional text prefix prepended to every input before tokenization.
+    ///
+    /// Used by models that require a task-specific prefix on all inputs, such as
+    /// Jina-embeddings-v5 (`"Document: "`) or for symmetric retrieval use cases.
+    /// For asymmetric retrieval (different query/document prefixes) callers should
+    /// add the appropriate prefix to their input strings before calling `embed()`.
+    pub(crate) prefix: Option<&'static str>,
 }

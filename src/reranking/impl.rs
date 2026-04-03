@@ -15,7 +15,7 @@ use crate::{
 };
 #[cfg(feature = "hf-hub")]
 use hf_hub::{api::sync::ApiBuilder, Cache};
-use ndarray::{s, Array};
+use ndarray::Array;
 use tokenizers::Tokenizer;
 
 #[cfg(feature = "hf-hub")]
@@ -26,7 +26,12 @@ use super::{
 };
 
 impl TextRerank {
-    fn new(tokenizer: Tokenizer, session: Session) -> Self {
+    fn new(
+        tokenizer: Tokenizer,
+        session: Session,
+        prompt_template: Option<String>,
+        max_length: usize,
+    ) -> Self {
         let need_token_type_ids = session
             .inputs()
             .iter()
@@ -35,6 +40,8 @@ impl TextRerank {
             tokenizer,
             session,
             need_token_type_ids,
+            max_length,
+            prompt_template,
         }
     }
 
@@ -63,7 +70,12 @@ impl TextRerank {
 
         let threads = available_parallelism()?.get();
 
-        let cache = Cache::new(cache_dir);
+        let effective_dir = {
+            use crate::common::{find_model_cache_dir, get_cache_dirs};
+            let all_dirs = get_cache_dirs();
+            find_model_cache_dir(&model_name.to_string(), &all_dirs).unwrap_or(cache_dir)
+        };
+        let cache = Cache::new(effective_dir);
         let api = ApiBuilder::from_cache(cache)
             .with_progress(show_download_progress)
             .build()
@@ -89,8 +101,9 @@ impl TextRerank {
             .with_intra_threads(threads)?
             .commit_from_file(model_file_reference)?;
 
+        let prompt_template = TextRerank::get_model_info(&model_name).prompt_template;
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
-        Ok(Self::new(tokenizer, session))
+        Ok(Self::new(tokenizer, session, prompt_template, max_length))
     }
 
     /// Create a TextRerank instance from model files provided by the user.
@@ -103,6 +116,7 @@ impl TextRerank {
         let RerankInitOptionsUserDefined {
             execution_providers,
             max_length,
+            prompt_template,
         } = options;
 
         let threads = available_parallelism()?.get();
@@ -118,7 +132,7 @@ impl TextRerank {
         };
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
-        Ok(Self::new(tokenizer, session))
+        Ok(Self::new(tokenizer, session, prompt_template, max_length))
     }
 
     /// Rerank documents using the reranker model and returns the results sorted by score in descending order.
@@ -137,11 +151,51 @@ impl TextRerank {
 
         let mut scores: Vec<f32> = Vec::with_capacity(documents.len());
         for batch in documents.chunks(batch_size) {
-            let inputs = batch.iter().map(|d| (q, d.as_ref())).collect();
-            let encodings = self
-                .tokenizer
-                .encode_batch(inputs, true)
-                .map_err(|e| anyhow::Error::msg(e.to_string()).context("Failed to encode batch"))?;
+            let encodings = if let Some(tmpl) = &self.prompt_template {
+                // For template-based (generative) rerankers, naive end-truncation of the
+                // full formatted string silently cuts the assistant-turn suffix, leaving the
+                // model with a malformed prompt and producing garbage scores.
+                //
+                // Fix: measure the token overhead of the template with an empty doc slot,
+                // then truncate the doc to fit the remaining budget before formatting.
+                // This preserves the critical suffix (`\nRelevant:<|im_end|>\n...` etc.).
+                let overhead_text = tmpl.replace("{query}", q).replace("{doc}", "");
+                let overhead_len = self
+                    .tokenizer
+                    .encode(overhead_text.as_str(), false)
+                    .map(|e| e.len())
+                    .unwrap_or(0);
+                let doc_budget = self.max_length.saturating_sub(overhead_len);
+
+                let formatted: Vec<String> = batch
+                    .iter()
+                    .map(|d| {
+                        let doc_str = d.as_ref();
+                        let truncated_doc =
+                            if let Ok(doc_enc) = self.tokenizer.encode(doc_str, false) {
+                                let ids = doc_enc.get_ids();
+                                if ids.len() > doc_budget {
+                                    self.tokenizer
+                                        .decode(&ids[..doc_budget], true)
+                                        .unwrap_or_else(|_| doc_str.to_string())
+                                } else {
+                                    doc_str.to_string()
+                                }
+                            } else {
+                                doc_str.to_string()
+                            };
+                        tmpl.replace("{query}", q).replace("{doc}", &truncated_doc)
+                    })
+                    .collect();
+                self.tokenizer.encode_batch(formatted, true).map_err(|e| {
+                    anyhow::Error::msg(e.to_string()).context("Failed to encode batch")
+                })?
+            } else {
+                let inputs = batch.iter().map(|d| (q, d.as_ref())).collect();
+                self.tokenizer.encode_batch(inputs, true).map_err(|e| {
+                    anyhow::Error::msg(e.to_string()).context("Failed to encode batch")
+                })?
+            };
 
             let encoding_length = encodings
                 .first()
@@ -182,19 +236,31 @@ impl TextRerank {
             }
 
             let outputs = self.session.run(session_inputs)?;
-            let outputs = outputs
+            let logits_value = outputs
                 .get("logits")
-                .ok_or_else(|| anyhow::Error::msg("Output does not contain 'logits' key"))?
-                .try_extract_array()
-                .map_err(|e| {
-                    anyhow::Error::msg(format!("Failed to extract logits tensor: {}", e))
-                })?;
-            let batch_scores: Vec<f32> = outputs
-                .slice(s![.., 0])
-                .rows()
-                .into_iter()
-                .flat_map(|row| row.to_vec())
-                .collect();
+                .ok_or_else(|| anyhow::Error::msg("Output does not contain 'logits' key"))?;
+
+            // Support both FP32 and FP16 model outputs.
+            let batch_scores: Vec<f32> = match logits_value.try_extract_tensor::<f32>() {
+                Ok((shape, data)) => {
+                    let cols = shape[1] as usize;
+                    (0..batch_size).map(|i| data[i * cols]).collect()
+                }
+                Err(_) => {
+                    // FP16 fallback: extract as half::f16 then convert
+                    let (shape, data) =
+                        logits_value
+                            .try_extract_tensor::<half::f16>()
+                            .map_err(|e| {
+                                anyhow::Error::msg(format!(
+                                    "Failed to extract logits tensor: {}",
+                                    e
+                                ))
+                            })?;
+                    let cols = shape[1] as usize;
+                    (0..batch_size).map(|i| data[i * cols].to_f32()).collect()
+                }
+            };
             scores.extend(batch_scores);
         }
 

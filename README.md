@@ -41,6 +41,7 @@
 - [**mixedbread-ai/mxbai-embed-large-v1**](https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1)
 - [**Alibaba-NLP/gte-base-en-v1.5**](https://huggingface.co/Alibaba-NLP/gte-base-en-v1.5)
 - [**Alibaba-NLP/gte-large-en-v1.5**](https://huggingface.co/Alibaba-NLP/gte-large-en-v1.5)
+- [**Alibaba-NLP/gte-modernbert-base**](https://huggingface.co/Alibaba-NLP/gte-modernbert-base) — 149M, 768d, 8192 tokens, MTEB 64.38; FP32 / INT8 / Q4F16 (140 MB) variants
 - [**lightonai/ModernBERT-embed-large**](https://huggingface.co/lightonai/modernbert-embed-large)
 - [**Qdrant/clip-ViT-B-32-text**](https://huggingface.co/Qdrant/clip-ViT-B-32-text) - pairs with `clip-ViT-B-32-vision` for image-to-text search
 - [**jinaai/jina-embeddings-v2-base-code**](https://huggingface.co/jinaai/jina-embeddings-v2-base-code)
@@ -56,6 +57,15 @@
 - [**snowflake/snowflake-arctic-embed-m**](https://huggingface.co/snowflake/snowflake-arctic-embed-m)
 - [**snowflake/snowflake-arctic-embed-m-long**](https://huggingface.co/snowflake/snowflake-arctic-embed-m-long)
 - [**snowflake/snowflake-arctic-embed-l**](https://huggingface.co/snowflake/snowflake-arctic-embed-l)
+- [**Snowflake/snowflake-arctic-embed-l-v2.0**](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0) — 1024d, 8k context, CLS pooling
+- [**Snowflake/snowflake-arctic-embed-m-v2.0**](https://huggingface.co/Snowflake/snowflake-arctic-embed-m-v2.0) — 768d, 8k context, CLS pooling (`SnowflakeArcticEmbedMV2`)
+- [**telepix/PIXIE-Rune-v1.0**](https://huggingface.co/telepix/PIXIE-Rune-v1.0) — 1024d, 74 languages, 6k context; also available as INT8 (`PixieRuneV1Q`) and INT4 (`PixieRuneV1Int4`, `PixieRuneV1Int4Full`) via [cstr/PIXIE-Rune-v1.0-ONNX](https://huggingface.co/cstr/PIXIE-Rune-v1.0-ONNX)
+- [**jinaai/jina-embeddings-v5-text-nano-retrieval**](https://huggingface.co/jinaai/jina-embeddings-v5-text-nano-retrieval) — 768d, multilingual, pre-pooled output; uses `"Document: "` query prefix (`JinaEmbeddingsV5Nano`)
+- [**electroglyph/Qwen3-Embedding-0.6B-onnx-uint8**](https://huggingface.co/electroglyph/Qwen3-Embedding-0.6B-onnx-uint8) — 1024d, uint8 ONNX, decoder-style last-token pooling
+- [**cstr/Octen-Embedding-0.6B-ONNX**](https://huggingface.co/cstr/Octen-Embedding-0.6B-ONNX) — 1024d, FP32 and INT4 decoder embedding model (`OctenEmbedding0_6BFp32`, `OctenEmbedding0_6BInt4`); INT8-full (~570 MB, `OctenEmbedding0_6BInt8Full`) and INT4-full (~434 MB, `OctenEmbedding0_6BInt4Full`, INT4 MatMul + INT8 embedding table) variants also available
+- [**cstr/F2LLM-v2-0.6B-ONNX**](https://huggingface.co/cstr/F2LLM-v2-0.6B-ONNX) — 1024d, 200+ languages, Qwen3 decoder, last-token pooling; available as FP32 (`F2LlmV2_0_6BFp32`), INT8 (`F2LlmV2_0_6BInt8`), INT4 (`F2LlmV2_0_6BInt4`), and INT8-full (`F2LlmV2_0_6BInt8Full`) via [cstr/F2LLM-v2-0.6B-ONNX-INT8](https://huggingface.co/cstr/F2LLM-v2-0.6B-ONNX-INT8), [cstr/F2LLM-v2-0.6B-ONNX-INT4](https://huggingface.co/cstr/F2LLM-v2-0.6B-ONNX-INT4), [cstr/F2LLM-v2-0.6B-ONNX-INT8-FULL](https://huggingface.co/cstr/F2LLM-v2-0.6B-ONNX-INT8-FULL)
+- [**jinaai/jina-embeddings-v5-text-small-retrieval**](https://huggingface.co/jinaai/jina-embeddings-v5-text-small-retrieval) — 677M, 1024d, 32k context, 119+ languages, Qwen3-based, last-token pooling (`JinaEmbeddingsV5Small`); #9 on MTEB reranking. Prepend `"Query: "` to queries and `"Document: "` to passages. Supports `.rerank()` via `TextEmbedding::rerank()`.
+- [**onnx-community/harrier-oss-v1-270m-ONNX**](https://huggingface.co/onnx-community/harrier-oss-v1-270m-ONNX) — 640d, 94 languages, decoder-only architecture, last-token pooling (`HarrierOSSV1_270M`); quantized INT8 variant also available (`HarrierOSSV1_270MQ`, ~344 MB).
 
 Quantized versions are also available for several models above (append `Q` to the model enum variant, e.g., `EmbeddingModel::BGESmallENV15Q`).
 
@@ -74,10 +84,18 @@ Quantized versions are also available for several models above (append `Q` to th
 
 ### Reranking
 
-- [**BAAI/bge-reranker-base**](https://huggingface.co/BAAI/bge-reranker-base) - Default
-- [**BAAI/bge-reranker-v2-m3**](https://huggingface.co/BAAI/bge-reranker-v2-m3)
-- [**jinaai/jina-reranker-v1-turbo-en**](https://huggingface.co/jinaai/jina-reranker-v1-turbo-en)
-- [**jinaai/jina-reranker-v2-base-multiligual**](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual)
+- [**BAAI/bge-reranker-base**](https://huggingface.co/BAAI/bge-reranker-base) - Default — English + Chinese
+- [**BAAI/bge-reranker-v2-m3**](https://huggingface.co/BAAI/bge-reranker-v2-m3) — multilingual (`BGERerankerV2M3`)
+- [**jinaai/jina-reranker-v1-turbo-en**](https://huggingface.co/jinaai/jina-reranker-v1-turbo-en) — English (`JINARerankerV1TurboEn`)
+- [**jinaai/jina-reranker-v2-base-multilingual**](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual) — 278M, multilingual, 1024 tokens (`JINARerankerV2BaseMultiligual`; INT8: `JINARerankerV2BaseMultilingualInt8`; FP16: `JINARerankerV2BaseMultilingualFp16`)
+- [**Alibaba-NLP/gte-reranker-modernbert-base**](https://huggingface.co/Alibaba-NLP/gte-reranker-modernbert-base) — 149M, English, 8192 tokens, ModernBERT cross-encoder, BEIR 56.73 (`GteRerankerModernBertBase`; INT8 150 MB: `GteRerankerModernBertBaseQ`; Q4F16 140 MB: `GteRerankerModernBertBaseQ4F16`)
+- [**mixedbread-ai/mxbai-rerank-xsmall-v1**](https://huggingface.co/mixedbread-ai/mxbai-rerank-xsmall-v1) — 33M, English, fast (`MxbaiRerankXsmallV1`, INT8: `MxbaiRerankXsmallV1Q`)
+- [**mixedbread-ai/mxbai-rerank-base-v1**](https://huggingface.co/mixedbread-ai/mxbai-rerank-base-v1) — 86M, English (`MxbaiRerankBaseV1`, INT8: `MxbaiRerankBaseV1Q`)
+- [**mixedbread-ai/mxbai-rerank-large-v1**](https://huggingface.co/mixedbread-ai/mxbai-rerank-large-v1) — 560M, English, DeBERTa-v3-large (`MxbaiRerankLargeV1`, INT8: `MxbaiRerankLargeV1Q`)
+- [**cross-encoder/ms-marco-MiniLM-L-6-v2**](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2) — 22M, English, very fast (`MsMarcoMiniLML6V2`)
+- [**cross-encoder/ms-marco-MiniLM-L-12-v2**](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-12-v2) — 33M, English (`MsMarcoMiniLML12V2`)
+- [**nvidia/llama-nemotron-rerank-1b-v2**](https://huggingface.co/nvidia/llama-nemotron-rerank-1b-v2) — 1B, multilingual, LLaMA-3.2 bidirectional; FP32 4.6 GB (`LlamaNemotronRerank1BV2`) / INT8 1.2 GB (`LlamaNemotronRerank1BV2Int8`) / INT4+INT8-emb 832 MB (`LlamaNemotronRerank1BV2Int4Full`)
+- [**zeroentropy/zerank-1-small**](https://huggingface.co/zeroentropy/zerank-1-small) — 1.7B Qwen3-based reranker, multilingual, top BEIR scores; FP16 ~3.2 GB (`ZerankSmall`) / INT8 ~2.5 GB (`ZerankSmallInt8`) / INT4 ~1.3 GB (`ZerankSmallInt4`)
 
 ## ✊ Support
 
@@ -127,6 +145,35 @@ let documents = vec![
  println!("Embeddings length: {}", embeddings.len()); // -> Embeddings length: 4
  println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 384
 ```
+
+### Bi-Encoder Reranking
+
+Any `TextEmbedding` model can rank documents against a query using cosine similarity of L2-normalised embeddings — the same approach used in MTEB's reranking benchmark:
+
+```rust
+use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
+
+let mut model = TextEmbedding::try_new(
+    InitOptions::new(EmbeddingModel::JinaEmbeddingsV5Small),
+)?;
+
+let results = model.rerank(
+    "Query: what is machine learning?",
+    vec![
+        "Document: Machine learning is a subset of artificial intelligence.",
+        "Document: The weather in Paris is mild in spring.",
+        "Document: Neural networks learn patterns from training data.",
+    ],
+    Some(2),  // top-n
+    true,     // return document text
+)?;
+
+for r in &results {
+    println!("{:.3}  {}", r.score, r.document.as_deref().unwrap_or(""));
+}
+```
+
+Returns the same `Vec<RerankResult>` type as `TextRerank`, sorted by score descending.
 
 ### Qwen3 Embeddings
 

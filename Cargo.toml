@@ -23,11 +23,12 @@ homepage = "https://crates.io/crates/fastembed"
 
 [dependencies]
 anyhow = { version = "1" }
+half = { version = "2" }
 hf-hub = { version = "0.4.1", default-features = false, optional = true }
 image = { version = "0.25.2", optional = true }
 ndarray = { version = "0.17", default-features = false }
 ort = { version = "=2.0.0-rc.11", default-features = false, features = [
-  "ndarray", "std"
+  "ndarray", "std", "half"
 ] }
 safetensors = { version = "0.7" }
 serde_json = { version = "1" }
@@ -67,3 +68,11 @@ optimum-cli = []
 
 # For compatibility recommend using hf-hub-native-tls
 online = ["hf-hub-native-tls"]
+
+[[bench]]
+name = "harrier_benchmark"
+path = "benches/harrier_benchmark.rs"
+harness = false
+
+[dev-dependencies]
+chrono = "0.4"
