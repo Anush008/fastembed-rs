@@ -1,6 +1,10 @@
 name: "Cargo Tests"
 on:
   pull_request:
+  push:
+    branches:
+      - feat/decoder-engine
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always

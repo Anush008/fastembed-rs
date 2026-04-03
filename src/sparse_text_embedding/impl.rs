@@ -90,16 +90,21 @@ impl SparseTextEmbedding {
             model,
         }
     }
-    /// Return the SparseTextEmbedding model's directory from cache or remote retrieval
+    /// Return the SparseTextEmbedding model's directory from cache or remote retrieval.
+    ///
+    /// Searches all directories in `FASTEMBED_CACHE_DIR` before downloading.
     #[cfg(feature = "hf-hub")]
     fn retrieve_model(
         model: SparseModel,
         cache_dir: PathBuf,
         show_download_progress: bool,
     ) -> Result<ApiRepo> {
-        use crate::common::pull_from_hf;
+        use crate::common::{find_model_cache_dir, get_cache_dirs, pull_from_hf};
 
-        pull_from_hf(model.to_string(), cache_dir, show_download_progress)
+        let model_code = model.to_string();
+        let all_dirs = get_cache_dirs();
+        let effective_dir = find_model_cache_dir(&model_code, &all_dirs).unwrap_or(cache_dir);
+        pull_from_hf(model_code, effective_dir, show_download_progress)
     }
 
     /// Retrieve a list of supported models

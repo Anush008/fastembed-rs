@@ -139,26 +139,91 @@ impl TextEmbedding {
             .iter()
             .any(|input| input.name() == "token_type_ids");
 
+        let need_position_ids = session
+            .inputs()
+            .iter()
+            .any(|input| input.name() == "position_ids");
+
+        let need_task_id = session
+            .inputs()
+            .iter()
+            .any(|input| input.name() == "task_id");
+
+        // Count KV-cache layer pairs by counting `past_key_values.N.key` inputs.
+        let kv_cache_layers = session
+            .inputs()
+            .iter()
+            .filter(|i| i.name().starts_with("past_key_values.") && i.name().ends_with(".key"))
+            .count();
+
+        // Auto-detect kv_heads and head_dim from the first key tensor's shape.
+        // Shape convention: [batch, kv_heads, seq, head_dim] — dims 1 and 3 are fixed.
+        let (kv_cache_kv_heads, kv_cache_head_dim) = if kv_cache_layers > 0 {
+            session
+                .inputs()
+                .iter()
+                .find(|i| i.name() == "past_key_values.0.key")
+                .and_then(|outlet| outlet.dtype().tensor_shape())
+                .and_then(|shape| {
+                    let s: &[i64] = shape;
+                    if s.len() == 4 && s[1] > 0 && s[3] > 0 {
+                        Some((s[1] as usize, s[3] as usize))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or((0, 0))
+        } else {
+            (0, 0)
+        };
+
+        // Detect static batch dimension from `input_ids` shape.
+        // A positive (non-−1) batch dim means the model was exported with a fixed batch size.
+        let max_batch_size = session
+            .inputs()
+            .iter()
+            .find(|i| i.name() == "input_ids")
+            .and_then(|outlet| outlet.dtype().tensor_shape())
+            .and_then(|shape| {
+                let s: &[i64] = shape;
+                if !s.is_empty() && s[0] > 0 {
+                    Some(s[0] as usize)
+                } else {
+                    None // dynamic batch dimension
+                }
+            });
+
         Self {
             tokenizer,
             session,
             need_token_type_ids,
+            need_position_ids,
+            need_task_id,
+            kv_cache_layers,
+            kv_cache_kv_heads,
+            kv_cache_head_dim,
             pooling: post_process,
             quantization,
             output_key,
+            max_batch_size,
         }
     }
-    /// Return the TextEmbedding model's directory from cache or remote retrieval
+    /// Return the TextEmbedding model's directory from cache or remote retrieval.
+    ///
+    /// Searches all directories listed in `FASTEMBED_CACHE_DIR` (colon-separated)
+    /// before falling back to `cache_dir` for downloading.
     #[cfg(feature = "hf-hub")]
     fn retrieve_model(
         model: EmbeddingModel,
         cache_dir: PathBuf,
         show_download_progress: bool,
     ) -> anyhow::Result<ApiRepo> {
-        use crate::common::pull_from_hf;
+        use crate::common::{find_model_cache_dir, get_cache_dirs, pull_from_hf};
 
         let model_code = TextEmbedding::get_model_info(&model)?.model_code.clone();
-        pull_from_hf(model_code, cache_dir, show_download_progress)
+        let all_dirs = get_cache_dirs();
+        let effective_dir = find_model_cache_dir(&model_code, &all_dirs).unwrap_or(cache_dir);
+        pull_from_hf(model_code, effective_dir, show_download_progress)
     }
 
     pub fn get_default_pooling_method(model_name: &EmbeddingModel) -> Option<Pooling> {
@@ -321,6 +386,19 @@ impl TextEmbedding {
             _ => Ok(batch_size.unwrap_or(DEFAULT_BATCH_SIZE)),
         }?;
 
+        // Enforce static batch dimension if detected from the ONNX graph.
+        let batch_size = if let Some(max) = self.max_batch_size {
+            if batch_size > max {
+                return Err(anyhow::anyhow!(
+                    "This model was exported with a static batch size of {max}. \
+                     Pass `batch_size = Some({max})` (or embed fewer texts at a time)."
+                ));
+            }
+            batch_size.min(max)
+        } else {
+            batch_size
+        };
+
         let batches = texts
             .chunks(batch_size)
             .map(|batch| {
@@ -371,6 +449,50 @@ impl TextEmbedding {
                         "token_type_ids".into(),
                         Value::from_array(token_type_ids_array)?.into(),
                     ));
+                }
+
+                if self.need_position_ids {
+                    // Build position_ids [[0, 1, ..., seq-1], ...] for each batch item.
+                    let pos_ids: Vec<i64> = (0..batch_size)
+                        .flat_map(|_| 0..encoding_length as i64)
+                        .collect();
+                    let position_ids_array =
+                        Array::from_shape_vec((batch_size, encoding_length), pos_ids)?;
+                    session_inputs.push((
+                        "position_ids".into(),
+                        Value::from_array(position_ids_array)?.into(),
+                    ));
+                }
+
+                if self.need_task_id {
+                    // task_id=1 selects the retrieval adapter (e.g. Jina-embeddings-v3).
+                    let task_id_array =
+                        Array::from_shape_vec((batch_size,), vec![1i64; batch_size])?;
+                    session_inputs
+                        .push(("task_id".into(), Value::from_array(task_id_array)?.into()));
+                }
+
+                if self.kv_cache_layers > 0 {
+                    // Inject empty KV-cache tensors [batch, kv_heads, 0, head_dim] for each layer.
+                    // Required by onnx-community-style decoder models that expect past_key_values.
+                    for layer in 0..self.kv_cache_layers {
+                        let kv_shape = (
+                            batch_size,
+                            self.kv_cache_kv_heads,
+                            0usize,
+                            self.kv_cache_head_dim,
+                        );
+                        let k_empty = ndarray::Array4::<f32>::zeros(kv_shape);
+                        let v_empty = ndarray::Array4::<f32>::zeros(kv_shape);
+                        session_inputs.push((
+                            format!("past_key_values.{}.key", layer).into(),
+                            Value::from_array(k_empty)?.into(),
+                        ));
+                        session_inputs.push((
+                            format!("past_key_values.{}.value", layer).into(),
+                            Value::from_array(v_empty)?.into(),
+                        ));
+                    }
                 }
 
                 let outputs_map = self

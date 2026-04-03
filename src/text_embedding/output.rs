@@ -13,8 +13,11 @@ use super::TextEmbedding;
 pub const OUTPUT_TYPE_PRECEDENCE: &[OutputKey] = &[
     OutputKey::OnlyOne,
     OutputKey::ByName("text_embeds"),
-    OutputKey::ByName("last_hidden_state"),
+    // Prefer pre-pooled sentence_embedding [batch, dim] over raw
+    // last_hidden_state [batch, seq, dim] when both are present.
+    // Models that only expose last_hidden_state fall through normally.
     OutputKey::ByName("sentence_embedding"),
+    OutputKey::ByName("last_hidden_state"),
     // Better not to expose this unless the user explicitly asks for it.
     // OutputKey::ByName("token_embeddings"),
 ];
