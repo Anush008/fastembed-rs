@@ -18,9 +18,11 @@
 - Go: [fastembed-go](https://github.com/Anush008/fastembed-go)
 - JavaScript: [fastembed-js](https://github.com/Anush008/fastembed-js)
 
-## Models
+## Supported Models
 
 ### Text Embedding
+
+<details><summary>Click to list models</summary>
 
 - [**BAAI/bge-small-en-v1.5**](https://huggingface.co/BAAI/bge-small-en-v1.5) - Default
 - [**BAAI/bge-base-en-v1.5**](https://huggingface.co/BAAI/bge-base-en-v1.5)
@@ -59,25 +61,39 @@
 
 Quantized versions are also available for several models above (append `Q` to the model enum variant, e.g., `EmbeddingModel::BGESmallENV15Q`).
 
+</details>
+
 ### Sparse Text Embedding
 
+<details><summary>Click to list models</summary>
+  
 - [**prithivida/Splade_PP_en_v1**](https://huggingface.co/prithivida/Splade_PP_en_v1) - Default
 - [**BAAI/bge-m3**](https://huggingface.co/BAAI/bge-m3)
 
+</details>
+
 ### Image Embedding
 
+<details><summary>Click to list models</summary>
+  
 - [**Qdrant/clip-ViT-B-32-vision**](https://huggingface.co/Qdrant/clip-ViT-B-32-vision) - Default
 - [**Qdrant/resnet50-onnx**](https://huggingface.co/Qdrant/resnet50-onnx)
 - [**Qdrant/Unicom-ViT-B-16**](https://huggingface.co/Qdrant/Unicom-ViT-B-16)
 - [**Qdrant/Unicom-ViT-B-32**](https://huggingface.co/Qdrant/Unicom-ViT-B-32)
 - [**nomic-ai/nomic-embed-vision-v1.5**](https://huggingface.co/nomic-ai/nomic-embed-vision-v1.5)
 
+</details>
+
 ### Reranking
 
+<details><summary>Click to list models</summary>
+  
 - [**BAAI/bge-reranker-base**](https://huggingface.co/BAAI/bge-reranker-base) - Default
 - [**BAAI/bge-reranker-v2-m3**](https://huggingface.co/BAAI/bge-reranker-v2-m3)
 - [**jinaai/jina-reranker-v1-turbo-en**](https://huggingface.co/jinaai/jina-reranker-v1-turbo-en)
 - [**jinaai/jina-reranker-v2-base-multiligual**](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual)
+
+</details>
 
 ## ✊ Support
 
