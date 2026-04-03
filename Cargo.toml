@@ -68,3 +68,11 @@ optimum-cli = []
 
 # For compatibility recommend using hf-hub-native-tls
 online = ["hf-hub-native-tls"]
+
+[[bench]]
+name = "harrier_benchmark"
+path = "benches/harrier_benchmark.rs"
+harness = false
+
+[dev-dependencies]
+chrono = "0.4"

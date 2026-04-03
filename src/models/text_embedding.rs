@@ -158,6 +158,12 @@ pub enum EmbeddingModel {
     /// jinaai/jina-embeddings-v5-text-small-retrieval — 677M, 1024d, 32k context, multilingual
     /// Prepend "Query: " to queries and "Document: " to documents for retrieval.
     JinaEmbeddingsV5Small,
+
+    // ── Microsoft Harrier OSS v1 270M (decoder-only, last-token pooling) ─────
+    /// onnx-community/harrier-oss-v1-270m-ONNX — 640d, multilingual, decoder-only architecture
+    HarrierOSSV1_270M,
+    /// Quantized onnx-community/harrier-oss-v1-270m-ONNX — 640d, multilingual, dynamic INT8
+    HarrierOSSV1_270MQ,
 }
 
 /// Centralized function to initialize the models map.
@@ -788,6 +794,31 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec!["onnx/model.onnx_data".to_string()],
             output_key: None,
+        },
+        // ── Microsoft Harrier OSS v1 270M ────────────────────────────────────────
+        ModelInfo {
+            model: EmbeddingModel::HarrierOSSV1_270M,
+            dim: 640,
+            description: String::from(
+                "Microsoft Harrier OSS v1 270M — 640d, multilingual text embedding model \
+                 with decoder-only architecture, last-token pooling (FP32, ~1 GB)",
+            ),
+            model_code: String::from("onnx-community/harrier-oss-v1-270m-ONNX"),
+            model_file: String::from("onnx/model.onnx"),
+            additional_files: vec!["onnx/model.onnx_data".to_string()],
+            output_key: Some(crate::OutputKey::ByName("sentence_embedding")),
+        },
+        ModelInfo {
+            model: EmbeddingModel::HarrierOSSV1_270MQ,
+            dim: 640,
+            description: String::from(
+                "Quantized Microsoft Harrier OSS v1 270M — 640d, multilingual text embedding model \
+                 with decoder-only architecture, dynamic INT8",
+            ),
+            model_code: String::from("onnx-community/harrier-oss-v1-270m-ONNX"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+            additional_files: vec!["onnx/model_quantized.onnx_data".to_string()],
+            output_key: Some(crate::OutputKey::ByName("sentence_embedding")),
         },
         // ── Jina Embeddings v3 ───────────────────────────────────────────────────
         ModelInfo {
