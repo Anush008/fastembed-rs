@@ -59,11 +59,25 @@ impl ImageEmbedding {
             .get(&model_file_name)
             .context(format!("Failed to retrieve {}", model_file_name))?;
 
-        let session = Session::builder()?
+        #[cfg(feature = "directml")]
+        let has_directml = execution_providers
+            .iter()
+            .any(|ep| ep.downcast_ref::<ort::ep::DirectML>().is_some());
+        #[cfg(not(feature = "directml"))]
+        let has_directml = false;
+
+        let mut builder = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
-            .commit_from_file(model_file_reference)?;
+            .with_intra_threads(threads)?;
+
+        if has_directml {
+            builder = builder
+                .with_memory_pattern(false)?
+                .with_parallel_execution(false)?;
+        }
+
+        let session = builder.commit_from_file(model_file_reference)?;
 
         Ok(Self::new(preprocessor, session))
     }
@@ -83,11 +97,25 @@ impl ImageEmbedding {
 
         let preprocessor = Compose::from_bytes(model.preprocessor_file)?;
 
-        let session = Session::builder()?
+        #[cfg(feature = "directml")]
+        let has_directml = execution_providers
+            .iter()
+            .any(|ep| ep.downcast_ref::<ort::ep::DirectML>().is_some());
+        #[cfg(not(feature = "directml"))]
+        let has_directml = false;
+
+        let mut builder = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
-            .commit_from_memory(&model.onnx_file)?;
+            .with_intra_threads(threads)?;
+
+        if has_directml {
+            builder = builder
+                .with_memory_pattern(false)?
+                .with_parallel_execution(false)?;
+        }
+
+        let session = builder.commit_from_memory(&model.onnx_file)?;
 
         Ok(Self::new(preprocessor, session))
     }

@@ -70,11 +70,25 @@ impl TextEmbedding {
         // prioritise loading pooling config if available, if not (thanks qdrant!), look for it in hardcoded
         let post_processing = TextEmbedding::get_default_pooling_method(&model_name);
 
-        let session = Session::builder()?
+        #[cfg(feature = "directml")]
+        let has_directml = execution_providers
+            .iter()
+            .any(|ep| ep.downcast_ref::<ort::ep::DirectML>().is_some());
+        #[cfg(not(feature = "directml"))]
+        let has_directml = false;
+
+        let mut builder = Session::builder()?
             .with_execution_providers(execution_providers)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
-            .commit_from_file(model_file_reference)?;
+            .with_intra_threads(threads)?;
+
+        if has_directml {
+            builder = builder
+                .with_memory_pattern(false)?
+                .with_parallel_execution(false)?;
+        }
+
+        let session = builder.commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
         Ok(Self::new(
@@ -100,11 +114,24 @@ impl TextEmbedding {
 
         let threads = available_parallelism()?.get();
 
+        #[cfg(feature = "directml")]
+        let has_directml = execution_providers
+            .iter()
+            .any(|ep| ep.downcast_ref::<ort::ep::DirectML>().is_some());
+        #[cfg(not(feature = "directml"))]
+        let has_directml = false;
+
         let session = {
             let mut session_builder = Session::builder()?
                 .with_execution_providers(execution_providers)?
                 .with_optimization_level(GraphOptimizationLevel::Level3)?
                 .with_intra_threads(threads)?;
+
+            if has_directml {
+                session_builder = session_builder
+                    .with_memory_pattern(false)?
+                    .with_parallel_execution(false)?;
+            }
 
             for external_initializer_file in model.external_initializers {
                 session_builder = session_builder.with_external_initializer_file_in_memory(
