@@ -292,6 +292,29 @@ println!("Rerank result: {:?}", results);
 
 Alternatively, local model files can be used for inference via the `try_new_from_user_defined(...)` methods of respective structs.
 
+### DirectML (Windows)
+
+To run models on a GPU via DirectML on Windows, enable the `directml` feature:
+
+```toml
+[dependencies]
+fastembed = { version = "5", features = ["directml"] }
+```
+
+Then pass a DirectML execution provider when initializing a model:
+
+```rust
+use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
+use ort::ep::DirectML;
+
+let model = TextEmbedding::try_new(
+    InitOptions::new(EmbeddingModel::AllMiniLML6V2)
+        .with_execution_providers(vec![DirectML::default().into()]),
+)?;
+```
+
+When DirectML is detected, fastembed automatically disables memory pattern optimization and parallel execution on the ONNX Runtime session, as required by the DirectML execution provider.
+
 ## LICENSE
 
 [Apache 2.0](https://github.com/Anush008/fastembed-rs/blob/main/LICENSE)
