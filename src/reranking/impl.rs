@@ -26,6 +26,10 @@ use super::{
 };
 
 impl TextRerank {
+    fn builder_error(err: ort::Error<ort::session::builder::SessionBuilder>) -> anyhow::Error {
+        anyhow::Error::msg(err.to_string())
+    }
+
     fn new(tokenizer: Tokenizer, session: Session) -> Self {
         let need_token_type_ids = session
             .inputs()
@@ -84,9 +88,12 @@ impl TextRerank {
         }
 
         let session = Session::builder()?
-            .with_execution_providers(execution_providers)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
+            .with_execution_providers(execution_providers)
+            .map_err(Self::builder_error)?
+            .with_optimization_level(GraphOptimizationLevel::Level3)
+            .map_err(Self::builder_error)?
+            .with_intra_threads(threads)
+            .map_err(Self::builder_error)?
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
@@ -107,10 +114,13 @@ impl TextRerank {
 
         let threads = available_parallelism()?.get();
 
-        let session = Session::builder()?
-            .with_execution_providers(execution_providers)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?;
+        let mut session = Session::builder()?
+            .with_execution_providers(execution_providers)
+            .map_err(Self::builder_error)?
+            .with_optimization_level(GraphOptimizationLevel::Level3)
+            .map_err(Self::builder_error)?
+            .with_intra_threads(threads)
+            .map_err(Self::builder_error)?;
 
         let session = match &model.onnx_source {
             OnnxSource::Memory(bytes) => session.commit_from_memory(bytes)?,

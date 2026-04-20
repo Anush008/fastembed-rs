@@ -25,6 +25,10 @@ use super::SparseInitOptions;
 use super::{SparseTextEmbedding, DEFAULT_BATCH_SIZE};
 
 impl SparseTextEmbedding {
+    fn builder_error(err: ort::Error<ort::session::builder::SessionBuilder>) -> anyhow::Error {
+        anyhow::Error::msg(err.to_string())
+    }
+
     /// Try to generate a new SparseTextEmbedding Instance
     ///
     /// Uses the highest level of Graph optimization
@@ -67,9 +71,12 @@ impl SparseTextEmbedding {
         }
 
         let session = Session::builder()?
-            .with_execution_providers(execution_providers)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
+            .with_execution_providers(execution_providers)
+            .map_err(Self::builder_error)?
+            .with_optimization_level(GraphOptimizationLevel::Level3)
+            .map_err(Self::builder_error)?
+            .with_intra_threads(threads)
+            .map_err(Self::builder_error)?
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;

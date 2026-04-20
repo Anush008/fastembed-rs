@@ -31,6 +31,10 @@ use super::{
 };
 
 impl TextEmbedding {
+    fn builder_error(err: ort::Error<ort::session::builder::SessionBuilder>) -> anyhow::Error {
+        anyhow::Error::msg(err.to_string())
+    }
+
     /// Try to generate a new TextEmbedding Instance
     ///
     /// Uses the highest level of Graph optimization
@@ -78,14 +82,19 @@ impl TextEmbedding {
         let has_directml = false;
 
         let mut builder = Session::builder()?
-            .with_execution_providers(execution_providers)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?;
+            .with_execution_providers(execution_providers)
+            .map_err(Self::builder_error)?
+            .with_optimization_level(GraphOptimizationLevel::Level3)
+            .map_err(Self::builder_error)?
+            .with_intra_threads(threads)
+            .map_err(Self::builder_error)?;
 
         if has_directml {
             builder = builder
-                .with_memory_pattern(false)?
-                .with_parallel_execution(false)?;
+                .with_memory_pattern(false)
+                .map_err(Self::builder_error)?
+                .with_parallel_execution(false)
+                .map_err(Self::builder_error)?;
         }
 
         let session = builder.commit_from_file(model_file_reference)?;
@@ -123,21 +132,28 @@ impl TextEmbedding {
 
         let session = {
             let mut session_builder = Session::builder()?
-                .with_execution_providers(execution_providers)?
-                .with_optimization_level(GraphOptimizationLevel::Level3)?
-                .with_intra_threads(threads)?;
+                .with_execution_providers(execution_providers)
+                .map_err(Self::builder_error)?
+                .with_optimization_level(GraphOptimizationLevel::Level3)
+                .map_err(Self::builder_error)?
+                .with_intra_threads(threads)
+                .map_err(Self::builder_error)?;
 
             if has_directml {
                 session_builder = session_builder
-                    .with_memory_pattern(false)?
-                    .with_parallel_execution(false)?;
+                    .with_memory_pattern(false)
+                    .map_err(Self::builder_error)?
+                    .with_parallel_execution(false)
+                    .map_err(Self::builder_error)?;
             }
 
             for external_initializer_file in model.external_initializers {
-                session_builder = session_builder.with_external_initializer_file_in_memory(
-                    external_initializer_file.file_name,
-                    external_initializer_file.buffer.into(),
-                )?;
+                session_builder = session_builder
+                    .with_external_initializer_file_in_memory(
+                        external_initializer_file.file_name,
+                        external_initializer_file.buffer.into(),
+                    )
+                    .map_err(Self::builder_error)?;
             }
 
             session_builder.commit_from_memory(&model.onnx_file)?
