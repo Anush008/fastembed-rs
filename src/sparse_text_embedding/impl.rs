@@ -25,6 +25,7 @@ use super::SparseInitOptions;
 use super::{SparseTextEmbedding, DEFAULT_BATCH_SIZE};
 
 impl SparseTextEmbedding {
+    #[cfg(feature = "hf-hub")]
     fn builder_error(err: ort::Error<ort::session::builder::SessionBuilder>) -> anyhow::Error {
         anyhow::Error::msg(err.to_string())
     }
