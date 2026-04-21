@@ -27,6 +27,10 @@ use super::{
 };
 
 impl ImageEmbedding {
+    fn builder_error(err: ort::Error<ort::session::builder::SessionBuilder>) -> anyhow::Error {
+        anyhow::Error::msg(err.to_string())
+    }
+
     /// Try to generate a new ImageEmbedding Instance
     ///
     /// Uses the highest level of Graph optimization
@@ -67,14 +71,19 @@ impl ImageEmbedding {
         let has_directml = false;
 
         let mut builder = Session::builder()?
-            .with_execution_providers(execution_providers)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?;
+            .with_execution_providers(execution_providers)
+            .map_err(Self::builder_error)?
+            .with_optimization_level(GraphOptimizationLevel::Level3)
+            .map_err(Self::builder_error)?
+            .with_intra_threads(threads)
+            .map_err(Self::builder_error)?;
 
         if has_directml {
             builder = builder
-                .with_memory_pattern(false)?
-                .with_parallel_execution(false)?;
+                .with_memory_pattern(false)
+                .map_err(Self::builder_error)?
+                .with_parallel_execution(false)
+                .map_err(Self::builder_error)?;
         }
 
         let session = builder.commit_from_file(model_file_reference)?;
@@ -105,14 +114,19 @@ impl ImageEmbedding {
         let has_directml = false;
 
         let mut builder = Session::builder()?
-            .with_execution_providers(execution_providers)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?;
+            .with_execution_providers(execution_providers)
+            .map_err(Self::builder_error)?
+            .with_optimization_level(GraphOptimizationLevel::Level3)
+            .map_err(Self::builder_error)?
+            .with_intra_threads(threads)
+            .map_err(Self::builder_error)?;
 
         if has_directml {
             builder = builder
-                .with_memory_pattern(false)?
-                .with_parallel_execution(false)?;
+                .with_memory_pattern(false)
+                .map_err(Self::builder_error)?
+                .with_parallel_execution(false)
+                .map_err(Self::builder_error)?;
         }
 
         let session = builder.commit_from_memory(&model.onnx_file)?;

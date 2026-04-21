@@ -5,7 +5,7 @@ edition = "2021"
 description = "Library for generating vector embeddings, reranking locally."
 license = "Apache-2.0"
 authors = [
-  "Anush008 <anushshetty90@gmail.com>",
+  "Anush008 <mail@anush.sh>",
   "Josh Niemelä <josh@jniemela.dk>",
   "GrisiaEvy <a115020115@gmail.com>",
   "George MacKerron <georgemackerron@neon.tech>",
@@ -23,16 +23,16 @@ homepage = "https://crates.io/crates/fastembed"
 
 [dependencies]
 anyhow = { version = "1" }
-hf-hub = { version = "0.4.1", default-features = false, optional = true }
-image = { version = "0.25.2", optional = true }
-ndarray = { version = "0.17", default-features = false }
-ort = { version = "=2.0.0-rc.11", default-features = false, features = [
-  "ndarray", "std"
+hf-hub = { version = "0.5.0", default-features = false, optional = true }
+image = { version = "0.25.10", optional = true }
+ndarray = { version = "0.17.2", default-features = false }
+ort = { version = "=2.0.0-rc.12", default-features = false, features = [
+  "ndarray", "std", "api-24"
 ] }
-safetensors = { version = "0.7" }
+safetensors = { version = "0.7.0" }
 serde_json = { version = "1" }
 serde = { version = "1", features = ["derive"] }
-tokenizers = { version = "0.22.0", default-features = false, features = ["onig"] }
+tokenizers = { version = "0.22.2", default-features = false, features = ["onig"] }
 candle-nn = { version = "0.10.2", optional = true }
 candle-core = { version = "0.10.2", optional = true }
 

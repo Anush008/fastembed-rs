@@ -5,7 +5,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-Dwarnings"
-  ONNX_VERSION: v1.23.2
+  ONNX_VERSION: v1.24.4
 
 jobs:
   test:
