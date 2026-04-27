@@ -148,7 +148,9 @@ fn build_attention_mask_4d(attention_mask_2d: &Tensor) -> Result<Tensor> {
 
 fn l2_normalize(xs: &Tensor) -> Result<Tensor> {
     let sum_sq = xs.sqr()?.sum_keepdim(1)?;
-    let eps_tensor = Tensor::new(&[1e-12f32], xs.device())?.broadcast_as(sum_sq.shape())?;
+    let eps_tensor = Tensor::new(&[1e-12f32], xs.device())?
+        .to_dtype(sum_sq.dtype())?
+        .broadcast_as(sum_sq.shape())?;
     let norm = sum_sq.add(&eps_tensor)?.sqrt()?;
     xs.broadcast_div(&norm)
 }
@@ -815,11 +817,11 @@ impl Qwen3Attention {
         let kt = k.transpose(2, 3)?; // [B,Nh,D,T]
         let mut attn = q.matmul(&kt)?; // [B,Nh,T,T]
 
-        let scale = scalar_f32(attn.device(), self.scaling)?;
+        let scale = scalar_f32(attn.device(), self.scaling)?.to_dtype(attn.dtype())?;
         attn = attn.broadcast_mul(&scale)?;
 
         if let Some(mask) = attention_mask {
-            attn = attn.broadcast_add(mask)?;
+            attn = attn.broadcast_add(&mask.to_dtype(attn.dtype())?)?;
         }
 
         // softmax over last dim
