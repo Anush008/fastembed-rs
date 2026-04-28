@@ -80,7 +80,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ── Results table ─────────────────────────────────────────────────────────
     println!("==========================================================");
-    println!(" Throughput & Latency  ({} docs per run, {} runs)", documents.len(), RUNS);
+    println!(
+        " Throughput & Latency  ({} docs per run, {} runs)",
+        documents.len(),
+        RUNS
+    );
     println!("==========================================================");
     println!(
         "{:<32} {:>8}  {:>9}  {:>9}  {:>9}  {:>10}",
@@ -88,8 +92,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("{}", "-".repeat(82));
     print_row("BGE-Small-EN-v1.5", bge_dim, &bge_stats, documents.len());
-    print_row("Harrier FP32", harrier_dim, &harrier_fp32_stats, documents.len());
-    print_row("Harrier INT8", harrier_dim, &harrier_int8_stats, documents.len());
+    print_row(
+        "Harrier FP32",
+        harrier_dim,
+        &harrier_fp32_stats,
+        documents.len(),
+    );
+    print_row(
+        "Harrier INT8",
+        harrier_dim,
+        &harrier_int8_stats,
+        documents.len(),
+    );
     println!();
 
     let speed_ratio_fp32 = bge_stats.mean_ms / harrier_fp32_stats.mean_ms;
@@ -97,12 +111,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "Harrier FP32 is {:.2}x {} than BGE-Small (mean latency)",
         speed_ratio_fp32.abs(),
-        if speed_ratio_fp32 >= 1.0 { "faster" } else { "slower" }
+        if speed_ratio_fp32 >= 1.0 {
+            "faster"
+        } else {
+            "slower"
+        }
     );
     println!(
         "Harrier INT8 is {:.2}x {} than BGE-Small (mean latency)",
         speed_ratio_int8.abs(),
-        if speed_ratio_int8 >= 1.0 { "faster" } else { "slower" }
+        if speed_ratio_int8 >= 1.0 {
+            "faster"
+        } else {
+            "slower"
+        }
     );
     println!();
 
@@ -126,9 +148,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             avg_hi - avg_lo
         );
     }
-    println!(
-        "\n  (larger delta = better discrimination between similar and dissimilar texts)"
-    );
+    println!("\n  (larger delta = better discrimination between similar and dissimilar texts)");
     println!();
 
     // ── Quantisation fidelity (FP32 vs INT8 Harrier) ─────────────────────────
@@ -136,7 +156,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!(" Harrier FP32 vs INT8 Quantisation Fidelity");
     println!("==========================================================");
     let mut fidelity_scores: Vec<f32> = Vec::new();
-    for (i, (fp32_emb, int8_emb)) in harrier_fp32_embs.iter().zip(harrier_int8_embs.iter()).enumerate() {
+    for (i, (fp32_emb, int8_emb)) in harrier_fp32_embs
+        .iter()
+        .zip(harrier_int8_embs.iter())
+        .enumerate()
+    {
         let sim = cosine_similarity(fp32_emb, int8_emb);
         fidelity_scores.push(sim);
         if i < 3 {
@@ -144,7 +168,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     let avg_fidelity: f32 = fidelity_scores.iter().sum::<f32>() / fidelity_scores.len() as f32;
-    let min_fidelity = fidelity_scores.iter().cloned().fold(f32::INFINITY, f32::min);
+    let min_fidelity = fidelity_scores
+        .iter()
+        .cloned()
+        .fold(f32::INFINITY, f32::min);
     println!("  …");
     println!("  avg fidelity across all docs : {:.5}", avg_fidelity);
     println!("  min fidelity across all docs : {:.5}", min_fidelity);
@@ -203,7 +230,14 @@ fn timed_embed(
     let max_ms = ms.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
     let mean_ms = ms.iter().sum::<f64>() / ms.len() as f64;
 
-    Ok((last_embs, TimingStats { min_ms, mean_ms, max_ms }))
+    Ok((
+        last_embs,
+        TimingStats {
+            min_ms,
+            mean_ms,
+            max_ms,
+        },
+    ))
 }
 
 fn print_row(label: &str, dim: usize, stats: &TimingStats, n_docs: usize) {
@@ -221,7 +255,11 @@ fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     let dot: f32 = a.iter().zip(b).map(|(x, y)| x * y).sum();
     let mag_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
     let mag_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
-    if mag_a == 0.0 || mag_b == 0.0 { 0.0 } else { dot / (mag_a * mag_b) }
+    if mag_a == 0.0 || mag_b == 0.0 {
+        0.0
+    } else {
+        dot / (mag_a * mag_b)
+    }
 }
 
 fn avg_cosine_sim(embs: &[Vec<f32>], pairs: &[(usize, usize)]) -> f32 {
