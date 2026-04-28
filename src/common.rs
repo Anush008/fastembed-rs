@@ -42,9 +42,10 @@ pub fn get_cache_dir() -> String {
 
 /// Returns all configured cache directories.
 ///
-/// `FASTEMBED_CACHE_DIR` may be a single path or a colon-separated list of
-/// paths (e.g. `"/fast/cache:/slow/backup"`).  The directories are searched
-/// in order; the first one that contains the requested model is used.  If no
+/// `FASTEMBED_CACHE_DIR` may be a single path or a platform-separated list of
+/// paths (e.g. `"/fast/cache:/slow/backup"` on Unix or
+/// `"C:\fast\cache;D:\slow\backup"` on Windows). The directories are searched
+/// in order; the first one that contains the requested model is used. If no
 /// directory contains the model it is downloaded into the first directory.
 pub fn get_cache_dirs() -> Vec<std::path::PathBuf> {
     let val = std::env::var("FASTEMBED_CACHE_DIR").unwrap_or_else(|_| DEFAULT_CACHE_DIR.into());

@@ -228,8 +228,9 @@ impl TextEmbedding {
     }
     /// Return the TextEmbedding model's directory from cache or remote retrieval.
     ///
-    /// Searches all directories listed in `FASTEMBED_CACHE_DIR` (colon-separated)
-    /// before falling back to `cache_dir` for downloading.
+    /// Searches all directories listed in `FASTEMBED_CACHE_DIR` using the
+    /// platform path-list separator before falling back to `cache_dir` for
+    /// downloading.
     #[cfg(feature = "hf-hub")]
     fn retrieve_model(
         model: EmbeddingModel,
