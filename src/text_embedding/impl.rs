@@ -233,7 +233,9 @@ impl TextEmbedding {
             EmbeddingModel::ModernBertEmbedLarge => Some(Pooling::Mean),
 
             EmbeddingModel::MultilingualE5Base => Some(Pooling::Mean),
+            EmbeddingModel::MultilingualE5BaseQ => Some(Pooling::Mean),
             EmbeddingModel::MultilingualE5Small => Some(Pooling::Mean),
+            EmbeddingModel::MultilingualE5SmallQ => Some(Pooling::Mean),
             EmbeddingModel::MultilingualE5Large => Some(Pooling::Mean),
 
             EmbeddingModel::MxbaiEmbedLargeV1 => Some(Pooling::Cls),
@@ -250,6 +252,7 @@ impl TextEmbedding {
             EmbeddingModel::JinaEmbeddingsV2BaseEN => Some(Pooling::Mean),
 
             EmbeddingModel::EmbeddingGemma300M => Some(Pooling::Mean),
+            EmbeddingModel::EmbeddingGemma300MQ => Some(Pooling::Mean),
 
             EmbeddingModel::SnowflakeArcticEmbedXS => Some(Pooling::Cls),
             EmbeddingModel::SnowflakeArcticEmbedXSQ => Some(Pooling::Cls),
@@ -286,9 +289,12 @@ impl TextEmbedding {
             EmbeddingModel::BGESmallENV15Q => QuantizationMode::Static,
             EmbeddingModel::NomicEmbedTextV15Q => QuantizationMode::Dynamic,
             EmbeddingModel::ParaphraseMLMiniLML12V2Q => QuantizationMode::Static,
+            EmbeddingModel::MultilingualE5SmallQ => QuantizationMode::Dynamic,
+            EmbeddingModel::MultilingualE5BaseQ => QuantizationMode::Dynamic,
             EmbeddingModel::MxbaiEmbedLargeV1Q => QuantizationMode::Dynamic,
             EmbeddingModel::GTEBaseENV15Q => QuantizationMode::Dynamic,
             EmbeddingModel::GTELargeENV15Q => QuantizationMode::Dynamic,
+            EmbeddingModel::EmbeddingGemma300MQ => QuantizationMode::Dynamic,
             EmbeddingModel::SnowflakeArcticEmbedXSQ => QuantizationMode::Dynamic,
             EmbeddingModel::SnowflakeArcticEmbedSQ => QuantizationMode::Dynamic,
             EmbeddingModel::SnowflakeArcticEmbedMQ => QuantizationMode::Dynamic,

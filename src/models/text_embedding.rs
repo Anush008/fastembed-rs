@@ -52,8 +52,12 @@ pub enum EmbeddingModel {
     ModernBertEmbedLarge,
     /// intfloat/multilingual-e5-small
     MultilingualE5Small,
+    /// Quantized intfloat/multilingual-e5-small
+    MultilingualE5SmallQ,
     /// intfloat/multilingual-e5-base
     MultilingualE5Base,
+    /// Quantized intfloat/multilingual-e5-base
+    MultilingualE5BaseQ,
     /// intfloat/multilingual-e5-large
     MultilingualE5Large,
     /// mixedbread-ai/mxbai-embed-large-v1
@@ -76,6 +80,8 @@ pub enum EmbeddingModel {
     JinaEmbeddingsV2BaseEN,
     /// onnx-community/embeddinggemma-300m-ONNX
     EmbeddingGemma300M,
+    /// Quantized onnx-community/embeddinggemma-300m-ONNX
+    EmbeddingGemma300MQ,
     /// snowflake/snowflake-arctic-embed-xs
     SnowflakeArcticEmbedXS,
     /// Quantized snowflake/snowflake-arctic-embed-xs
@@ -311,11 +317,29 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             output_key: None,
         },
         ModelInfo {
+            model: EmbeddingModel::MultilingualE5SmallQ,
+            dim: 384,
+            description: String::from("Quantized Small model of multilingual E5 Text Embeddings"),
+            model_code: String::from("intfloat/multilingual-e5-small"),
+            model_file: String::from("onnx/model_qint8_avx512_vnni.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
             model: EmbeddingModel::MultilingualE5Base,
             dim: 768,
             description: String::from("Base model of multilingual E5 Text Embeddings"),
             model_code: String::from("intfloat/multilingual-e5-base"),
             model_file: String::from("onnx/model.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::MultilingualE5BaseQ,
+            dim: 768,
+            description: String::from("Quantized Base model of multilingual E5 Text Embeddings"),
+            model_code: String::from("intfloat/multilingual-e5-base"),
+            model_file: String::from("onnx/model_qint8_avx512_vnni.onnx"),
             additional_files: Vec::new(),
             output_key: None,
         },
@@ -416,6 +440,15 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model_code: String::from("onnx-community/embeddinggemma-300m-ONNX"),
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec!["onnx/model.onnx_data".to_string()],
+            output_key: Some(crate::OutputKey::ByName("sentence_embedding")),
+        },
+        ModelInfo {
+            model: EmbeddingModel::EmbeddingGemma300MQ,
+            dim: 768,
+            description: String::from("Quantized EmbeddingGemma is a 300M parameter from Google"),
+            model_code: String::from("onnx-community/embeddinggemma-300m-ONNX"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+            additional_files: vec!["onnx/model_quantized.onnx_data".to_string()],
             output_key: Some(crate::OutputKey::ByName("sentence_embedding")),
         },
         ModelInfo {
