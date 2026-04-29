@@ -74,6 +74,14 @@ pub enum EmbeddingModel {
     JinaEmbeddingsV2BaseCode,
     /// jinaai/jina-embeddings-v2-base-en
     JinaEmbeddingsV2BaseEN,
+    /// jinaai/jina-embeddings-v5-text-nano-retrieval
+    ///
+    /// License: CC BY-NC 4.0 (non-commercial). Commercial use requires a
+    /// commercial license from Jina AI. The retrieval variant supports
+    /// asymmetric prompts via instruction prefixes
+    /// (`retrieval.query: ` / `retrieval.passage: `) and Matryoshka
+    /// truncation in {32, 64, 128, 256, 512, 768}.
+    JinaEmbeddingsV5TextNano,
     /// onnx-community/embeddinggemma-300m-ONNX
     EmbeddingGemma300M,
     /// snowflake/snowflake-arctic-embed-xs
@@ -406,6 +414,17 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             description: String::from("Jina embeddings v2 base English"),
             model_code: String::from("jinaai/jina-embeddings-v2-base-en"),
             model_file: String::from("model.onnx"),
+            additional_files: Vec::new(),
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::JinaEmbeddingsV5TextNano,
+            dim: 768,
+            description: String::from(
+                "Jina embeddings v5 text nano retrieval (CC BY-NC 4.0, non-commercial)",
+            ),
+            model_code: String::from("jinaai/jina-embeddings-v5-text-nano-retrieval"),
+            model_file: String::from("onnx/model.onnx"),
             additional_files: Vec::new(),
             output_key: None,
         },
