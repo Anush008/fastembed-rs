@@ -32,7 +32,7 @@ ort = { version = "=2.0.0-rc.12", default-features = false, features = [
 safetensors = { version = "0.7.0" }
 serde_json = { version = "1" }
 serde = { version = "1", features = ["derive"] }
-tokenizers = { version = "0.22.2", default-features = false, features = ["onig"] }
+tokenizers = { version = "0.23.1", default-features = false, features = ["onig"] }
 candle-nn = { version = "0.10.2", optional = true }
 candle-core = { version = "0.10.2", optional = true }
 
