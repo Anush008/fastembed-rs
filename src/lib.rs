@@ -64,6 +64,7 @@ mod pooling;
 mod reranking;
 mod sparse_text_embedding;
 mod text_embedding;
+mod bgem3_embedding;
 
 pub use ort::execution_providers::ExecutionProviderDispatch;
 
@@ -90,6 +91,12 @@ pub use crate::text_embedding::{
 pub use crate::models::sparse::SparseModel;
 pub use crate::sparse_text_embedding::{
     SparseInitOptions, SparseTextEmbedding, UserDefinedSparseModel,
+};
+
+// For BGEM3 Joint Embedding
+pub use crate::models::bgem3::Bgem3Model;
+pub use crate::bgem3_embedding::{
+    Bgem3Embedding, Bgem3EmbeddingOutput, Bgem3InitOptions, UserDefinedBgem3Model,
 };
 
 // For Image Embedding
