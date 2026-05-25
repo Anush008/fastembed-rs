@@ -3,7 +3,7 @@ use crate::common::load_tokenizer_hf_hub;
 use crate::{
     common::load_tokenizer,
     models::bgem3::{models_list, Bgem3Model},
-    ModelInfo, SparseEmbedding, text_embedding::InitOptionsUserDefined,
+    ModelInfo, SparseEmbedding, TokenizerFiles, text_embedding::InitOptionsUserDefined,
 };
 #[cfg(feature = "hf-hub")]
 use anyhow::Context;
@@ -107,6 +107,35 @@ impl Bgem3Embedding {
             .commit_from_memory(&model.onnx_file)?;
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
+        Ok(Self::new(tokenizer, session, Bgem3Model::default()))
+    }
+
+    /// Create a Bgem3Embedding instance from a model directory on disk.
+    /// Supports split external data files (model.onnx + model.onnx_data).
+    pub fn try_new_from_path(
+        model_path: impl AsRef<std::path::Path>,
+        tokenizer_files: TokenizerFiles,
+        options: InitOptionsUserDefined,
+    ) -> Result<Self> {
+        use ort::session::builder::GraphOptimizationLevel;
+
+        let InitOptionsUserDefined {
+            execution_providers,
+            max_length,
+        } = options;
+
+        let threads = available_parallelism()?.get();
+
+        let session = Session::builder()?
+            .with_execution_providers(execution_providers)
+            .map_err(Self::builder_error)?
+            .with_optimization_level(GraphOptimizationLevel::Level3)
+            .map_err(Self::builder_error)?
+            .with_intra_threads(threads)
+            .map_err(Self::builder_error)?
+            .commit_from_file(model_path.as_ref().join("model.onnx"))?;
+
+        let tokenizer = load_tokenizer(tokenizer_files, max_length)?;
         Ok(Self::new(tokenizer, session, Bgem3Model::default()))
     }
 
