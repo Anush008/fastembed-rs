@@ -55,6 +55,7 @@
 
 mod common;
 
+mod bgem3_embedding;
 #[cfg(feature = "image-models")]
 mod image_embedding;
 mod init;
@@ -64,7 +65,6 @@ mod pooling;
 mod reranking;
 mod sparse_text_embedding;
 mod text_embedding;
-mod bgem3_embedding;
 
 pub use ort::execution_providers::ExecutionProviderDispatch;
 
@@ -94,10 +94,10 @@ pub use crate::sparse_text_embedding::{
 };
 
 // For BGEM3 Joint Embedding
-pub use crate::models::bgem3::Bgem3Model;
 pub use crate::bgem3_embedding::{
     Bgem3Embedding, Bgem3EmbeddingOutput, Bgem3InitOptions, UserDefinedBgem3Model,
 };
+pub use crate::models::bgem3::Bgem3Model;
 
 // For Image Embedding
 #[cfg(feature = "image-models")]

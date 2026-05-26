@@ -3,7 +3,8 @@ use crate::common::load_tokenizer_hf_hub;
 use crate::{
     common::load_tokenizer,
     models::bgem3::{models_list, Bgem3Model},
-    ModelInfo, SparseEmbedding, TokenizerFiles, text_embedding::InitOptionsUserDefined,
+    text_embedding::InitOptionsUserDefined,
+    ModelInfo, SparseEmbedding, TokenizerFiles,
 };
 #[cfg(feature = "hf-hub")]
 use anyhow::Context;
@@ -23,7 +24,7 @@ use std::thread::available_parallelism;
 
 #[cfg(feature = "hf-hub")]
 use super::Bgem3InitOptions;
-use super::{Bgem3Embedding, Bgem3EmbeddingOutput, DEFAULT_BATCH_SIZE, UserDefinedBgem3Model};
+use super::{Bgem3Embedding, Bgem3EmbeddingOutput, UserDefinedBgem3Model, DEFAULT_BATCH_SIZE};
 
 impl Bgem3Embedding {
     fn builder_error(err: ort::Error<ort::session::builder::SessionBuilder>) -> anyhow::Error {
@@ -243,13 +244,13 @@ impl Bgem3Embedding {
             // outputs[0] -> dense_vecs: [batch_size, 1024]
             // outputs[1] -> sparse_vecs: [batch_size, seq_len, 1]
             // outputs[2] -> colbert_vecs: [batch_size, seq_len - 1, 1024]
-            
+
             // Dense vecs
             let dense_output = &outputs[0];
             let (dense_shape, dense_data) = dense_output.try_extract_tensor::<f32>()?;
             let dense_shape: Vec<usize> = dense_shape.iter().map(|&d| d as usize).collect();
             let dense_view = ndarray::ArrayViewD::from_shape(dense_shape.as_slice(), dense_data)?;
-            
+
             for row in dense_view.rows() {
                 all_dense.push(row.to_vec());
             }
@@ -258,8 +259,9 @@ impl Bgem3Embedding {
             let sparse_output = &outputs[1];
             let (sparse_shape, sparse_data) = sparse_output.try_extract_tensor::<f32>()?;
             let sparse_shape: Vec<usize> = sparse_shape.iter().map(|&d| d as usize).collect();
-            let sparse_view = ndarray::ArrayViewD::from_shape(sparse_shape.as_slice(), sparse_data)?;
-            
+            let sparse_view =
+                ndarray::ArrayViewD::from_shape(sparse_shape.as_slice(), sparse_data)?;
+
             // Special tokens to skip: XLM-RoBERTa: CLS=0, PAD=1, EOS=2, UNK=3
             const SPECIAL_TOKENS: [i64; 4] = [0, 1, 2, 3];
 
@@ -295,7 +297,8 @@ impl Bgem3Embedding {
             let colbert_output = &outputs[2];
             let (colbert_shape, colbert_data) = colbert_output.try_extract_tensor::<f32>()?;
             let colbert_shape: Vec<usize> = colbert_shape.iter().map(|&d| d as usize).collect();
-            let colbert_view = ndarray::ArrayViewD::from_shape(colbert_shape.as_slice(), colbert_data)?;
+            let colbert_view =
+                ndarray::ArrayViewD::from_shape(colbert_shape.as_slice(), colbert_data)?;
 
             // Shape of colbert_view is [batch_size, seq_len - 1, 1024]
             let colbert_seq_len = colbert_shape[1]; // seq_len - 1

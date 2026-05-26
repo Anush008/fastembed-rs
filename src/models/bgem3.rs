@@ -1,5 +1,5 @@
-use std::{fmt::Display, str::FromStr};
 use crate::ModelInfo;
+use std::{fmt::Display, str::FromStr};
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Bgem3Model {

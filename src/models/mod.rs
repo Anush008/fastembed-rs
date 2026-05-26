@@ -1,7 +1,7 @@
 use crate::ModelInfo;
 
-pub mod image_embedding;
 pub mod bgem3;
+pub mod image_embedding;
 pub mod model_info;
 pub mod quantization;
 pub mod reranking;
@@ -25,7 +25,9 @@ impl ModelTrait for bgem3::Bgem3Model {
     type Model = Self;
 
     fn get_model_info(model: &Self) -> Option<&ModelInfo<Self>> {
-        static ONCE: std::sync::OnceLock<std::collections::HashMap<bgem3::Bgem3Model, ModelInfo<bgem3::Bgem3Model>>> = std::sync::OnceLock::new();
+        static ONCE: std::sync::OnceLock<
+            std::collections::HashMap<bgem3::Bgem3Model, ModelInfo<bgem3::Bgem3Model>>,
+        > = std::sync::OnceLock::new();
         let map = ONCE.get_or_init(|| {
             bgem3::models_list()
                 .into_iter()
@@ -35,4 +37,3 @@ impl ModelTrait for bgem3::Bgem3Model {
         map.get(model)
     }
 }
-
