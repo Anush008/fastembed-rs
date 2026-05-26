@@ -242,6 +242,65 @@ let documents = vec![
 let embeddings: Vec<SparseEmbedding> = model.embed(documents, None)?;
 ```
 
+### BGE-M3 Joint Embeddings
+
+The BGE-M3 model produces dense, sparse, and ColBERT embeddings simultaneously in a single forward pass.
+
+> [!WARNING]
+> The default quantized model (`BGEM3Q`) is optimized for CPUs; passing a GPU execution provider (like CUDA) will fail. For GPU inference or custom requirements, you can export your own custom model (FP32, FP16, or INT8) using the ONNX export script from hf `gpahal/bge-m3-onnx-int8` and load it via `try_new_from_path`.
+
+```rust
+use fastembed::{Bgem3Embedding, Bgem3InitOptions, Bgem3Model};
+
+// With default options
+let mut model = Bgem3Embedding::try_new(Default::default())?;
+
+// With custom options (supporting custom max length up to 8192 tokens)
+let mut model = Bgem3Embedding::try_new(
+    Bgem3InitOptions::new(Bgem3Model::BGEM3Q)
+        .with_max_length(1024)
+        .with_show_download_progress(true),
+)?;
+
+let documents = vec![
+    "Hello, World!",
+    "This is an example passage.",
+    "fastembed-rs is licensed under Apache 2.0",
+    "i dont know"
+];
+
+// Generate all three representations in a single forward pass
+let output = model.embed(documents, None)?;
+
+println!("Dense dimension: {}", output.dense[0].len()); // -> Dense dimension: 1024
+
+let sparse_emb = &output.sparse[0];
+println!("Sparse non-zero tokens: {}", sparse_emb.indices.len());
+
+println!("ColBERT token count: {}", output.colbert[0].len());
+```
+
+Alternatively, local model files can be loaded via `try_new_from_user_defined` (for inline buffer ONNX models) or `try_new_from_path` (supporting split external ONNX data files like `model.onnx_data`):
+
+```rust
+use fastembed::{Bgem3Embedding, InitOptionsUserDefined, TokenizerFiles, UserDefinedBgem3Model};
+
+let user_model = UserDefinedBgem3Model::new(
+    std::fs::read("path/to/model.onnx")?,
+    TokenizerFiles {
+        tokenizer_file: std::fs::read("path/to/tokenizer.json")?,
+        config_file: std::fs::read("path/to/config.json")?,
+        special_tokens_map_file: std::fs::read("path/to/special_tokens_map.json")?,
+        tokenizer_config_file: std::fs::read("path/to/tokenizer_config.json")?,
+    },
+);
+
+let mut model = Bgem3Embedding::try_new_from_user_defined(
+    user_model,
+    InitOptionsUserDefined::default(),
+)?;
+```
+
 ### Image Embeddings
 
 ```rust
