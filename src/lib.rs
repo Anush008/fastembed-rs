@@ -55,6 +55,7 @@
 
 mod common;
 
+mod bgem3_embedding;
 #[cfg(feature = "image-models")]
 mod image_embedding;
 mod init;
@@ -91,6 +92,12 @@ pub use crate::models::sparse::SparseModel;
 pub use crate::sparse_text_embedding::{
     SparseInitOptions, SparseTextEmbedding, UserDefinedSparseModel,
 };
+
+// For BGEM3 Joint Embedding
+pub use crate::bgem3_embedding::{
+    Bgem3Embedding, Bgem3EmbeddingOutput, Bgem3InitOptions, UserDefinedBgem3Model,
+};
+pub use crate::models::bgem3::Bgem3Model;
 
 // For Image Embedding
 #[cfg(feature = "image-models")]
