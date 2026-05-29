@@ -129,6 +129,12 @@ let mut model = TextEmbedding::try_new(
     InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true),
 )?;
 
+// Cap ONNX Runtime intra-op threads (e.g. to limit CPU usage on a laptop).
+// By default (`None`) every available CPU core is used.
+let mut model = TextEmbedding::try_new(
+    InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_intra_threads(4),
+)?;
+
 let documents = vec![
     "passage: Hello, World!",
     "query: Hello, World!",

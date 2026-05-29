@@ -63,9 +63,10 @@ impl TextRerank {
             execution_providers,
             cache_dir,
             show_download_progress,
+            intra_threads,
         } = options;
 
-        let threads = available_parallelism()?.get();
+        let threads = match intra_threads { Some(n) => n, None => available_parallelism()?.get() };
 
         let cache = Cache::new(cache_dir);
         let api = ApiBuilder::from_cache(cache)
@@ -110,9 +111,10 @@ impl TextRerank {
         let RerankInitOptionsUserDefined {
             execution_providers,
             max_length,
+            intra_threads,
         } = options;
 
-        let threads = available_parallelism()?.get();
+        let threads = match intra_threads { Some(n) => n, None => available_parallelism()?.get() };
 
         let mut session = Session::builder()?
             .with_execution_providers(execution_providers)

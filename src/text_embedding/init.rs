@@ -27,6 +27,10 @@ pub type TextInitOptions = InitOptionsWithLength<EmbeddingModel>;
 pub struct InitOptionsUserDefined {
     pub execution_providers: Vec<ExecutionProviderDispatch>,
     pub max_length: usize,
+    /// Number of intra-op threads for ONNX Runtime. `None` (the default) uses
+    /// every available CPU core via `std::thread::available_parallelism`.
+    /// Set this to cap CPU usage (e.g. on laptops) at the cost of throughput.
+    pub intra_threads: Option<usize>,
 }
 
 impl InitOptionsUserDefined {
@@ -48,6 +52,14 @@ impl InitOptionsUserDefined {
         self.max_length = max_length;
         self
     }
+
+    /// Set the number of intra-op threads ONNX Runtime uses. By default
+    /// (`None`) all available CPU cores are used; capping this limits CPU
+    /// usage at the cost of per-inference throughput.
+    pub fn with_intra_threads(mut self, intra_threads: usize) -> Self {
+        self.intra_threads = Some(intra_threads);
+        self
+    }
 }
 
 impl Default for InitOptionsUserDefined {
@@ -55,6 +67,7 @@ impl Default for InitOptionsUserDefined {
         Self {
             execution_providers: Default::default(),
             max_length: DEFAULT_MAX_LENGTH,
+            intra_threads: None,
         }
     }
 }
@@ -67,6 +80,7 @@ impl From<TextInitOptions> for InitOptionsUserDefined {
         InitOptionsUserDefined {
             execution_providers: options.execution_providers,
             max_length: options.max_length,
+            intra_threads: options.intra_threads,
         }
     }
 }
