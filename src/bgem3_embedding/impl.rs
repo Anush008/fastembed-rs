@@ -49,7 +49,10 @@ impl Bgem3Embedding {
             intra_threads,
         } = options;
 
-        let threads = match intra_threads { Some(n) => n, None => available_parallelism()?.get() };
+        let threads = match intra_threads {
+            Some(n) => n,
+            None => available_parallelism()?.get(),
+        };
 
         let model_repo = Bgem3Embedding::retrieve_model(
             model_name.clone(),
@@ -98,7 +101,10 @@ impl Bgem3Embedding {
             intra_threads,
         } = options;
 
-        let threads = match intra_threads { Some(n) => n, None => available_parallelism()?.get() };
+        let threads = match intra_threads {
+            Some(n) => n,
+            None => available_parallelism()?.get(),
+        };
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)
@@ -128,7 +134,10 @@ impl Bgem3Embedding {
             intra_threads,
         } = options;
 
-        let threads = match intra_threads { Some(n) => n, None => available_parallelism()?.get() };
+        let threads = match intra_threads {
+            Some(n) => n,
+            None => available_parallelism()?.get(),
+        };
 
         let session = Session::builder()?
             .with_execution_providers(execution_providers)

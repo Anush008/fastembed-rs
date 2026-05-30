@@ -50,7 +50,10 @@ impl TextEmbedding {
             show_download_progress,
             intra_threads,
         } = options;
-        let threads = match intra_threads { Some(n) => n, None => available_parallelism()?.get() };
+        let threads = match intra_threads {
+            Some(n) => n,
+            None => available_parallelism()?.get(),
+        };
 
         let model_repo = TextEmbedding::retrieve_model(
             model_name.clone(),
@@ -123,7 +126,10 @@ impl TextEmbedding {
             intra_threads,
         } = options;
 
-        let threads = match intra_threads { Some(n) => n, None => available_parallelism()?.get() };
+        let threads = match intra_threads {
+            Some(n) => n,
+            None => available_parallelism()?.get(),
+        };
 
         #[cfg(feature = "directml")]
         let has_directml = execution_providers

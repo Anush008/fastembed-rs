@@ -46,7 +46,10 @@ impl ImageEmbedding {
             intra_threads,
         } = options;
 
-        let threads = match intra_threads { Some(n) => n, None => available_parallelism()?.get() };
+        let threads = match intra_threads {
+            Some(n) => n,
+            None => available_parallelism()?.get(),
+        };
 
         let model_repo = ImageEmbedding::retrieve_model(
             model_name.clone(),
@@ -104,7 +107,10 @@ impl ImageEmbedding {
             intra_threads,
         } = options;
 
-        let threads = match intra_threads { Some(n) => n, None => available_parallelism()?.get() };
+        let threads = match intra_threads {
+            Some(n) => n,
+            None => available_parallelism()?.get(),
+        };
 
         let preprocessor = Compose::from_bytes(model.preprocessor_file)?;
 
