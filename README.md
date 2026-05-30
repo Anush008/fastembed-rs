@@ -126,7 +126,7 @@ let mut model = TextEmbedding::try_new(Default::default())?;
 
 // With custom options
 let mut model = TextEmbedding::try_new(
-    InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true),
+    InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true).with_intra_threads(4),
 )?;
 
 let documents = vec![

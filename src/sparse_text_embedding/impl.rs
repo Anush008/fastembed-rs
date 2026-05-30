@@ -46,9 +46,13 @@ impl SparseTextEmbedding {
             cache_dir,
             show_download_progress,
             execution_providers,
+            intra_threads,
         } = options;
 
-        let threads = available_parallelism()?.get();
+        let threads = match intra_threads {
+            Some(n) => n,
+            None => available_parallelism()?.get(),
+        };
 
         let model_repo = SparseTextEmbedding::retrieve_model(
             model_name.clone(),
