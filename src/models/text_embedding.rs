@@ -76,6 +76,10 @@ pub enum EmbeddingModel {
     JinaEmbeddingsV2BaseEN,
     /// onnx-community/embeddinggemma-300m-ONNX
     EmbeddingGemma300M,
+    /// Quantized (4-bit) onnx-community/embeddinggemma-300m-ONNX
+    EmbeddingGemma300MQ4,
+    /// Quantized onnx-community/embeddinggemma-300m-ONNX
+    EmbeddingGemma300MQ,
     /// snowflake/snowflake-arctic-embed-xs
     SnowflakeArcticEmbedXS,
     /// Quantized snowflake/snowflake-arctic-embed-xs
@@ -416,6 +420,26 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             model_code: String::from("onnx-community/embeddinggemma-300m-ONNX"),
             model_file: String::from("onnx/model.onnx"),
             additional_files: vec!["onnx/model.onnx_data".to_string()],
+            output_key: Some(crate::OutputKey::ByName("sentence_embedding")),
+        },
+        ModelInfo {
+            model: EmbeddingModel::EmbeddingGemma300MQ4,
+            dim: 768,
+            description: String::from(
+                "Quantized (4-bit) EmbeddingGemma is a 300M parameter from Google",
+            ),
+            model_code: String::from("onnx-community/embeddinggemma-300m-ONNX"),
+            model_file: String::from("onnx/model_q4.onnx"),
+            additional_files: vec!["onnx/model_q4.onnx_data".to_string()],
+            output_key: Some(crate::OutputKey::ByName("sentence_embedding")),
+        },
+        ModelInfo {
+            model: EmbeddingModel::EmbeddingGemma300MQ,
+            dim: 768,
+            description: String::from("Quantized EmbeddingGemma is a 300M parameter from Google"),
+            model_code: String::from("onnx-community/embeddinggemma-300m-ONNX"),
+            model_file: String::from("onnx/model_quantized.onnx"),
+            additional_files: vec!["onnx/model_quantized.onnx_data".to_string()],
             output_key: Some(crate::OutputKey::ByName("sentence_embedding")),
         },
         ModelInfo {

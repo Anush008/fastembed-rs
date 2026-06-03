@@ -258,6 +258,8 @@ impl TextEmbedding {
             EmbeddingModel::JinaEmbeddingsV2BaseEN => Some(Pooling::Mean),
 
             EmbeddingModel::EmbeddingGemma300M => Some(Pooling::Mean),
+            EmbeddingModel::EmbeddingGemma300MQ4 => Some(Pooling::Mean),
+            EmbeddingModel::EmbeddingGemma300MQ => Some(Pooling::Mean),
 
             EmbeddingModel::SnowflakeArcticEmbedXS => Some(Pooling::Cls),
             EmbeddingModel::SnowflakeArcticEmbedXSQ => Some(Pooling::Cls),
@@ -302,6 +304,7 @@ impl TextEmbedding {
             EmbeddingModel::SnowflakeArcticEmbedMQ => QuantizationMode::Dynamic,
             EmbeddingModel::SnowflakeArcticEmbedMLongQ => QuantizationMode::Dynamic,
             EmbeddingModel::SnowflakeArcticEmbedLQ => QuantizationMode::Dynamic,
+            EmbeddingModel::EmbeddingGemma300MQ => QuantizationMode::Dynamic,
             _ => QuantizationMode::None,
         }
     }
