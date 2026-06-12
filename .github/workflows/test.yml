@@ -1,6 +1,8 @@
 name: "Cargo Tests"
 on:
   pull_request:
+  push:
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
@@ -12,7 +14,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
       - name: Free Disk Space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
@@ -57,3 +62,26 @@ jobs:
           key: '${{ steps.cache-build-restore.outputs.cache-primary-key }}'
           path: |
             onnxruntime/build/Linux/Release/
+
+  clippy-features:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            features: "qwen3,hf-hub-native-tls"
+          - os: ubuntu-latest
+            features: "nomic-v2-moe,hf-hub-native-tls"
+          - os: ubuntu-latest
+            features: "hf-hub-rustls-tls,image-models"
+          - os: windows-latest
+            features: "directml,hf-hub-native-tls,image-models"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          key: ${{ matrix.features }}
+      - name: Clippy
+        run: cargo clippy --no-default-features --features ${{ matrix.features }} -- -D warnings

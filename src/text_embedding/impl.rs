@@ -3,7 +3,7 @@
 #[cfg(feature = "hf-hub")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::load_tokenizer,
+    common::{init_session_builder, load_tokenizer},
     models::{text_embedding::models_list, ModelTrait},
     pooling::Pooling,
     Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, OutputKey, QuantizationMode,
@@ -15,13 +15,9 @@ use anyhow::Result;
 #[cfg(feature = "hf-hub")]
 use hf_hub::api::sync::ApiRepo;
 use ndarray::Array;
-use ort::{
-    session::{builder::GraphOptimizationLevel, Session},
-    value::Value,
-};
+use ort::{session::Session, value::Value};
 #[cfg(feature = "hf-hub")]
 use std::path::PathBuf;
-use std::thread::available_parallelism;
 use tokenizers::Tokenizer;
 
 #[cfg(feature = "hf-hub")]
@@ -31,10 +27,6 @@ use super::{
 };
 
 impl TextEmbedding {
-    fn builder_error(err: ort::Error<ort::session::builder::SessionBuilder>) -> anyhow::Error {
-        anyhow::Error::msg(err.to_string())
-    }
-
     /// Try to generate a new TextEmbedding Instance
     ///
     /// Uses the highest level of Graph optimization
@@ -50,10 +42,6 @@ impl TextEmbedding {
             show_download_progress,
             intra_threads,
         } = options;
-        let threads = match intra_threads {
-            Some(n) => n,
-            None => available_parallelism()?.get(),
-        };
 
         let model_repo = TextEmbedding::retrieve_model(
             model_name.clone(),
@@ -78,30 +66,8 @@ impl TextEmbedding {
         // prioritise loading pooling config if available, if not (thanks qdrant!), look for it in hardcoded
         let post_processing = TextEmbedding::get_default_pooling_method(&model_name);
 
-        #[cfg(feature = "directml")]
-        let has_directml = execution_providers
-            .iter()
-            .any(|ep| ep.downcast_ref::<ort::ep::DirectML>().is_some());
-        #[cfg(not(feature = "directml"))]
-        let has_directml = false;
-
-        let mut builder = Session::builder()?
-            .with_execution_providers(execution_providers)
-            .map_err(Self::builder_error)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(Self::builder_error)?
-            .with_intra_threads(threads)
-            .map_err(Self::builder_error)?;
-
-        if has_directml {
-            builder = builder
-                .with_memory_pattern(false)
-                .map_err(Self::builder_error)?
-                .with_parallel_execution(false)
-                .map_err(Self::builder_error)?;
-        }
-
-        let session = builder.commit_from_file(model_file_reference)?;
+        let session = init_session_builder(execution_providers, intra_threads)?
+            .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
         Ok(Self::new(
@@ -126,34 +92,11 @@ impl TextEmbedding {
             intra_threads,
         } = options;
 
-        let threads = match intra_threads {
-            Some(n) => n,
-            None => available_parallelism()?.get(),
-        };
-
-        #[cfg(feature = "directml")]
-        let has_directml = execution_providers
-            .iter()
-            .any(|ep| ep.downcast_ref::<ort::ep::DirectML>().is_some());
-        #[cfg(not(feature = "directml"))]
-        let has_directml = false;
-
         let session = {
-            let mut session_builder = Session::builder()?
-                .with_execution_providers(execution_providers)
-                .map_err(Self::builder_error)?
-                .with_optimization_level(GraphOptimizationLevel::Level3)
-                .map_err(Self::builder_error)?
-                .with_intra_threads(threads)
-                .map_err(Self::builder_error)?;
-
-            if has_directml {
-                session_builder = session_builder
-                    .with_memory_pattern(false)
-                    .map_err(Self::builder_error)?
-                    .with_parallel_execution(false)
-                    .map_err(Self::builder_error)?;
-            }
+            let builder_error = |err: ort::Error<ort::session::builder::SessionBuilder>| {
+                anyhow::Error::msg(err.to_string())
+            };
+            let mut session_builder = init_session_builder(execution_providers, intra_threads)?;
 
             for external_initializer_file in model.external_initializers {
                 session_builder = session_builder
@@ -161,7 +104,7 @@ impl TextEmbedding {
                         external_initializer_file.file_name,
                         external_initializer_file.buffer.into(),
                     )
-                    .map_err(Self::builder_error)?;
+                    .map_err(builder_error)?;
             }
 
             session_builder.commit_from_memory(&model.onnx_file)?
@@ -305,7 +248,37 @@ impl TextEmbedding {
             EmbeddingModel::SnowflakeArcticEmbedMLongQ => QuantizationMode::Dynamic,
             EmbeddingModel::SnowflakeArcticEmbedLQ => QuantizationMode::Dynamic,
             EmbeddingModel::EmbeddingGemma300MQ => QuantizationMode::Dynamic,
-            _ => QuantizationMode::None,
+            // 4-bit static quantization: batching-safe, so not Dynamic
+            EmbeddingModel::EmbeddingGemma300MQ4 => QuantizationMode::None,
+            EmbeddingModel::AllMiniLML6V2
+            | EmbeddingModel::AllMiniLML12V2
+            | EmbeddingModel::AllMpnetBaseV2
+            | EmbeddingModel::BGEBaseENV15
+            | EmbeddingModel::BGELargeENV15
+            | EmbeddingModel::BGESmallENV15
+            | EmbeddingModel::BGESmallZHV15
+            | EmbeddingModel::BGELargeZHV15
+            | EmbeddingModel::BGEM3
+            | EmbeddingModel::NomicEmbedTextV1
+            | EmbeddingModel::NomicEmbedTextV15
+            | EmbeddingModel::ParaphraseMLMiniLML12V2
+            | EmbeddingModel::ParaphraseMLMpnetBaseV2
+            | EmbeddingModel::ModernBertEmbedLarge
+            | EmbeddingModel::MultilingualE5Small
+            | EmbeddingModel::MultilingualE5Base
+            | EmbeddingModel::MultilingualE5Large
+            | EmbeddingModel::MxbaiEmbedLargeV1
+            | EmbeddingModel::GTEBaseENV15
+            | EmbeddingModel::GTELargeENV15
+            | EmbeddingModel::ClipVitB32
+            | EmbeddingModel::JinaEmbeddingsV2BaseCode
+            | EmbeddingModel::JinaEmbeddingsV2BaseEN
+            | EmbeddingModel::EmbeddingGemma300M
+            | EmbeddingModel::SnowflakeArcticEmbedXS
+            | EmbeddingModel::SnowflakeArcticEmbedS
+            | EmbeddingModel::SnowflakeArcticEmbedM
+            | EmbeddingModel::SnowflakeArcticEmbedMLong
+            | EmbeddingModel::SnowflakeArcticEmbedL => QuantizationMode::None,
         }
     }
 
@@ -374,6 +347,7 @@ impl TextEmbedding {
             }
             _ => Ok(batch_size.unwrap_or(DEFAULT_BATCH_SIZE)),
         }?;
+        anyhow::ensure!(batch_size > 0, "batch_size must be greater than 0");
 
         let batches = texts
             .chunks(batch_size)
@@ -471,6 +445,19 @@ impl TextEmbedding {
                 output::OUTPUT_TYPE_PRECEDENCE,
                 self.pooling.clone(),
             ))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn quantized_variants_have_explicit_pooling() {
+        for variant in crate::models::text_embedding::all_variants() {
+            let _ = TextEmbedding::get_default_pooling_method(&variant);
+            let _ = TextEmbedding::get_quantization_mode(&variant);
         }
     }
 }

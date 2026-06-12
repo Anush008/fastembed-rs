@@ -1,7 +1,7 @@
 #[cfg(feature = "hf-hub")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::load_tokenizer,
+    common::{init_session_builder, load_tokenizer},
     models::bgem3::{models_list, Bgem3Model},
     text_embedding::InitOptionsUserDefined,
     ModelInfo, SparseEmbedding, TokenizerFiles,
@@ -19,18 +19,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tokenizers::Tokenizer;
 
-#[cfg_attr(not(feature = "hf-hub"), allow(unused_imports))]
-use std::thread::available_parallelism;
-
 #[cfg(feature = "hf-hub")]
 use super::Bgem3InitOptions;
 use super::{Bgem3Embedding, Bgem3EmbeddingOutput, UserDefinedBgem3Model, DEFAULT_BATCH_SIZE};
 
 impl Bgem3Embedding {
-    fn builder_error(err: ort::Error<ort::session::builder::SessionBuilder>) -> anyhow::Error {
-        anyhow::Error::msg(err.to_string())
-    }
-
     /// Try to generate a new Bgem3Embedding Instance
     ///
     /// Uses the highest level of Graph optimization
@@ -38,8 +31,6 @@ impl Bgem3Embedding {
     /// Uses the total number of CPUs available as the number of intra-threads
     #[cfg(feature = "hf-hub")]
     pub fn try_new(options: Bgem3InitOptions) -> Result<Self> {
-        use ort::session::builder::GraphOptimizationLevel;
-
         let Bgem3InitOptions {
             max_length,
             model_name,
@@ -48,11 +39,6 @@ impl Bgem3Embedding {
             execution_providers,
             intra_threads,
         } = options;
-
-        let threads = match intra_threads {
-            Some(n) => n,
-            None => available_parallelism()?.get(),
-        };
 
         let model_repo = Bgem3Embedding::retrieve_model(
             model_name.clone(),
@@ -75,13 +61,7 @@ impl Bgem3Embedding {
             }
         }
 
-        let session = Session::builder()?
-            .with_execution_providers(execution_providers)
-            .map_err(Self::builder_error)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(Self::builder_error)?
-            .with_intra_threads(threads)
-            .map_err(Self::builder_error)?
+        let session = init_session_builder(execution_providers, intra_threads)?
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
@@ -93,26 +73,13 @@ impl Bgem3Embedding {
         model: UserDefinedBgem3Model,
         options: InitOptionsUserDefined,
     ) -> Result<Self> {
-        use ort::session::builder::GraphOptimizationLevel;
-
         let InitOptionsUserDefined {
             execution_providers,
             max_length,
             intra_threads,
         } = options;
 
-        let threads = match intra_threads {
-            Some(n) => n,
-            None => available_parallelism()?.get(),
-        };
-
-        let session = Session::builder()?
-            .with_execution_providers(execution_providers)
-            .map_err(Self::builder_error)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(Self::builder_error)?
-            .with_intra_threads(threads)
-            .map_err(Self::builder_error)?
+        let session = init_session_builder(execution_providers, intra_threads)?
             .commit_from_memory(&model.onnx_file)?;
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
@@ -126,26 +93,13 @@ impl Bgem3Embedding {
         tokenizer_files: TokenizerFiles,
         options: InitOptionsUserDefined,
     ) -> Result<Self> {
-        use ort::session::builder::GraphOptimizationLevel;
-
         let InitOptionsUserDefined {
             execution_providers,
             max_length,
             intra_threads,
         } = options;
 
-        let threads = match intra_threads {
-            Some(n) => n,
-            None => available_parallelism()?.get(),
-        };
-
-        let session = Session::builder()?
-            .with_execution_providers(execution_providers)
-            .map_err(Self::builder_error)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(Self::builder_error)?
-            .with_intra_threads(threads)
-            .map_err(Self::builder_error)?
+        let session = init_session_builder(execution_providers, intra_threads)?
             .commit_from_file(model_path.as_ref().join("model.onnx"))?;
 
         let tokenizer = load_tokenizer(tokenizer_files, max_length)?;
@@ -199,6 +153,7 @@ impl Bgem3Embedding {
     ) -> Result<Bgem3EmbeddingOutput> {
         let texts = texts.as_ref();
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
+        anyhow::ensure!(batch_size > 0, "batch_size must be greater than 0");
 
         let mut all_dense = Vec::with_capacity(texts.len());
         let mut all_sparse = Vec::with_capacity(texts.len());
@@ -251,6 +206,11 @@ impl Bgem3Embedding {
             }
 
             let outputs = self.session.run(session_inputs)?;
+            anyhow::ensure!(
+                outputs.len() >= 3,
+                "BGE-M3 expects the model to return 3 outputs (dense, sparse, colbert), got {}",
+                outputs.len()
+            );
 
             // gpahal/bge-m3-onnx-int8 returns outputs in this exact order:
             // outputs[0] -> dense_vecs: [batch_size, 1024]
@@ -271,6 +231,10 @@ impl Bgem3Embedding {
             let sparse_output = &outputs[1];
             let (sparse_shape, sparse_data) = sparse_output.try_extract_tensor::<f32>()?;
             let sparse_shape: Vec<usize> = sparse_shape.iter().map(|&d| d as usize).collect();
+            anyhow::ensure!(
+                sparse_shape.len() == 3,
+                "BGE-M3 sparse output must be rank-3 [batch, seq_len, 1], got shape {sparse_shape:?}"
+            );
             let sparse_view =
                 ndarray::ArrayViewD::from_shape(sparse_shape.as_slice(), sparse_data)?;
 
@@ -309,6 +273,10 @@ impl Bgem3Embedding {
             let colbert_output = &outputs[2];
             let (colbert_shape, colbert_data) = colbert_output.try_extract_tensor::<f32>()?;
             let colbert_shape: Vec<usize> = colbert_shape.iter().map(|&d| d as usize).collect();
+            anyhow::ensure!(
+                colbert_shape.len() == 3 && colbert_shape[1] < encoding_length,
+                "BGE-M3 colbert output must be rank-3 [batch, seq_len - 1, dim] with seq_len - 1 < {encoding_length}, got shape {colbert_shape:?}"
+            );
             let colbert_view =
                 ndarray::ArrayViewD::from_shape(colbert_shape.as_slice(), colbert_data)?;
 

@@ -1,20 +1,15 @@
 #[cfg(feature = "hf-hub")]
 use anyhow::Context;
 use anyhow::Result;
-use ort::{
-    session::{builder::GraphOptimizationLevel, Session},
-    value::Value,
-};
-use std::thread::available_parallelism;
+use ort::{session::Session, value::Value};
 
 #[cfg(feature = "hf-hub")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::load_tokenizer, models::reranking::reranker_model_list, RerankerModel,
-    RerankerModelInfo,
+    common::{init_session_builder, load_tokenizer},
+    models::reranking::reranker_model_list,
+    RerankerModel, RerankerModelInfo,
 };
-#[cfg(feature = "hf-hub")]
-use hf_hub::{api::sync::ApiBuilder, Cache};
 use ndarray::{s, Array};
 use tokenizers::Tokenizer;
 
@@ -26,10 +21,6 @@ use super::{
 };
 
 impl TextRerank {
-    fn builder_error(err: ort::Error<ort::session::builder::SessionBuilder>) -> anyhow::Error {
-        anyhow::Error::msg(err.to_string())
-    }
-
     fn new(tokenizer: Tokenizer, session: Session) -> Self {
         let need_token_type_ids = session
             .inputs()
@@ -56,6 +47,7 @@ impl TextRerank {
     #[cfg(feature = "hf-hub")]
     pub fn try_new(options: RerankInitOptions) -> Result<TextRerank> {
         use super::RerankInitOptions;
+        use crate::common::pull_from_hf;
 
         let RerankInitOptions {
             max_length,
@@ -66,17 +58,7 @@ impl TextRerank {
             intra_threads,
         } = options;
 
-        let threads = match intra_threads {
-            Some(n) => n,
-            None => available_parallelism()?.get(),
-        };
-
-        let cache = Cache::new(cache_dir);
-        let api = ApiBuilder::from_cache(cache)
-            .with_progress(show_download_progress)
-            .build()
-            .map_err(|e| anyhow::Error::msg(format!("Failed to build API from cache: {}", e)))?;
-        let model_repo = api.model(model_name.to_string());
+        let model_repo = pull_from_hf(model_name.to_string(), cache_dir, show_download_progress)?;
 
         let model_file_name = TextRerank::get_model_info(&model_name).model_file;
         let model_file_reference = model_repo.get(&model_file_name).context(format!(
@@ -91,13 +73,7 @@ impl TextRerank {
             ))?;
         }
 
-        let session = Session::builder()?
-            .with_execution_providers(execution_providers)
-            .map_err(Self::builder_error)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(Self::builder_error)?
-            .with_intra_threads(threads)
-            .map_err(Self::builder_error)?
+        let session = init_session_builder(execution_providers, intra_threads)?
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
@@ -117,22 +93,10 @@ impl TextRerank {
             intra_threads,
         } = options;
 
-        let threads = match intra_threads {
-            Some(n) => n,
-            None => available_parallelism()?.get(),
-        };
-
-        let mut session = Session::builder()?
-            .with_execution_providers(execution_providers)
-            .map_err(Self::builder_error)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(Self::builder_error)?
-            .with_intra_threads(threads)
-            .map_err(Self::builder_error)?;
-
+        let mut session_builder = init_session_builder(execution_providers, intra_threads)?;
         let session = match &model.onnx_source {
-            OnnxSource::Memory(bytes) => session.commit_from_memory(bytes)?,
-            OnnxSource::File(path) => session.commit_from_file(path)?,
+            OnnxSource::Memory(bytes) => session_builder.commit_from_memory(bytes)?,
+            OnnxSource::File(path) => session_builder.commit_from_file(path)?,
         };
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
@@ -151,6 +115,7 @@ impl TextRerank {
     ) -> Result<Vec<RerankResult>> {
         let documents = documents.as_ref();
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
+        anyhow::ensure!(batch_size > 0, "batch_size must be greater than 0");
         let q = query.as_ref();
 
         let mut scores: Vec<f32> = Vec::with_capacity(documents.len());
