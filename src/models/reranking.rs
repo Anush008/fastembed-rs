@@ -78,3 +78,37 @@ impl TryFrom<String> for RerankerModel {
         value.parse()
     }
 }
+
+#[cfg(test)]
+pub(crate) fn all_variants() -> Vec<RerankerModel> {
+    fn _exhaustive_guard(m: &RerankerModel) {
+        match m {
+            RerankerModel::BGERerankerBase => (),
+            RerankerModel::BGERerankerV2M3 => (),
+            RerankerModel::JINARerankerV1TurboEn => (),
+            RerankerModel::JINARerankerV2BaseMultiligual => (),
+        }
+    }
+    vec![
+        RerankerModel::BGERerankerBase,
+        RerankerModel::BGERerankerV2M3,
+        RerankerModel::JINARerankerV1TurboEn,
+        RerankerModel::JINARerankerV2BaseMultiligual,
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_variant_has_model_info() {
+        let listed: Vec<_> = reranker_model_list().into_iter().map(|i| i.model).collect();
+        for variant in all_variants() {
+            assert!(
+                listed.contains(&variant),
+                "{variant:?} is missing from reranker_model_list(); get_model_info would panic"
+            );
+        }
+    }
+}

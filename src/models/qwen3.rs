@@ -278,7 +278,7 @@ fn preprocess_image(img: &DynamicImage, cfg: &Qwen3VLPreprocessorConfig) -> Resu
     let grid_w = resized_w / cfg.patch_size;
     let merge = cfg.merge_size;
 
-    if grid_h % merge != 0 || grid_w % merge != 0 {
+    if !grid_h.is_multiple_of(merge) || !grid_w.is_multiple_of(merge) {
         return Err(candle_core::Error::Msg(
             "grid_h and grid_w must be divisible by merge_size".into(),
         ));
@@ -619,8 +619,8 @@ impl Qwen3RotaryEmbedding {
             let pos = position_ids.to_device(dev)?.to_vec3::<u32>()?;
             let mut freqs = vec![0f32; b * t * d2];
 
-            for batch_idx in 0..b {
-                for tok_idx in 0..t {
+            for (batch_idx, _) in pos.iter().enumerate().take(b) {
+                for (tok_idx, _) in pos.iter().enumerate().take(t) {
                     let base = (batch_idx * t + tok_idx) * d2;
                     let temporal = pos[0][batch_idx][tok_idx] as f32;
                     for i in 0..d2 {
@@ -628,7 +628,7 @@ impl Qwen3RotaryEmbedding {
                     }
 
                     if self.mrope_interleaved {
-                        for dim in 1..=2 {
+                        for (dim, _) in pos.iter().enumerate().take(2 + 1).skip(1) {
                             let pos_dim = pos[dim][batch_idx][tok_idx] as f32;
                             let mut i = dim;
                             let limit = (self.mrope_section[dim] * 3).min(d2);
@@ -944,7 +944,7 @@ impl Qwen3Model {
         };
 
         // position_embeddings = (cos,sin) once
-        let (cos, sin) = self.rotary_emb.forward(&hs, &position_ids)?;
+        let (cos, sin) = self.rotary_emb.forward(&hs, position_ids)?;
 
         // layers
         for (layer_idx, layer) in self.layers.iter().enumerate() {

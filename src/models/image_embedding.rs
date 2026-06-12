@@ -105,3 +105,39 @@ impl TryFrom<String> for ImageEmbeddingModel {
         value.parse()
     }
 }
+
+#[cfg(test)]
+pub(crate) fn all_variants() -> Vec<ImageEmbeddingModel> {
+    fn _exhaustive_guard(m: &ImageEmbeddingModel) {
+        match m {
+            ImageEmbeddingModel::ClipVitB32 => (),
+            ImageEmbeddingModel::Resnet50 => (),
+            ImageEmbeddingModel::UnicomVitB16 => (),
+            ImageEmbeddingModel::UnicomVitB32 => (),
+            ImageEmbeddingModel::NomicEmbedVisionV15 => (),
+        }
+    }
+    vec![
+        ImageEmbeddingModel::ClipVitB32,
+        ImageEmbeddingModel::Resnet50,
+        ImageEmbeddingModel::UnicomVitB16,
+        ImageEmbeddingModel::UnicomVitB32,
+        ImageEmbeddingModel::NomicEmbedVisionV15,
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_variant_has_model_info() {
+        let listed: Vec<_> = models_list().into_iter().map(|i| i.model).collect();
+        for variant in all_variants() {
+            assert!(
+                listed.contains(&variant),
+                "{variant:?} is missing from models_list(); get_model_info would panic"
+            );
+        }
+    }
+}

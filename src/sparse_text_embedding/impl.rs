@@ -1,5 +1,5 @@
 #[cfg(feature = "hf-hub")]
-use crate::common::load_tokenizer_hf_hub;
+use crate::common::{init_session_builder, load_tokenizer_hf_hub};
 use crate::{
     models::sparse::{models_list, SparseModel},
     ModelInfo, SparseEmbedding,
@@ -17,19 +17,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tokenizers::Tokenizer;
 
-#[cfg_attr(not(feature = "hf-hub"), allow(unused_imports))]
-use std::thread::available_parallelism;
-
 #[cfg(feature = "hf-hub")]
 use super::SparseInitOptions;
 use super::{SparseTextEmbedding, DEFAULT_BATCH_SIZE};
 
 impl SparseTextEmbedding {
-    #[cfg(feature = "hf-hub")]
-    fn builder_error(err: ort::Error<ort::session::builder::SessionBuilder>) -> anyhow::Error {
-        anyhow::Error::msg(err.to_string())
-    }
-
     /// Try to generate a new SparseTextEmbedding Instance
     ///
     /// Uses the highest level of Graph optimization
@@ -38,7 +30,6 @@ impl SparseTextEmbedding {
     #[cfg(feature = "hf-hub")]
     pub fn try_new(options: SparseInitOptions) -> Result<Self> {
         use super::SparseInitOptions;
-        use ort::{session::builder::GraphOptimizationLevel, session::Session};
 
         let SparseInitOptions {
             max_length,
@@ -48,11 +39,6 @@ impl SparseTextEmbedding {
             execution_providers,
             intra_threads,
         } = options;
-
-        let threads = match intra_threads {
-            Some(n) => n,
-            None => available_parallelism()?.get(),
-        };
 
         let model_repo = SparseTextEmbedding::retrieve_model(
             model_name.clone(),
@@ -75,13 +61,7 @@ impl SparseTextEmbedding {
             }
         }
 
-        let session = Session::builder()?
-            .with_execution_providers(execution_providers)
-            .map_err(Self::builder_error)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(Self::builder_error)?
-            .with_intra_threads(threads)
-            .map_err(Self::builder_error)?
+        let session = init_session_builder(execution_providers, intra_threads)?
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
@@ -139,6 +119,7 @@ impl SparseTextEmbedding {
         let texts = texts.as_ref();
         // Determine the batch size, default if not specified
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
+        anyhow::ensure!(batch_size > 0, "batch_size must be greater than 0");
 
         let output = texts
             .chunks(batch_size)

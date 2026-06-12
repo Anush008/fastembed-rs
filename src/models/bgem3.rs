@@ -51,3 +51,29 @@ impl TryFrom<String> for Bgem3Model {
         value.parse()
     }
 }
+
+#[cfg(test)]
+pub(crate) fn all_variants() -> Vec<Bgem3Model> {
+    fn _exhaustive_guard(m: &Bgem3Model) {
+        match m {
+            Bgem3Model::BGEM3Q => (),
+        }
+    }
+    vec![Bgem3Model::BGEM3Q]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_variant_has_model_info() {
+        let listed: Vec<_> = models_list().into_iter().map(|i| i.model).collect();
+        for variant in all_variants() {
+            assert!(
+                listed.contains(&variant),
+                "{variant:?} is missing from models_list(); get_model_info would panic"
+            );
+        }
+    }
+}

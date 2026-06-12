@@ -68,3 +68,30 @@ impl TryFrom<String> for SparseModel {
         value.parse()
     }
 }
+
+#[cfg(test)]
+pub(crate) fn all_variants() -> Vec<SparseModel> {
+    fn _exhaustive_guard(m: &SparseModel) {
+        match m {
+            SparseModel::SPLADEPPV1 => (),
+            SparseModel::BGEM3 => (),
+        }
+    }
+    vec![SparseModel::SPLADEPPV1, SparseModel::BGEM3]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_variant_has_model_info() {
+        let listed: Vec<_> = models_list().into_iter().map(|i| i.model).collect();
+        for variant in all_variants() {
+            assert!(
+                listed.contains(&variant),
+                "{variant:?} is missing from models_list(); get_model_info would panic"
+            );
+        }
+    }
+}

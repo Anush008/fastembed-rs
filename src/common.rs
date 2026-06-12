@@ -1,6 +1,10 @@
 use anyhow::Result;
 #[cfg(feature = "hf-hub")]
 use hf_hub::api::sync::{ApiBuilder, ApiRepo};
+use ort::{
+    execution_providers::ExecutionProviderDispatch,
+    session::builder::{GraphOptimizationLevel, SessionBuilder},
+};
 #[cfg(feature = "hf-hub")]
 use std::path::PathBuf;
 use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, Tokenizer, TruncationParams};
@@ -87,13 +91,16 @@ pub fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Res
     //For BGEBaseSmall, the model_max_length value is set to 1000000000000000019884624838656. Which fits in a f64
     let model_max_length = tokenizer_config["model_max_length"]
         .as_f64()
-        .expect("Error reading model_max_length from tokenizer_config.json")
-        as f32;
+        .ok_or_else(|| {
+            anyhow::anyhow!("tokenizer_config.json is missing a numeric `model_max_length` field")
+        })? as f32;
     let max_length = max_length.min(model_max_length as usize);
     let pad_id = config["pad_token_id"].as_u64().unwrap_or(0) as u32;
-    let pad_token = tokenizer_config["pad_token"]
+    let pad_token: String = tokenizer_config["pad_token"]
         .as_str()
-        .expect("Error reading pad_token from tokenizer_config.json")
+        .ok_or_else(|| {
+            anyhow::anyhow!("tokenizer_config.json is missing a string `pad_token` field")
+        })?
         .into();
 
     let mut tokenizer = tokenizer
@@ -182,4 +189,105 @@ pub fn pull_from_hf(
 
     let repo = api.model(model_name);
     Ok(repo)
+}
+
+pub(crate) fn init_session_builder(
+    execution_providers: Vec<ExecutionProviderDispatch>,
+    intra_threads: Option<usize>,
+) -> anyhow::Result<SessionBuilder> {
+    let threads = match intra_threads {
+        Some(n) => n,
+        None => std::thread::available_parallelism()?.get(),
+    };
+
+    #[cfg(feature = "directml")]
+    let has_directml = execution_providers
+        .iter()
+        .any(|ep| ep.downcast_ref::<ort::ep::DirectML>().is_some());
+    #[cfg(not(feature = "directml"))]
+    let has_directml = false;
+
+    let builder_error = |err: ort::Error<SessionBuilder>| anyhow::Error::msg(err.to_string());
+
+    let mut builder = ort::session::Session::builder()?
+        .with_execution_providers(execution_providers)
+        .map_err(builder_error)?
+        .with_optimization_level(GraphOptimizationLevel::Level3)
+        .map_err(builder_error)?
+        .with_intra_threads(threads)
+        .map_err(builder_error)?;
+
+    if has_directml {
+        builder = builder
+            .with_memory_pattern(false)
+            .map_err(builder_error)?
+            .with_parallel_execution(false)
+            .map_err(builder_error)?;
+    }
+
+    Ok(builder)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn minimal_tokenizer_bytes() -> Vec<u8> {
+        // Minimal valid tokenizer.json (BPE with a tiny vocab; no ## prefix needed).
+        br#"{
+            "version": "1.0",
+            "truncation": null,
+            "padding": null,
+            "added_tokens": [],
+            "normalizer": null,
+            "pre_tokenizer": null,
+            "post_processor": null,
+            "decoder": null,
+            "model": {
+                "type": "BPE",
+                "dropout": null,
+                "unk_token": "[UNK]",
+                "fuse_unk": false,
+                "byte_fallback": false,
+                "vocab": {"[UNK]": 0, "[PAD]": 1, "hello": 2},
+                "merges": []
+            }
+        }"#
+        .to_vec()
+    }
+
+    fn tokenizer_files(tokenizer_config: &str) -> TokenizerFiles {
+        TokenizerFiles {
+            tokenizer_file: minimal_tokenizer_bytes(),
+            config_file: br#"{"pad_token_id": 0}"#.to_vec(),
+            special_tokens_map_file: b"{}".to_vec(),
+            tokenizer_config_file: tokenizer_config.as_bytes().to_vec(),
+        }
+    }
+
+    #[test]
+    fn load_tokenizer_ok_with_complete_config() {
+        let files = tokenizer_files(r#"{"model_max_length": 512, "pad_token": "[PAD]"}"#);
+        assert!(load_tokenizer(files, 512).is_ok());
+    }
+
+    #[test]
+    fn load_tokenizer_errors_on_missing_pad_token() {
+        let files = tokenizer_files(r#"{"model_max_length": 512}"#);
+        let err = load_tokenizer(files, 512).unwrap_err();
+        assert!(
+            err.to_string().contains("pad_token"),
+            "error message was: {err}"
+        );
+    }
+
+    #[test]
+    fn load_tokenizer_errors_on_missing_model_max_length() {
+        let files = tokenizer_files(r#"{"pad_token": "[PAD]"}"#);
+        let err = load_tokenizer(files, 512).unwrap_err();
+        assert!(
+            err.to_string().contains("model_max_length"),
+            "error message was: {err}"
+        );
+    }
 }

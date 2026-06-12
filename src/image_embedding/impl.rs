@@ -2,17 +2,15 @@
 use hf_hub::api::sync::ApiRepo;
 use image::DynamicImage;
 use ndarray::{Array3, ArrayView3};
-use ort::{
-    session::{builder::GraphOptimizationLevel, Session},
-    value::Value,
-};
+use ort::{session::Session, value::Value};
 #[cfg(feature = "hf-hub")]
 use std::path::PathBuf;
-use std::{io::Cursor, path::Path, thread::available_parallelism};
+use std::{io::Cursor, path::Path};
 
 use crate::{
-    common::normalize, models::image_embedding::models_list, Embedding, ImageEmbeddingModel,
-    ModelInfo,
+    common::{init_session_builder, normalize},
+    models::image_embedding::models_list,
+    Embedding, ImageEmbeddingModel, ModelInfo,
 };
 use anyhow::anyhow;
 #[cfg(feature = "hf-hub")]
@@ -27,10 +25,6 @@ use super::{
 };
 
 impl ImageEmbedding {
-    fn builder_error(err: ort::Error<ort::session::builder::SessionBuilder>) -> anyhow::Error {
-        anyhow::Error::msg(err.to_string())
-    }
-
     /// Try to generate a new ImageEmbedding Instance
     ///
     /// Uses the highest level of Graph optimization
@@ -45,11 +39,6 @@ impl ImageEmbedding {
             show_download_progress,
             intra_threads,
         } = options;
-
-        let threads = match intra_threads {
-            Some(n) => n,
-            None => available_parallelism()?.get(),
-        };
 
         let model_repo = ImageEmbedding::retrieve_model(
             model_name.clone(),
@@ -67,30 +56,8 @@ impl ImageEmbedding {
             .get(&model_file_name)
             .context(format!("Failed to retrieve {}", model_file_name))?;
 
-        #[cfg(feature = "directml")]
-        let has_directml = execution_providers
-            .iter()
-            .any(|ep| ep.downcast_ref::<ort::ep::DirectML>().is_some());
-        #[cfg(not(feature = "directml"))]
-        let has_directml = false;
-
-        let mut builder = Session::builder()?
-            .with_execution_providers(execution_providers)
-            .map_err(Self::builder_error)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(Self::builder_error)?
-            .with_intra_threads(threads)
-            .map_err(Self::builder_error)?;
-
-        if has_directml {
-            builder = builder
-                .with_memory_pattern(false)
-                .map_err(Self::builder_error)?
-                .with_parallel_execution(false)
-                .map_err(Self::builder_error)?;
-        }
-
-        let session = builder.commit_from_file(model_file_reference)?;
+        let session = init_session_builder(execution_providers, intra_threads)?
+            .commit_from_file(model_file_reference)?;
 
         Ok(Self::new(preprocessor, session))
     }
@@ -107,37 +74,10 @@ impl ImageEmbedding {
             intra_threads,
         } = options;
 
-        let threads = match intra_threads {
-            Some(n) => n,
-            None => available_parallelism()?.get(),
-        };
-
         let preprocessor = Compose::from_bytes(model.preprocessor_file)?;
 
-        #[cfg(feature = "directml")]
-        let has_directml = execution_providers
-            .iter()
-            .any(|ep| ep.downcast_ref::<ort::ep::DirectML>().is_some());
-        #[cfg(not(feature = "directml"))]
-        let has_directml = false;
-
-        let mut builder = Session::builder()?
-            .with_execution_providers(execution_providers)
-            .map_err(Self::builder_error)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(Self::builder_error)?
-            .with_intra_threads(threads)
-            .map_err(Self::builder_error)?;
-
-        if has_directml {
-            builder = builder
-                .with_memory_pattern(false)
-                .map_err(Self::builder_error)?
-                .with_parallel_execution(false)
-                .map_err(Self::builder_error)?;
-        }
-
-        let session = builder.commit_from_memory(&model.onnx_file)?;
+        let session = init_session_builder(execution_providers, intra_threads)?
+            .commit_from_memory(&model.onnx_file)?;
 
         Ok(Self::new(preprocessor, session))
     }
@@ -182,6 +122,7 @@ impl ImageEmbedding {
         batch_size: Option<usize>,
     ) -> anyhow::Result<Vec<Embedding>> {
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
+        anyhow::ensure!(batch_size > 0, "batch_size must be greater than 0");
 
         let output = images
             .chunks(batch_size)
@@ -219,6 +160,7 @@ impl ImageEmbedding {
         let images = images.as_ref();
         // Determine the batch size, default if not specified
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
+        anyhow::ensure!(batch_size > 0, "batch_size must be greater than 0");
 
         let output = images
             .chunks(batch_size)
