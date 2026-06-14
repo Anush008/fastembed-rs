@@ -46,6 +46,25 @@ impl Default for RerankInitOptionsUserDefined {
 }
 
 impl RerankInitOptionsUserDefined {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the execution providers for the model
+    pub fn with_execution_providers(
+        mut self,
+        execution_providers: Vec<ExecutionProviderDispatch>,
+    ) -> Self {
+        self.execution_providers = execution_providers;
+        self
+    }
+
+    /// Set the maximum sequence length
+    pub fn with_max_length(mut self, max_length: usize) -> Self {
+        self.max_length = max_length;
+        self
+    }
+
     /// Set the number of intra-op threads ONNX Runtime uses. By default
     /// (`None`) all available CPU cores are used; capping this limits CPU
     /// usage at the cost of per-inference throughput.
@@ -114,4 +133,18 @@ pub struct RerankResult {
     pub document: Option<String>,
     pub score: f32,
     pub index: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn userdefined_builders_set_fields() {
+        let o = RerankInitOptionsUserDefined::new()
+            .with_max_length(128)
+            .with_intra_threads(2);
+        assert_eq!(o.max_length, 128);
+        assert_eq!(o.intra_threads, Some(2));
+    }
 }

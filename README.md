@@ -2,7 +2,7 @@
   <h1><a href="https://crates.io/crates/fastembed">FastEmbed-rs 🦀</a></h1>
  <h3>Rust library for generating vector embeddings, reranking locally!</h3>
   <a href="https://crates.io/crates/fastembed"><img src="https://img.shields.io/crates/v/fastembed.svg" alt="Crates.io"></a>
-  <a href="https://github.com/Anush008/fastembed-rs/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-apache-blue.svg" alt="MIT Licensed"></a>
+  <a href="https://github.com/Anush008/fastembed-rs/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-apache-blue.svg" alt="Apache 2.0 Licensed"></a>
   <a href="https://github.com/Anush008/fastembed-rs/actions/workflows/release.yml"><img src="https://github.com/Anush008/fastembed-rs/actions/workflows/release.yml/badge.svg?branch=main" alt="Semantic release"></a>
 </div>
 
@@ -114,19 +114,17 @@ Or add the following line to your Cargo.toml:
 fastembed = "5"
 ```
 
-## Usage
-
 ### Text Embeddings
 
 ```rust
-use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
+use fastembed::{TextEmbedding, TextInitOptions, EmbeddingModel};
 
 // With default options
 let mut model = TextEmbedding::try_new(Default::default())?;
 
 // With custom options
 let mut model = TextEmbedding::try_new(
-    InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true).with_intra_threads(4),
+    TextInitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true).with_intra_threads(4),
 )?;
 
 let documents = vec![
@@ -351,6 +349,14 @@ println!("Rerank result: {:?}", results);
 
 Alternatively, local model files can be used for inference via the `try_new_from_user_defined(...)` methods of respective structs.
 
+## Model cache
+
+Models download on first use and load from cache afterwards (no network needed at runtime once cached).
+
+- `FASTEMBED_CACHE_DIR` — cache location (default: `.fastembed_cache`). Equivalent to `TextInitOptions::with_cache_dir`.
+- `HF_HOME` — if set, takes precedence over the above.
+- `HF_ENDPOINT` — Hugging Face mirror base URL, for restricted networks.
+
 ### DirectML (Windows)
 
 To run models on a GPU via DirectML on Windows, enable the `directml` feature:
@@ -363,11 +369,11 @@ fastembed = { version = "5", features = ["directml"] }
 Then pass a DirectML execution provider when initializing a model:
 
 ```rust
-use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
+use fastembed::{TextEmbedding, TextInitOptions, EmbeddingModel};
 use ort::ep::DirectML;
 
 let model = TextEmbedding::try_new(
-    InitOptions::new(EmbeddingModel::AllMiniLML6V2)
+    TextInitOptions::new(EmbeddingModel::AllMiniLML6V2)
         .with_execution_providers(vec![DirectML::default().into()]),
 )?;
 ```

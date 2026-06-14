@@ -13,8 +13,10 @@ impl HasMaxLength for Bgem3Model {
     const MAX_LENGTH: usize = DEFAULT_MAX_LENGTH;
 }
 
+/// Options for initializing the Bgem3Embedding model
 pub type Bgem3InitOptions = InitOptionsWithLength<Bgem3Model>;
 
+/// Output of [`Bgem3Embedding`]: dense, sparse (lexical), and ColBERT (multi-vector) representations from a single pass.
 #[derive(Debug, Clone)]
 pub struct Bgem3EmbeddingOutput {
     pub dense: Vec<Vec<f32>>,
@@ -22,6 +24,9 @@ pub struct Bgem3EmbeddingOutput {
     pub colbert: Vec<Vec<Vec<f32>>>,
 }
 
+/// Struct for "bring your own" BGE-M3 models
+///
+/// The onnx_file and tokenizer_files expect the files' bytes
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UserDefinedBgem3Model {
     pub onnx_file: Vec<u8>,
@@ -37,6 +42,7 @@ impl UserDefinedBgem3Model {
     }
 }
 
+/// Rust representation of the BGE-M3 joint embedding model
 pub struct Bgem3Embedding {
     pub tokenizer: Tokenizer,
     pub(crate) session: Session,
