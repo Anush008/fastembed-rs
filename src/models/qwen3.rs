@@ -243,7 +243,11 @@ fn smart_resize(
     Ok((h_bar, w_bar))
 }
 
-fn preprocess_image(img: &DynamicImage, cfg: &Qwen3VLPreprocessorConfig) -> Result<PreparedImage> {
+fn preprocess_image(
+    img: &DynamicImage,
+    cfg: &Qwen3VLPreprocessorConfig,
+    max_image_tokens: usize,
+) -> Result<PreparedImage> {
     if cfg.image_mean.len() != 3 || cfg.image_std.len() != 3 {
         return Err(candle_core::Error::Msg(
             "Expected image_mean and image_std length to be 3".into(),
@@ -258,12 +262,14 @@ fn preprocess_image(img: &DynamicImage, cfg: &Qwen3VLPreprocessorConfig) -> Resu
     let rgb = img.to_rgb8();
     let (orig_w, orig_h) = rgb.dimensions();
     let factor = cfg.patch_size * cfg.merge_size;
+
+    let effective_max_pixels = cfg.max_pixels.min(max_image_tokens * factor * factor);
     let (resized_h, resized_w) = smart_resize(
         orig_h as usize,
         orig_w as usize,
         factor,
         cfg.min_pixels,
-        cfg.max_pixels,
+        effective_max_pixels,
     )?;
 
     let resized = image::imageops::resize(
@@ -1144,6 +1150,7 @@ pub struct Qwen3VLEmbedding {
     preprocessor: Qwen3VLPreprocessorConfig,
     image_token_id: u32,
     default_instruction: String,
+    max_image_tokens: usize,
 }
 
 impl Qwen3VLEmbedding {
@@ -1212,6 +1219,18 @@ impl Qwen3VLEmbedding {
             ..Default::default()
         }));
 
+        let max_image_tokens = {
+            let base_prompt = build_vl_prompt(None, true, "Represent the user's input.");
+            let enc = tokenizer.encode(base_prompt, false).map_err(map_err)?;
+            let img_count = enc
+                .get_ids()
+                .iter()
+                .filter(|&&id| id == cfg.image_token_id)
+                .count();
+            let overhead = enc.get_ids().len() - img_count;
+            max_length.saturating_sub(overhead)
+        };
+
         Ok(Self {
             model,
             vision,
@@ -1219,6 +1238,7 @@ impl Qwen3VLEmbedding {
             preprocessor,
             image_token_id: cfg.image_token_id,
             default_instruction: "Represent the user's input.".to_string(),
+            max_image_tokens,
         })
     }
 
@@ -1280,7 +1300,11 @@ impl Qwen3VLEmbedding {
         let mut prepared_images = Vec::with_capacity(images.len());
         for image in &images {
             prepared_images.push(match image {
-                Some(img) => Some(preprocess_image(img, &self.preprocessor)?),
+                Some(img) => Some(preprocess_image(
+                    img,
+                    &self.preprocessor,
+                    self.max_image_tokens,
+                )?),
                 None => None,
             });
         }
