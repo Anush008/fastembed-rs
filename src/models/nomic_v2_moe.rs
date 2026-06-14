@@ -213,7 +213,7 @@ struct NomicAttention {
     num_heads: usize,
     head_dim: usize,
     rotary_dim: usize,
-    scale: Tensor,
+    scale: f64,
 }
 
 impl NomicAttention {
@@ -231,7 +231,7 @@ impl NomicAttention {
         };
 
         let head_dim = cfg.head_dim();
-        let scale = Tensor::new(&[(head_dim as f32).powf(-0.5)], vb.device())?;
+        let scale = (head_dim as f64).powf(-0.5);
 
         Ok(Self {
             wqkv,
@@ -264,10 +264,10 @@ impl NomicAttention {
         let q = apply_rotary_emb(&q, cos, sin, self.rotary_dim)?;
         let k = apply_rotary_emb(&k, cos, sin, self.rotary_dim)?;
 
-        let mut attn = q.matmul(&k.transpose(2, 3)?)?.broadcast_mul(&self.scale)?;
+        let mut attn = (q.matmul(&k.transpose(2, 3)?)? * self.scale)?;
 
         if let Some(mask) = attention_mask {
-            attn = attn.broadcast_add(mask)?;
+            attn = attn.broadcast_add(&mask.to_dtype(attn.dtype())?)?;
         }
 
         let attn = candle_nn::ops::softmax(&attn, D::Minus1)?;
@@ -341,7 +341,7 @@ impl NomicRouter {
         let weights = candle_nn::ops::softmax(&logits, D::Minus1)?;
 
         let seq_len = logits.dim(0)?;
-        let weights_vec = weights.to_vec2::<f32>()?;
+        let weights_vec = weights.to_dtype(DType::F32)?.to_vec2::<f32>()?;
 
         let mut top_indices_vec = Vec::with_capacity(seq_len * self.top_k);
         let mut top_weights_vec = Vec::with_capacity(seq_len * self.top_k);
@@ -411,7 +411,7 @@ impl NomicMoELayer {
         let mut output_vec = vec![0.0f32; seq_len * hidden];
 
         let top_indices_vec = top_indices.to_vec2::<u32>()?;
-        let top_weights_vec = top_weights.to_vec2::<f32>()?;
+        let top_weights_vec = top_weights.to_dtype(DType::F32)?.to_vec2::<f32>()?;
 
         for expert_idx in 0..self.num_experts {
             let mut assigned_tokens: Vec<usize> = Vec::new();
