@@ -1,39 +1,57 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 //! [FastEmbed](https://github.com/Anush008/fastembed-rs) - Fast, light, accurate library built for retrieval embedding generation.
 //!
-//! The library provides the TextEmbedding struct to interface with text embedding models.
+//! Local ONNX inference, synchronous, no Tokio. Models download once and run offline thereafter.
+//!
+//! # What's here
+//!
+//! - [`TextEmbedding`] - dense text embeddings (default: BGE small en v1.5)
+//! - [`SparseTextEmbedding`] - sparse (SPLADE) embeddings for lexical search
+//! - [`Bgem3Embedding`] - dense + sparse + ColBERT in a single pass (BGE-M3)
+//! - [`ImageEmbedding`] - image embeddings (CLIP, ResNet, ...)
+//! - [`TextRerank`] - cross-encoder reranking of candidates
+//!
+//! Qwen3 and Nomic v2 MoE embeddings are available behind the `qwen3` and
+//! `nomic-v2-moe` feature flags (candle backend).
+//!
+//! # Model cache
+//!
+//! Models download to `./.fastembed_cache` on first use, then load from there.
+//! Override the location with the `FASTEMBED_CACHE_DIR` env var or
+//! [`TextInitOptions`]`::with_cache_dir`. `HF_HOME` takes precedence over both;
+//! set `HF_ENDPOINT` to pull from a mirror.
 //!
 #![cfg_attr(
     feature = "hf-hub",
     doc = r#"
  ### Instantiating [TextEmbedding](crate::TextEmbedding)
  ```
- use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
+ use fastembed::{TextEmbedding, TextInitOptions, EmbeddingModel};
 
 # fn model_demo() -> anyhow::Result<()> {
- // With default InitOptions
+ // With default TextInitOptions
  let model = TextEmbedding::try_new(Default::default())?;
 
  // List all supported models
  dbg!(TextEmbedding::list_supported_models());
 
- // With custom InitOptions
+ // With custom TextInitOptions
  let model = TextEmbedding::try_new(
-        InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true),
+        TextInitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true),
  )?;
  # Ok(())
  # }
  ```
 "#
 )]
-//! Find more info about the available options in the [InitOptions](crate::InitOptions) documentation.
+//! Find more info about the available options in the [TextInitOptions](crate::TextInitOptions) documentation.
 //!
 #![cfg_attr(
     feature = "hf-hub",
     doc = r#"
  ### Embeddings generation
 ```
-# use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
+# use fastembed::{TextEmbedding, TextInitOptions, EmbeddingModel};
 # fn embedding_demo() -> anyhow::Result<()> {
 # let mut model: TextEmbedding = TextEmbedding::try_new(Default::default())?;
  let documents = vec![
@@ -41,7 +59,7 @@
     "query: Hello, World!",
     "passage: This is an example passage.",
     // You can leave out the prefix but it's recommended
-    "fastembed-rs is licensed under MIT"
+    "fastembed-rs is licensed under Apache 2.0"
     ];
 
  // Generate embeddings with the default batch size, 256

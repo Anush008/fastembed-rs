@@ -1,13 +1,17 @@
 #![cfg(feature = "hf-hub")]
 
 use fastembed::{
-    Bgem3Embedding, Bgem3InitOptions, Bgem3Model, InitOptionsUserDefined, TokenizerFiles,
-    UserDefinedBgem3Model,
+    get_cache_dir, Bgem3Embedding, Bgem3InitOptions, Bgem3Model, InitOptionsUserDefined,
+    TokenizerFiles, UserDefinedBgem3Model,
 };
 use std::collections::HashMap;
+use std::sync::Mutex;
+
+static MODEL_LOCK: Mutex<()> = Mutex::new(());
 
 #[test]
 fn test_bgem3_joint_embeddings_match_python() {
+    let _guard = MODEL_LOCK.lock().unwrap();
     let mut model = Bgem3Embedding::try_new(Bgem3InitOptions::new(Bgem3Model::BGEM3Q))
         .expect("Failed to initialize BGEM3Q model");
 
@@ -157,10 +161,13 @@ fn test_bgem3_joint_embeddings_match_python() {
 
 #[test]
 fn test_bgem3_user_defined_model() {
+    let _guard = MODEL_LOCK.lock().unwrap();
     // We will verify the user-defined loader by pulling the files from HF and feeding them manually to simulate a local deployment
 
-    let model_repo = hf_hub::api::sync::ApiBuilder::new()
-        .with_progress(true)
+    // Reuse fastembed's cache — model already downloaded by test_bgem3_joint_embeddings_match_python
+    let cache = hf_hub::Cache::new(std::path::PathBuf::from(get_cache_dir()));
+    let model_repo = hf_hub::api::sync::ApiBuilder::from_cache(cache)
+        .with_progress(false)
         .build()
         .expect("Failed to build API client")
         .model(Bgem3Model::BGEM3Q.to_string());
@@ -212,6 +219,7 @@ fn test_bgem3_user_defined_model() {
 
 #[test]
 fn test_bgem3_custom_max_length() {
+    let _guard = MODEL_LOCK.lock().unwrap();
     // Verify that the user can override the max length (e.g. to 5 tokens) and it successfully truncates
     let mut model =
         Bgem3Embedding::try_new(Bgem3InitOptions::new(Bgem3Model::BGEM3Q).with_max_length(5))
