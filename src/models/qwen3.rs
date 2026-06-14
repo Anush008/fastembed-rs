@@ -1300,7 +1300,11 @@ impl Qwen3VLEmbedding {
         let mut prepared_images = Vec::with_capacity(images.len());
         for image in &images {
             prepared_images.push(match image {
-                Some(img) => Some(preprocess_image(img, &self.preprocessor, self.max_image_tokens)?),
+                Some(img) => Some(preprocess_image(
+                    img,
+                    &self.preprocessor,
+                    self.max_image_tokens,
+                )?),
                 None => None,
             });
         }
