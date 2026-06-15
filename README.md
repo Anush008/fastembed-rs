@@ -142,6 +142,102 @@ let documents = vec![
  println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 384
 ```
 
+### Sparse Text Embeddings
+
+```rust
+use fastembed::{SparseEmbedding, SparseInitOptions, SparseModel, SparseTextEmbedding};
+
+// With default options
+let mut model = SparseTextEmbedding::try_new(Default::default())?;
+
+// With custom options
+let mut model = SparseTextEmbedding::try_new(
+    SparseInitOptions::new(SparseModel::SPLADEPPV1).with_show_download_progress(true),
+)?;
+
+let documents = vec![
+    "passage: Hello, World!",
+    "query: Hello, World!",
+    "passage: This is an example passage.",
+    "fastembed-rs is licensed under Apache 2.0"
+];
+
+// Generate embeddings with the default batch size, 256
+let embeddings: Vec<SparseEmbedding> = model.embed(documents, None)?;
+```
+
+### Image Embeddings
+
+```rust
+use fastembed::{ImageEmbedding, ImageInitOptions, ImageEmbeddingModel};
+
+// With default options
+let mut model = ImageEmbedding::try_new(Default::default())?;
+
+// With custom options
+let mut model = ImageEmbedding::try_new(
+    ImageInitOptions::new(ImageEmbeddingModel::ClipVitB32).with_show_download_progress(true),
+)?;
+
+let images = vec!["assets/image_0.png", "assets/image_1.png"];
+
+// Generate embeddings with the default batch size, 256
+let embeddings = model.embed(images, None)?;
+
+println!("Embeddings length: {}", embeddings.len()); // -> Embeddings length: 2
+println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 512
+```
+
+### Candidates Reranking
+
+```rust
+use fastembed::{TextRerank, RerankInitOptions, RerankerModel};
+
+// With default options
+let mut model = TextRerank::try_new(Default::default())?;
+
+// With custom options
+let mut model = TextRerank::try_new(
+    RerankInitOptions::new(RerankerModel::BGERerankerBase).with_show_download_progress(true),
+)?;
+
+let documents = vec![
+    "hi",
+    "The giant panda (Ailuropoda melanoleuca), sometimes called a panda bear, is a bear species endemic to China.",
+    "panda is animal",
+    "i dont know",
+    "kind of mammal",
+];
+
+// Rerank with the default batch size, 256 and return document contents
+let results = model.rerank("what is panda?", documents, true, None)?;
+println!("Rerank result: {:?}", results);
+```
+
+### Locally Available Models
+
+Alternatively, local model files can be used for inference via the `try_new_from_user_defined(...)` methods of respective structs.
+
+### Similarity Search
+
+Helpers in the [`similarity`](https://docs.rs/fastembed/latest/fastembed/similarity/) module score and rank the vectors `embed` returns, so a quick in-memory search needs no extra crate:
+
+```rust
+use fastembed::similarity::{cosine_similarity, top_k};
+
+// `embeddings` is the Vec<Embedding> from model.embed(...)
+let query = &embeddings[0];
+
+// Score two vectors directly ([-1.0, 1.0], higher = closer)
+let score = cosine_similarity(query, &embeddings[1]);
+
+// Or rank the corpus: (index, score) pairs, best first
+let hits = top_k(query, &embeddings, 5);
+println!("Closest: {:?}", hits);
+```
+
+For larger corpora or persistence, push the vectors to a vector search engine (e.g. [Qdrant](https://qdrant.tech/)) and query there.
+
 ### Qwen3 Embeddings
 
 Qwen3 embedding models are available behind the `qwen3` feature flag (candle backend).
@@ -216,36 +312,9 @@ let embeddings = model.embed(&["search_query: ...", "search_document: ..."])?;
 println!("Embeddings length: {}", embeddings.len());
 ```
 
-### Sparse Text Embeddings
-
-```rust
-use fastembed::{SparseEmbedding, SparseInitOptions, SparseModel, SparseTextEmbedding};
-
-// With default options
-let mut model = SparseTextEmbedding::try_new(Default::default())?;
-
-// With custom options
-let mut model = SparseTextEmbedding::try_new(
-    SparseInitOptions::new(SparseModel::SPLADEPPV1).with_show_download_progress(true),
-)?;
-
-let documents = vec![
-    "passage: Hello, World!",
-    "query: Hello, World!",
-    "passage: This is an example passage.",
-    "fastembed-rs is licensed under Apache 2.0"
-];
-
-// Generate embeddings with the default batch size, 256
-let embeddings: Vec<SparseEmbedding> = model.embed(documents, None)?;
-```
-
 ### BGE-M3 Joint Embeddings
 
 The BGE-M3 model produces dense, sparse, and ColBERT embeddings simultaneously in a single forward pass.
-
-> [!WARNING]
-> The default quantized model (`BGEM3Q`) is optimized for CPUs; passing a GPU execution provider (like CUDA) will fail. For GPU inference or custom requirements, you can export your own custom model (FP32, FP16, or INT8) using the ONNX export script from hf `gpahal/bge-m3-onnx-int8` and load it via `try_new_from_path`.
 
 ```rust
 use fastembed::{Bgem3Embedding, Bgem3InitOptions, Bgem3Model};
@@ -278,98 +347,8 @@ println!("Sparse non-zero tokens: {}", sparse_emb.indices.len());
 println!("ColBERT token count: {}", output.colbert[0].len());
 ```
 
-Alternatively, local model files can be loaded via `try_new_from_user_defined` (for inline buffer ONNX models) or `try_new_from_path` (supporting split external ONNX data files like `model.onnx_data`):
-
-```rust
-use fastembed::{Bgem3Embedding, InitOptionsUserDefined, TokenizerFiles, UserDefinedBgem3Model};
-
-let user_model = UserDefinedBgem3Model::new(
-    std::fs::read("path/to/model.onnx")?,
-    TokenizerFiles {
-        tokenizer_file: std::fs::read("path/to/tokenizer.json")?,
-        config_file: std::fs::read("path/to/config.json")?,
-        special_tokens_map_file: std::fs::read("path/to/special_tokens_map.json")?,
-        tokenizer_config_file: std::fs::read("path/to/tokenizer_config.json")?,
-    },
-);
-
-let mut model = Bgem3Embedding::try_new_from_user_defined(
-    user_model,
-    InitOptionsUserDefined::default(),
-)?;
-```
-
-### Image Embeddings
-
-```rust
-use fastembed::{ImageEmbedding, ImageInitOptions, ImageEmbeddingModel};
-
-// With default options
-let mut model = ImageEmbedding::try_new(Default::default())?;
-
-// With custom options
-let mut model = ImageEmbedding::try_new(
-    ImageInitOptions::new(ImageEmbeddingModel::ClipVitB32).with_show_download_progress(true),
-)?;
-
-let images = vec!["assets/image_0.png", "assets/image_1.png"];
-
-// Generate embeddings with the default batch size, 256
-let embeddings = model.embed(images, None)?;
-
-println!("Embeddings length: {}", embeddings.len()); // -> Embeddings length: 2
-println!("Embedding dimension: {}", embeddings[0].len()); // -> Embedding dimension: 512
-```
-
-### Candidates Reranking
-
-```rust
-use fastembed::{TextRerank, RerankInitOptions, RerankerModel};
-
-// With default options
-let mut model = TextRerank::try_new(Default::default())?;
-
-// With custom options
-let mut model = TextRerank::try_new(
-    RerankInitOptions::new(RerankerModel::BGERerankerBase).with_show_download_progress(true),
-)?;
-
-let documents = vec![
-    "hi",
-    "The giant panda (Ailuropoda melanoleuca), sometimes called a panda bear, is a bear species endemic to China.",
-    "panda is animal",
-    "i dont know",
-    "kind of mammal",
-];
-
-// Rerank with the default batch size, 256 and return document contents
-let results = model.rerank("what is panda?", documents, true, None)?;
-println!("Rerank result: {:?}", results);
-```
-
-### Locally Available Models
-
-Alternatively, local model files can be used for inference via the `try_new_from_user_defined(...)` methods of respective structs.
-
-### Similarity Search
-
-Helpers in the [`similarity`](https://docs.rs/fastembed/latest/fastembed/similarity/) module score and rank the vectors `embed` returns, so a quick in-memory search needs no extra crate:
-
-```rust
-use fastembed::similarity::{cosine_similarity, top_k};
-
-// `embeddings` is the Vec<Embedding> from model.embed(...)
-let query = &embeddings[0];
-
-// Score two vectors directly ([-1.0, 1.0], higher = closer)
-let score = cosine_similarity(query, &embeddings[1]);
-
-// Or rank the corpus: (index, score) pairs, best first
-let hits = top_k(query, &embeddings, 5);
-println!("Closest: {:?}", hits);
-```
-
-For larger corpora or persistence, push the vectors to a vector search engine (e.g. [Qdrant](https://qdrant.tech/)) and query there.
+> [!NOTE]
+> The default quantized model (`BGEM3Q`) is optimized for CPUs; passing a GPU execution provider (like CUDA) will fail. For GPU inference or custom requirements, you can export your own custom model (FP32, FP16, or INT8) using the ONNX export script from hf `gpahal/bge-m3-onnx-int8` and load it via `try_new_from_path`.
 
 ## Model cache
 
