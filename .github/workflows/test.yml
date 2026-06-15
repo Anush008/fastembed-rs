@@ -46,6 +46,8 @@ jobs:
   test:
     needs: build-onnx
     runs-on: ubuntu-latest
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
     strategy:
       fail-fast: false
       matrix:
