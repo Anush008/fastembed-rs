@@ -33,7 +33,7 @@ ndarray = { version = "0.17.2", default-features = false }
 ort = { version = "=2.0.0-rc.12", default-features = false, features = [
   "ndarray", "std", "api-24"
 ] }
-safetensors = { version = "0.7.0" }
+safetensors = { version = "0.8.0" }
 serde_json = { version = "1" }
 serde = { version = "1", features = ["derive"] }
 tokenizers = { version = "0.22.2", default-features = false, features = ["onig"] }
