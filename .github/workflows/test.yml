@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Restore ONNX Build
         id: cache-build-restore
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           key: '${{ runner.os }}-onnxruntime-${{ env.ONNX_VERSION }}'
           path: onnxruntime/build/Linux/Release/
@@ -38,7 +38,7 @@ jobs:
 
       - name: Always Save Cache
         if: always() && steps.cache-build-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           key: '${{ steps.cache-build-restore.outputs.cache-primary-key }}'
           path: onnxruntime/build/Linux/Release/
@@ -55,7 +55,7 @@ jobs:
           - { name: image, filter: "--test image-embeddings" }
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
@@ -68,7 +68,7 @@ jobs:
           tool-cache: false
 
       - name: Restore ONNX Build
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           key: '${{ runner.os }}-onnxruntime-${{ env.ONNX_VERSION }}'
           path: onnxruntime/build/Linux/Release/
@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
@@ -101,18 +101,22 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            name: qwen3
             features: "qwen3,hf-hub-native-tls"
           - os: ubuntu-latest
+            name: nomic-v2-moe
             features: "nomic-v2-moe,hf-hub-native-tls"
           - os: ubuntu-latest
+            name: rustls-image
             features: "hf-hub-rustls-tls,image-models"
           - os: windows-latest
+            name: directml
             features: "directml,hf-hub-native-tls,image-models"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Rust Cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
         with:
-          key: ${{ matrix.features }}
+          key: ${{ matrix.name }}
       - name: Clippy
         run: cargo clippy --no-default-features --features ${{ matrix.features }} -- -D warnings
