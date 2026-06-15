@@ -21,12 +21,6 @@ jobs:
           key: '${{ runner.os }}-onnxruntime-${{ env.ONNX_VERSION }}'
           path: onnxruntime/build/Linux/Release/
 
-      - name: Free Disk Space
-        if: steps.cache-build-restore.outputs.cache-hit != 'true'
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
-        with:
-          tool-cache: false
-
       - name: Compile ONNX Runtime for Linux
         if: steps.cache-build-restore.outputs.cache-hit != 'true'
         run: |
@@ -59,15 +53,15 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
-        with:
-          key: test-${{ matrix.suite.name }}
-
       - name: Free Disk Space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
         with:
           tool-cache: false
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          key: test-${{ matrix.suite.name }}
 
       - name: Restore ONNX Build
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
