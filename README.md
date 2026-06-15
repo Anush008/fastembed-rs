@@ -347,7 +347,29 @@ let results = model.rerank("what is panda?", documents, true, None)?;
 println!("Rerank result: {:?}", results);
 ```
 
+### Locally Available Models
+
 Alternatively, local model files can be used for inference via the `try_new_from_user_defined(...)` methods of respective structs.
+
+### Similarity Search
+
+Helpers in the [`similarity`](https://docs.rs/fastembed/latest/fastembed/similarity/) module score and rank the vectors `embed` returns, so a quick in-memory search needs no extra crate:
+
+```rust
+use fastembed::similarity::{cosine_similarity, top_k};
+
+// `embeddings` is the Vec<Embedding> from model.embed(...)
+let query = &embeddings[0];
+
+// Score two vectors directly ([-1.0, 1.0], higher = closer)
+let score = cosine_similarity(query, &embeddings[1]);
+
+// Or rank the corpus: (index, score) pairs, best first
+let hits = top_k(query, &embeddings, 5);
+println!("Closest: {:?}", hits);
+```
+
+For larger corpora or persistence, push the vectors to a vector search engine (e.g. [Qdrant](https://qdrant.tech/)) and query there.
 
 ## Model cache
 

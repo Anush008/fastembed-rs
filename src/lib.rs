@@ -82,6 +82,7 @@ mod models;
 pub mod output;
 mod pooling;
 mod reranking;
+pub mod similarity;
 mod sparse_text_embedding;
 mod text_embedding;
 
