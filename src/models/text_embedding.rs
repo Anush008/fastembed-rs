@@ -100,6 +100,14 @@ pub enum EmbeddingModel {
     SnowflakeArcticEmbedL,
     /// Quantized snowflake/snowflake-arctic-embed-l
     SnowflakeArcticEmbedLQ,
+    /// nvidia/llama-3.2-nv-embedqa-1b-v2 (ONNX float32)
+    NvidiaNemotronEmbedQA1BV2,
+    /// nvidia/llama-3.2-nv-embedqa-1b-v2 (ONNX float16)
+    NvidiaNemotronEmbedQA1BV2Fp16,
+    /// nvidia/Nemotron-3-Embed-1B-BF16 — #1 RTEB (ONNX float32)
+    NvidiaNemotron3Embed1BBF16,
+    /// nvidia/Nemotron-3-Embed-1B-BF16 — #1 RTEB (ONNX float16)
+    NvidiaNemotron3Embed1BBF16Fp16,
 }
 
 /// Centralized function to initialize the models map.
@@ -534,6 +542,50 @@ fn init_models_map() -> HashMap<EmbeddingModel, ModelInfo<EmbeddingModel>> {
             additional_files: Vec::new(),
             output_key: None,
         },
+        ModelInfo {
+            model: EmbeddingModel::NvidiaNemotronEmbedQA1BV2,
+            dim: 2048,
+            description: String::from(
+                "NVIDIA Llama Nemotron Embedding 1B v2 for retrieval (float32)",
+            ),
+            model_code: String::from("kzzalews/llama-3.2-nv-embedqa-1b-v2-onnx"),
+            model_file: String::from("model.onnx"),
+            additional_files: vec!["model.onnx.data".to_string()],
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::NvidiaNemotronEmbedQA1BV2Fp16,
+            dim: 2048,
+            description: String::from(
+                "NVIDIA Llama Nemotron Embedding 1B v2 for retrieval (float16)",
+            ),
+            model_code: String::from("kzzalews/llama-3.2-nv-embedqa-1b-v2-onnx"),
+            model_file: String::from("fp16/model.onnx"),
+            additional_files: vec!["fp16/model.onnx.data".to_string()],
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::NvidiaNemotron3Embed1BBF16,
+            dim: 2048,
+            description: String::from(
+                "NVIDIA Nemotron-3 Embed 1B BF16 — #1 RTEB at 1B scale (float32)",
+            ),
+            model_code: String::from("kzzalews/Nemotron-3-Embed-1B-BF16-onnx"),
+            model_file: String::from("model.onnx"),
+            additional_files: vec!["model.onnx.data".to_string()],
+            output_key: None,
+        },
+        ModelInfo {
+            model: EmbeddingModel::NvidiaNemotron3Embed1BBF16Fp16,
+            dim: 2048,
+            description: String::from(
+                "NVIDIA Nemotron-3 Embed 1B BF16 — #1 RTEB at 1B scale (float16)",
+            ),
+            model_code: String::from("kzzalews/Nemotron-3-Embed-1B-BF16-onnx"),
+            model_file: String::from("fp16/model.onnx"),
+            additional_files: vec!["fp16/model.onnx.data".to_string()],
+            output_key: None,
+        },
     ];
 
     // TODO: Use when out in stable
@@ -650,6 +702,10 @@ pub(crate) fn all_variants() -> Vec<EmbeddingModel> {
             EmbeddingModel::SnowflakeArcticEmbedMLongQ => (),
             EmbeddingModel::SnowflakeArcticEmbedL => (),
             EmbeddingModel::SnowflakeArcticEmbedLQ => (),
+            EmbeddingModel::NvidiaNemotronEmbedQA1BV2 => (),
+            EmbeddingModel::NvidiaNemotronEmbedQA1BV2Fp16 => (),
+            EmbeddingModel::NvidiaNemotron3Embed1BBF16 => (),
+            EmbeddingModel::NvidiaNemotron3Embed1BBF16Fp16 => (),
         }
     }
     vec![
@@ -699,6 +755,10 @@ pub(crate) fn all_variants() -> Vec<EmbeddingModel> {
         EmbeddingModel::SnowflakeArcticEmbedMLongQ,
         EmbeddingModel::SnowflakeArcticEmbedL,
         EmbeddingModel::SnowflakeArcticEmbedLQ,
+        EmbeddingModel::NvidiaNemotronEmbedQA1BV2,
+        EmbeddingModel::NvidiaNemotronEmbedQA1BV2Fp16,
+        EmbeddingModel::NvidiaNemotron3Embed1BBF16,
+        EmbeddingModel::NvidiaNemotron3Embed1BBF16Fp16,
     ]
 }
 

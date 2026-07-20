@@ -58,8 +58,10 @@
 - [**snowflake/snowflake-arctic-embed-m**](https://huggingface.co/snowflake/snowflake-arctic-embed-m)
 - [**snowflake/snowflake-arctic-embed-m-long**](https://huggingface.co/snowflake/snowflake-arctic-embed-m-long)
 - [**snowflake/snowflake-arctic-embed-l**](https://huggingface.co/snowflake/snowflake-arctic-embed-l)
+- [**nvidia/llama-3.2-nv-embedqa-1b-v2**](https://huggingface.co/nvidia/llama-3.2-nv-embedqa-1b-v2) - NVIDIA Nemotron Embedding 1B v2, optimized for retrieval (2048-dim)
+- [**nvidia/Nemotron-3-Embed-1B-BF16**](https://huggingface.co/nvidia/Nemotron-3-Embed-1B-BF16) - NVIDIA Nemotron-3 Embed 1B BF16, #1 on RTEB at 1B scale (2048-dim)
 
-Quantized versions are also available for several models above (append `Q` to the model enum variant, e.g., `EmbeddingModel::BGESmallENV15Q`). EmbeddingGemma additionally ships a 4-bit build as `EmbeddingModel::EmbeddingGemma300MQ4`.
+Quantized versions are also available for several models above (append `Q` to the model enum variant, e.g., `EmbeddingModel::BGESmallENV15Q`). EmbeddingGemma additionally ships a 4-bit build as `EmbeddingModel::EmbeddingGemma300MQ4`. NVIDIA Nemotron models additionally offer fp16 precision builds (append `Fp16` to the model enum variant, e.g., `EmbeddingModel::NvidiaNemotronEmbedQA1BV2Fp16`).
 
 </details>
 
