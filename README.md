@@ -1,9 +1,7 @@
 <div align="center">
   <h1><a href="https://crates.io/crates/fastembed">FastEmbed-rs 🦀</a></h1>
  <h3>Rust library for generating vector embeddings, reranking locally!</h3>
-  <a href="https://crates.io/crates/fastembed"><img src="https://img.shields.io/crates/v/fastembed.svg" alt="Crates.io"></a>
-  <a href="https://github.com/Anush008/fastembed-rs/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-apache-blue.svg" alt="Apache 2.0 Licensed"></a>
-  <a href="https://github.com/Anush008/fastembed-rs/actions/workflows/release.yml"><img src="https://github.com/Anush008/fastembed-rs/actions/workflows/release.yml/badge.svg?branch=main" alt="Semantic release"></a>
+  <a href="https://www.atlascloud.ai/?ref=FCWMKG"><img src="https://www.atlascloud.ai/oss-program/powered-by-atlas-cloud.svg" alt="Powered by Atlas Cloud"/></a>
 </div>
 
 ## Features
