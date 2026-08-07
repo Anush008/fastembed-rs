@@ -214,6 +214,12 @@ impl TextEmbedding {
             EmbeddingModel::SnowflakeArcticEmbedMLongQ => Some(Pooling::Cls),
             EmbeddingModel::SnowflakeArcticEmbedL => Some(Pooling::Cls),
             EmbeddingModel::SnowflakeArcticEmbedLQ => Some(Pooling::Cls),
+
+            EmbeddingModel::NvidiaNemotronEmbedQA1BV2 => Some(Pooling::Mean),
+            EmbeddingModel::NvidiaNemotronEmbedQA1BV2Fp16 => Some(Pooling::Mean),
+
+            EmbeddingModel::NvidiaNemotron3Embed1BBF16 => Some(Pooling::Mean),
+            EmbeddingModel::NvidiaNemotron3Embed1BBF16Fp16 => Some(Pooling::Mean),
         }
     }
 
@@ -278,7 +284,11 @@ impl TextEmbedding {
             | EmbeddingModel::SnowflakeArcticEmbedS
             | EmbeddingModel::SnowflakeArcticEmbedM
             | EmbeddingModel::SnowflakeArcticEmbedMLong
-            | EmbeddingModel::SnowflakeArcticEmbedL => QuantizationMode::None,
+            | EmbeddingModel::SnowflakeArcticEmbedL
+            | EmbeddingModel::NvidiaNemotronEmbedQA1BV2
+            | EmbeddingModel::NvidiaNemotronEmbedQA1BV2Fp16
+            | EmbeddingModel::NvidiaNemotron3Embed1BBF16
+            | EmbeddingModel::NvidiaNemotron3Embed1BBF16Fp16 => QuantizationMode::None,
         }
     }
 
