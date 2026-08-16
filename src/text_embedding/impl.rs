@@ -3,15 +3,12 @@
 #[cfg(feature = "hf-hub")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::{init_session_builder, load_tokenizer},
+    common::{init_session_builder, load_tokenizer, Error, Result},
     models::{text_embedding::models_list, ModelTrait},
     pooling::Pooling,
     Embedding, EmbeddingModel, EmbeddingOutput, ModelInfo, OutputKey, QuantizationMode,
     SingleBatchOutput,
 };
-#[cfg(feature = "hf-hub")]
-use anyhow::Context;
-use anyhow::Result;
 #[cfg(feature = "hf-hub")]
 use hf_hub::api::sync::ApiRepo;
 use ndarray::Array;
@@ -51,15 +48,20 @@ impl TextEmbedding {
 
         let model_info = TextEmbedding::get_model_info(&model_name)?;
         let model_file_name = &model_info.model_file;
-        let model_file_reference = model_repo
-            .get(model_file_name)
-            .context(format!("Failed to retrieve {}", model_file_name))?;
+        let model_file_reference =
+            model_repo
+                .get(model_file_name)
+                .map_err(|e| Error::ModelRetrieval {
+                    file: model_file_name.clone(),
+                    source: Box::new(e),
+                })?;
 
         if !model_info.additional_files.is_empty() {
             for file in &model_info.additional_files {
-                model_repo
-                    .get(file)
-                    .context(format!("Failed to retrieve {}", file))?;
+                model_repo.get(file).map_err(|e| Error::ModelRetrieval {
+                    file: file.clone(),
+                    source: Box::new(e),
+                })?;
             }
         }
 
@@ -94,7 +96,7 @@ impl TextEmbedding {
 
         let session = {
             let builder_error = |err: ort::Error<ort::session::builder::SessionBuilder>| {
-                anyhow::Error::msg(err.to_string())
+                Error::OrtBuilder(err.to_string())
             };
             let mut session_builder = init_session_builder(execution_providers, intra_threads)?;
 
@@ -148,7 +150,7 @@ impl TextEmbedding {
         model: EmbeddingModel,
         cache_dir: PathBuf,
         show_download_progress: bool,
-    ) -> anyhow::Result<ApiRepo> {
+    ) -> Result<ApiRepo> {
         use crate::common::pull_from_hf;
 
         let model_code = TextEmbedding::get_model_info(&model)?.model_code.clone();
@@ -290,7 +292,7 @@ impl TextEmbedding {
     /// Get ModelInfo from EmbeddingModel
     pub fn get_model_info(model: &EmbeddingModel) -> Result<&ModelInfo<EmbeddingModel>> {
         EmbeddingModel::get_model_info(model).ok_or_else(|| {
-            anyhow::Error::msg(format!(
+            Error::InvalidArgument(format!(
                 "Model {model:?} not found. Please check if the model is supported \
                 by the current version."
             ))
@@ -331,12 +333,13 @@ impl TextEmbedding {
             QuantizationMode::Dynamic => {
                 if let Some(batch_size) = batch_size {
                     if batch_size < texts.len() {
-                        Err(anyhow::Error::msg(
+                        Err(Error::InvalidArgument(
                             "Dynamic quantization cannot be used with batching. \
                             This is due to the dynamic quantization process adjusting \
                             the data range to fit each batch, making the embeddings \
                             incompatible across batches. Try specifying a batch size \
-                            of `None`, or use a model with static or no quantization.",
+                            of `None`, or use a model with static or no quantization."
+                                .into(),
                         ))
                     } else {
                         Ok(texts.len())
@@ -347,22 +350,24 @@ impl TextEmbedding {
             }
             _ => Ok(batch_size.unwrap_or(DEFAULT_BATCH_SIZE)),
         }?;
-        anyhow::ensure!(batch_size > 0, "batch_size must be greater than 0");
+        if batch_size == 0 {
+            return Err(Error::InvalidArgument(
+                "batch_size must be greater than 0".into(),
+            ));
+        }
 
         let batches = texts
             .chunks(batch_size)
             .map(|batch| {
                 // Encode the texts in the batch
                 let inputs = batch.iter().map(|text| text.as_ref()).collect();
-                let encodings = self.tokenizer.encode_batch(inputs, true).map_err(|e| {
-                    anyhow::Error::msg(e.to_string()).context("Failed to encode the batch.")
-                })?;
+                let encodings = self
+                    .tokenizer
+                    .encode_batch(inputs, true)
+                    .map_err(|e| Error::Tokenization(format!("Failed to encode the batch: {e}")))?;
 
                 // Extract the encoding length and batch size
-                let encoding_length = encodings
-                    .first()
-                    .ok_or_else(|| anyhow::anyhow!("Tokenizer returned empty encodings"))?
-                    .len();
+                let encoding_length = encodings.first().ok_or(Error::EmptyTokenizations)?.len();
                 let batch_size = batch.len();
 
                 let max_size = encoding_length * batch_size;
@@ -383,11 +388,14 @@ impl TextEmbedding {
                 });
 
                 let inputs_ids_array =
-                    Array::from_shape_vec((batch_size, encoding_length), ids_array)?;
+                    Array::from_shape_vec((batch_size, encoding_length), ids_array)
+                        .map_err(|e| Error::InvalidShape(e.to_string()))?;
                 let attention_mask_array =
-                    Array::from_shape_vec((batch_size, encoding_length), mask_array)?;
+                    Array::from_shape_vec((batch_size, encoding_length), mask_array)
+                        .map_err(|e| Error::InvalidShape(e.to_string()))?;
                 let token_type_ids_array =
-                    Array::from_shape_vec((batch_size, encoding_length), type_ids_array)?;
+                    Array::from_shape_vec((batch_size, encoding_length), type_ids_array)
+                        .map_err(|e| Error::InvalidShape(e.to_string()))?;
 
                 let mut session_inputs = ort::inputs![
                     "input_ids" => Value::from_array(inputs_ids_array)?,
@@ -404,7 +412,7 @@ impl TextEmbedding {
                 let outputs_map = self
                     .session
                     .run(session_inputs)
-                    .map_err(anyhow::Error::new)?
+                    .map_err(|e| Error::OrtSession(e.to_string()))?
                     .into_iter()
                     .map(|(k, v)| (k.to_string(), v))
                     .collect();

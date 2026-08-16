@@ -1,3 +1,4 @@
+use crate::common::{Error, Result};
 use ndarray::{s, Array2, ArrayView, Dim, Dimension, IxDynImpl};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,11 +16,11 @@ impl Default for Pooling {
     }
 }
 
-pub fn cls(tensor: &ArrayView<f32, Dim<IxDynImpl>>) -> anyhow::Result<Array2<f32>> {
+pub fn cls(tensor: &ArrayView<f32, Dim<IxDynImpl>>) -> Result<Array2<f32>> {
     match tensor.dim().ndim() {
         2 => Ok(tensor.slice(s![.., ..]).to_owned()),
         3 => Ok(tensor.slice(s![.., 0, ..]).to_owned()),
-        _ => Err(anyhow::Error::msg(format!(
+        _ => Err(Error::InvalidShape(format!(
             "Invalid output shape: {shape:?}. Expected 2D or 3D tensor.",
             shape = tensor.dim()
         ))),
@@ -34,7 +35,7 @@ pub fn cls(tensor: &ArrayView<f32, Dim<IxDynImpl>>) -> anyhow::Result<Array2<f32
 pub fn mean(
     token_embeddings: &ArrayView<f32, Dim<IxDynImpl>>,
     attention_mask_array: Array2<i64>,
-) -> anyhow::Result<Array2<f32>> {
+) -> Result<Array2<f32>> {
     let attention_mask_original_dim = attention_mask_array.dim();
 
     if token_embeddings.dim().ndim() == 2 {
@@ -43,7 +44,7 @@ pub fn mean(
         // It can be assumed that pooling is already done within the model.
         return Ok(token_embeddings.slice(s![.., ..]).to_owned());
     } else if token_embeddings.dim().ndim() != 3 {
-        return Err(anyhow::Error::msg(format!(
+        return Err(Error::InvalidShape(format!(
             "Invalid output shape: {shape:?}. Expected 2D or 3D tensor.",
             shape = token_embeddings.dim()
         )));
@@ -60,7 +61,7 @@ pub fn mean(
         .insert_axis(ndarray::Axis(2))
         .broadcast(token_embeddings.dim())
         .ok_or_else(|| {
-            anyhow::Error::msg(format!(
+            Error::InvalidShape(format!(
                 "Could not broadcast attention mask from {:?} to {:?}",
                 attention_mask_original_dim,
                 token_embeddings.dim()

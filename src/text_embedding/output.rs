@@ -1,7 +1,7 @@
 //! Output types and functions for the [`TextEmbedding`] model.
 //!
 use crate::{
-    common::{normalize, Embedding},
+    common::{normalize, Embedding, Error, Result},
     output::{OutputKey, OutputPrecedence, SingleBatchOutput},
     pooling::Pooling,
 };
@@ -28,7 +28,7 @@ pub const OUTPUT_TYPE_PRECEDENCE: &[OutputKey] = &[
 pub fn transformer_with_precedence(
     output_precedence: impl OutputPrecedence,
     pooling: Option<Pooling>,
-) -> impl Fn(&[SingleBatchOutput]) -> anyhow::Result<Vec<Embedding>> {
+) -> impl Fn(&[SingleBatchOutput]) -> Result<Vec<Embedding>> {
     move |batches| {
         // Not using `par_iter` here: the operations here is probably not
         // computationally expensive enough to warrant spinning up costs of the threads.
@@ -44,11 +44,11 @@ pub fn transformer_with_precedence(
                             .map(|row| {
                                 row.as_slice()
                                     .ok_or_else(|| {
-                                        anyhow::anyhow!("Failed to convert array row to slice")
+                                        Error::Other("Failed to convert array row to slice".into())
                                     })
                                     .map(normalize)
                             })
-                            .collect::<anyhow::Result<Vec<Embedding>>>()
+                            .collect::<Result<Vec<Embedding>>>()
                     })
             })
             .try_fold(Vec::new(), |mut acc, res| {

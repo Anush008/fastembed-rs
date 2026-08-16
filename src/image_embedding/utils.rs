@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use crate::common::{Error, Result};
 use image::{imageops::FilterType, DynamicImage, GenericImageView};
 use ndarray::{Array, Array3};
 use std::ops::{Div, Sub};
@@ -11,29 +11,29 @@ pub enum TransformData {
 }
 
 impl TransformData {
-    pub fn image(self) -> anyhow::Result<DynamicImage> {
+    pub fn image(self) -> Result<DynamicImage> {
         match self {
             TransformData::Image(img) => Ok(img),
-            _ => Err(anyhow!("TransformData convert error")),
+            _ => Err(Error::ImageTransform("TransformData convert error".into())),
         }
     }
 
-    pub fn array(self) -> anyhow::Result<Array3<f32>> {
+    pub fn array(self) -> Result<Array3<f32>> {
         match self {
             TransformData::NdArray(array) => Ok(array),
-            _ => Err(anyhow!("TransformData convert error")),
+            _ => Err(Error::ImageTransform("TransformData convert error".into())),
         }
     }
 }
 
 pub trait Transform: Send + Sync {
-    fn transform(&self, images: TransformData) -> anyhow::Result<TransformData>;
+    fn transform(&self, images: TransformData) -> Result<TransformData>;
 }
 
 struct ConvertToRGB;
 
 impl Transform for ConvertToRGB {
-    fn transform(&self, data: TransformData) -> anyhow::Result<TransformData> {
+    fn transform(&self, data: TransformData) -> Result<TransformData> {
         let image = data.image()?;
         let image = image.into_rgb8().into();
         Ok(TransformData::Image(image))
@@ -46,7 +46,7 @@ pub struct Resize {
 }
 
 impl Transform for Resize {
-    fn transform(&self, data: TransformData) -> anyhow::Result<TransformData> {
+    fn transform(&self, data: TransformData) -> Result<TransformData> {
         let image = data.image()?;
         let image = image.resize_exact(self.size.0, self.size.1, self.resample);
         Ok(TransformData::Image(image))
@@ -58,7 +58,7 @@ pub struct CenterCrop {
 }
 
 impl Transform for CenterCrop {
-    fn transform(&self, data: TransformData) -> anyhow::Result<TransformData> {
+    fn transform(&self, data: TransformData) -> Result<TransformData> {
         let mut image = data.image()?;
         let (mut origin_width, mut origin_height) = image.dimensions();
         let (crop_width, crop_height) = self.size;
@@ -101,7 +101,7 @@ impl Transform for CenterCrop {
 struct PILToNDarray;
 
 impl Transform for PILToNDarray {
-    fn transform(&self, data: TransformData) -> anyhow::Result<TransformData> {
+    fn transform(&self, data: TransformData) -> Result<TransformData> {
         match data {
             TransformData::Image(image) => {
                 let image = image.to_rgb8();
@@ -125,7 +125,7 @@ pub struct Rescale {
 }
 
 impl Transform for Rescale {
-    fn transform(&self, data: TransformData) -> anyhow::Result<TransformData> {
+    fn transform(&self, data: TransformData) -> Result<TransformData> {
         let array = data.array()?;
         let array = array * self.scale;
         Ok(TransformData::NdArray(array))
@@ -138,29 +138,35 @@ pub struct Normalize {
 }
 
 impl Transform for Normalize {
-    fn transform(&self, data: TransformData) -> anyhow::Result<TransformData> {
+    fn transform(&self, data: TransformData) -> Result<TransformData> {
         let array = data.array()?;
         let mean = Array::from_vec(self.mean.clone())
             .into_shape_with_order((3, 1, 1))
-            .map_err(|e| anyhow!("Failed to reshape mean array: {}", e))?;
+            .map_err(|e| Error::InvalidShape(format!("Failed to reshape mean array: {e}")))?;
         let std = Array::from_vec(self.std.clone())
             .into_shape_with_order((3, 1, 1))
-            .map_err(|e| anyhow!("Failed to reshape std array: {}", e))?;
+            .map_err(|e| Error::InvalidShape(format!("Failed to reshape std array: {e}")))?;
 
         let shape = array.shape().to_vec();
         match shape.as_slice() {
             [c, h, w] => {
                 let mean_broadcast = mean.broadcast((*c, *h, *w)).ok_or_else(|| {
-                    anyhow!("Failed to broadcast mean array to shape {:?}", (*c, *h, *w))
+                    Error::InvalidShape(format!(
+                        "Failed to broadcast mean array to shape {:?}",
+                        (*c, *h, *w)
+                    ))
                 })?;
                 let std_broadcast = std.broadcast((*c, *h, *w)).ok_or_else(|| {
-                    anyhow!("Failed to broadcast std array to shape {:?}", (*c, *h, *w))
+                    Error::InvalidShape(format!(
+                        "Failed to broadcast std array to shape {:?}",
+                        (*c, *h, *w)
+                    ))
                 })?;
                 let array_normalized = array.sub(mean_broadcast).div(std_broadcast);
                 Ok(TransformData::NdArray(array_normalized))
             }
-            _ => Err(anyhow!(
-                "Transformer convert error. Normalize operator got error shape."
+            _ => Err(Error::ImageTransform(
+                "Transformer convert error. Normalize operator got error shape.".into(),
             )),
         }
     }
@@ -176,20 +182,22 @@ impl Compose {
     }
 
     #[cfg(feature = "hf-hub")]
-    pub fn from_file<P: AsRef<Path>>(file: P) -> anyhow::Result<Self> {
+    pub fn from_file<P: AsRef<Path>>(file: P) -> Result<Self> {
         let content = read_to_string(file)?;
-        let config = serde_json::from_str(&content)?;
+        let config = serde_json::from_str(&content)
+            .map_err(|e| Error::PreprocessorConfig(format!("Invalid preprocessor JSON: {e}")))?;
         load_preprocessor(config)
     }
 
-    pub fn from_bytes<P: AsRef<[u8]>>(bytes: P) -> anyhow::Result<Compose> {
-        let config = serde_json::from_slice(bytes.as_ref())?;
+    pub fn from_bytes<P: AsRef<[u8]>>(bytes: P) -> Result<Compose> {
+        let config = serde_json::from_slice(bytes.as_ref())
+            .map_err(|e| Error::PreprocessorConfig(format!("Invalid preprocessor JSON: {e}")))?;
         load_preprocessor(config)
     }
 }
 
 impl Transform for Compose {
-    fn transform(&self, mut image: TransformData) -> anyhow::Result<TransformData> {
+    fn transform(&self, mut image: TransformData) -> Result<TransformData> {
         for transform in &self.transforms {
             image = transform.transform(image)?;
         }
@@ -197,7 +205,7 @@ impl Transform for Compose {
     }
 }
 
-fn load_preprocessor(config: serde_json::Value) -> anyhow::Result<Compose> {
+fn load_preprocessor(config: serde_json::Value) -> Result<Compose> {
     let mut transformers: Vec<Box<dyn Transform>> = vec![];
     transformers.push(Box::new(ConvertToRGB));
 
@@ -224,8 +232,8 @@ fn load_preprocessor(config: serde_json::Value) -> anyhow::Result<Compose> {
                         resample: FilterType::CatmullRom,
                     }));
                 } else {
-                    return Err(anyhow!(
-                        "Size must contain either 'shortest_edge' or 'height' and 'width'."
+                    return Err(Error::PreprocessorConfig(
+                        "Size must contain either 'shortest_edge' or 'height' and 'width'.".into(),
                     ));
                 }
             }
@@ -233,24 +241,33 @@ fn load_preprocessor(config: serde_json::Value) -> anyhow::Result<Compose> {
             if config["do_center_crop"].as_bool().unwrap_or(false) {
                 let crop_size = config["crop_size"].clone();
                 let (height, width) = if crop_size.is_u64() {
-                    let size = crop_size
-                        .as_u64()
-                        .ok_or_else(|| anyhow!("crop_size must be a valid u64"))?
-                        as u32;
+                    let size = crop_size.as_u64().ok_or_else(|| {
+                        Error::PreprocessorConfig("crop_size must be a valid u64".into())
+                    })? as u32;
                     (size, size)
                 } else if crop_size.is_object() {
                     (
                         crop_size["height"]
                             .as_u64()
                             .map(|height| height as u32)
-                            .ok_or_else(|| anyhow!("crop_size height must be contained"))?,
+                            .ok_or_else(|| {
+                                Error::PreprocessorConfig(
+                                    "crop_size height must be contained".into(),
+                                )
+                            })?,
                         crop_size["width"]
                             .as_u64()
                             .map(|width| width as u32)
-                            .ok_or_else(|| anyhow!("crop_size width must be contained"))?,
+                            .ok_or_else(|| {
+                                Error::PreprocessorConfig(
+                                    "crop_size width must be contained".into(),
+                                )
+                            })?,
                     )
                 } else {
-                    return Err(anyhow!("Invalid crop size: {:?}", crop_size));
+                    return Err(Error::PreprocessorConfig(format!(
+                        "Invalid crop size: {crop_size:?}"
+                    )));
                 };
                 transformers.push(Box::new(CenterCrop {
                     size: (width, height),
@@ -260,7 +277,9 @@ fn load_preprocessor(config: serde_json::Value) -> anyhow::Result<Compose> {
         "ConvNextFeatureExtractor" => {
             let shortest_edge = config["size"]["shortest_edge"].as_u64();
             if shortest_edge.is_none() {
-                return Err(anyhow!("Size dictionary must contain 'shortest_edge' key."));
+                return Err(Error::PreprocessorConfig(
+                    "Size dictionary must contain 'shortest_edge' key.".into(),
+                ));
             }
             let shortest_edge = shortest_edge.unwrap() as u32;
             let crop_pct = config["crop_pct"].as_f64().unwrap_or(0.875);
@@ -302,8 +321,8 @@ fn load_preprocessor(config: serde_json::Value) -> anyhow::Result<Compose> {
                         resample: FilterType::CatmullRom,
                     }));
                 } else {
-                    return Err(anyhow!(
-                        "Size must contain either 'shortest_edge' or 'height' and 'width'."
+                    return Err(Error::PreprocessorConfig(
+                        "Size must contain either 'shortest_edge' or 'height' and 'width'.".into(),
                     ));
                 }
             }
@@ -311,31 +330,44 @@ fn load_preprocessor(config: serde_json::Value) -> anyhow::Result<Compose> {
             if config["do_center_crop"].as_bool().unwrap_or(false) {
                 let crop_size = config["crop_size"].clone();
                 let (height, width) = if crop_size.is_u64() {
-                    let size = crop_size
-                        .as_u64()
-                        .ok_or_else(|| anyhow!("crop_size must be a valid u64"))?
-                        as u32;
+                    let size = crop_size.as_u64().ok_or_else(|| {
+                        Error::PreprocessorConfig("crop_size must be a valid u64".into())
+                    })? as u32;
                     (size, size)
                 } else if crop_size.is_object() {
                     (
                         crop_size["height"]
                             .as_u64()
                             .map(|height| height as u32)
-                            .ok_or_else(|| anyhow!("crop_size height must be contained"))?,
+                            .ok_or_else(|| {
+                                Error::PreprocessorConfig(
+                                    "crop_size height must be contained".into(),
+                                )
+                            })?,
                         crop_size["width"]
                             .as_u64()
                             .map(|width| width as u32)
-                            .ok_or_else(|| anyhow!("crop_size width must be contained"))?,
+                            .ok_or_else(|| {
+                                Error::PreprocessorConfig(
+                                    "crop_size width must be contained".into(),
+                                )
+                            })?,
                     )
                 } else {
-                    return Err(anyhow!("Invalid crop size: {:?}", crop_size));
+                    return Err(Error::PreprocessorConfig(format!(
+                        "Invalid crop size: {crop_size:?}"
+                    )));
                 };
                 transformers.push(Box::new(CenterCrop {
                     size: (width, height),
                 }));
             }
         }
-        mode => return Err(anyhow!("Preprocessor {} is not supported", mode)),
+        mode => {
+            return Err(Error::PreprocessorConfig(format!(
+                "Preprocessor {mode} is not supported"
+            )));
+        }
     }
 
     transformers.push(Box::new(PILToNDarray));
@@ -350,24 +382,24 @@ fn load_preprocessor(config: serde_json::Value) -> anyhow::Result<Compose> {
     if config["do_normalize"].as_bool().unwrap_or(false) {
         let mean = config["image_mean"]
             .as_array()
-            .ok_or(anyhow!("image_mean must be contained"))?
+            .ok_or_else(|| Error::PreprocessorConfig("image_mean must be contained".into()))?
             .iter()
             .map(|value| {
                 value
                     .as_f64()
                     .map(|num| num as f32)
-                    .ok_or(anyhow!("image_mean must be float"))
+                    .ok_or_else(|| Error::PreprocessorConfig("image_mean must be float".into()))
             })
             .collect::<Result<Vec<f32>>>()?;
         let std = config["image_std"]
             .as_array()
-            .ok_or(anyhow!("image_std must be contained"))?
+            .ok_or_else(|| Error::PreprocessorConfig("image_std must be contained".into()))?
             .iter()
             .map(|value| {
                 value
                     .as_f64()
                     .map(|num| num as f32)
-                    .ok_or(anyhow!("image_std must be float"))
+                    .ok_or_else(|| Error::PreprocessorConfig("image_std must be float".into()))
             })
             .collect::<Result<Vec<f32>>>()?;
         transformers.push(Box::new(Normalize { mean, std }));

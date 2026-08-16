@@ -379,6 +379,40 @@ let model = TextEmbedding::try_new(
 
 When DirectML is detected, fastembed automatically disables memory pattern optimization and parallel execution on the ONNX Runtime session, as required by the DirectML execution provider.
 
+## Error handling
+
+Fastembed returns a typed [`fastembed::Error`](https://docs.rs/fastembed/latest/fastembed/enum.Error.html). The type is re-exported from the crate root. The enum is `#[non_exhaustive]`. New variants can be added in minor releases without breaking `match` arms.
+
+```rust
+use fastembed::{Error, Result, TextEmbedding};
+
+fn load() -> Result<TextEmbedding> {
+    let model = TextEmbedding::try_new(Default::default())?;
+    Ok(model)
+    // ...
+}
+```
+
+To handle an error, match on the variant that applies:
+
+```rust
+use fastembed::{Error, TextEmbedding, TextInitOptions, EmbeddingModel};
+
+match TextEmbedding::try_new(TextInitOptions::new(EmbeddingModel::AllMiniLML6V2)) {
+    Ok(model) => { /* ... */ }
+    Err(Error::ModelRetrieval { file, source }) => {
+        eprintln!("could not fetch {file}: {source}");
+    }
+    /*
+    ...
+    */
+    Err(Error::Ort(err)) => {
+        eprintln!("ONNX runtime error: {err}");
+    }
+    Err(e) => eprintln!("{e}"),
+}
+```
+
 ## LICENSE
 
 [Apache 2.0](https://github.com/Anush008/fastembed-rs/blob/main/LICENSE)

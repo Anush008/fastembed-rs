@@ -1,4 +1,3 @@
-use anyhow::Result;
 #[cfg(feature = "hf-hub")]
 use hf_hub::api::sync::{ApiBuilder, ApiRepo};
 use ort::{
@@ -24,8 +23,72 @@ pub struct SparseEmbedding {
 /// Type alias for the embedding vector
 pub type Embedding = Vec<f32>;
 
-/// Type alias for the error type
-pub type Error = anyhow::Error;
+/// Error type returned by fastembed.
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum Error {
+    #[error("Failed to retrieve model file '{file}'")]
+    ModelRetrieval {
+        file: String,
+        #[source]
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+
+    #[error("Invalid tokenizer configuration: {0}")]
+    TokenizerConfig(String),
+
+    #[error("Failed to tokenize input: {0}")]
+    Tokenization(String),
+
+    #[error("Tokenizer returned empty encodings for the batch")]
+    EmptyTokenizations,
+
+    #[error("ONNX runtime error: {0}")]
+    Ort(#[from] ort::Error),
+
+    #[error("Failed to build ONNX session: {0}")]
+    OrtBuilder(String),
+
+    #[error("ONNX session error: {0}")]
+    OrtSession(String),
+
+    #[error("Output tensor '{key}' not found")]
+    OutputKeyMissing { key: String },
+
+    #[error("Failed to extract tensor: {0}")]
+    TensorExtraction(String),
+
+    #[error("Failed to decode image: {0}")]
+    ImageDecode(String),
+
+    #[error("Invalid preprocessor configuration: {0}")]
+    PreprocessorConfig(String),
+
+    #[error("Image transform error: {0}")]
+    ImageTransform(String),
+
+    #[error("Invalid tensor shape: {0}")]
+    InvalidShape(String),
+
+    #[error("Invalid argument: {0}")]
+    InvalidArgument(String),
+
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("{0}")]
+    Other(String),
+}
+
+/// Type alias for `Result` returning the fastembed [`Error`] type.
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[cfg(feature = "hf-hub")]
+impl From<hf_hub::api::sync::ApiError> for Error {
+    fn from(e: hf_hub::api::sync::ApiError) -> Self {
+        Error::Other(format!("HuggingFace API error: {e}"))
+    }
+}
 
 // Tokenizer files for "bring your own" models
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,14 +155,18 @@ pub fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Res
     let model_max_length = tokenizer_config["model_max_length"]
         .as_f64()
         .ok_or_else(|| {
-            anyhow::anyhow!("tokenizer_config.json is missing a numeric `model_max_length` field")
+            Error::TokenizerConfig(
+                "tokenizer_config.json is missing a numeric `model_max_length` field".into(),
+            )
         })? as f32;
     let max_length = max_length.min(model_max_length as usize);
     let pad_id = config["pad_token_id"].as_u64().unwrap_or(0) as u32;
     let pad_token: String = tokenizer_config["pad_token"]
         .as_str()
         .ok_or_else(|| {
-            anyhow::anyhow!("tokenizer_config.json is missing a string `pad_token` field")
+            Error::TokenizerConfig(
+                "tokenizer_config.json is missing a string `pad_token` field".into(),
+            )
         })?
         .into();
 
@@ -115,7 +182,7 @@ pub fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Res
             max_length,
             ..Default::default()
         }))
-        .map_err(anyhow::Error::msg)?
+        .map_err(|e| Error::TokenizerConfig(e.to_string()))?
         .clone();
     if let serde_json::Value::Object(root_object) = special_tokens_map {
         for (_, value) in root_object.iter() {
@@ -172,7 +239,7 @@ pub fn pull_from_hf(
     model_name: String,
     default_cache_dir: PathBuf,
     show_download_progress: bool,
-) -> anyhow::Result<ApiRepo> {
+) -> Result<ApiRepo> {
     use std::env;
 
     let cache_dir = env::var("HF_HOME")
@@ -185,7 +252,8 @@ pub fn pull_from_hf(
         .with_cache_dir(cache_dir)
         .with_endpoint(endpoint)
         .with_progress(show_download_progress)
-        .build()?;
+        .build()
+        .map_err(|e| Error::Other(format!("Failed to initialize HuggingFace API: {e}")))?;
 
     let repo = api.model(model_name);
     Ok(repo)
@@ -194,7 +262,7 @@ pub fn pull_from_hf(
 pub(crate) fn init_session_builder(
     execution_providers: Vec<ExecutionProviderDispatch>,
     intra_threads: Option<usize>,
-) -> anyhow::Result<SessionBuilder> {
+) -> Result<SessionBuilder> {
     let threads = match intra_threads {
         Some(n) => n,
         None => std::thread::available_parallelism()?.get(),
@@ -207,7 +275,7 @@ pub(crate) fn init_session_builder(
     #[cfg(not(feature = "directml"))]
     let has_directml = false;
 
-    let builder_error = |err: ort::Error<SessionBuilder>| anyhow::Error::msg(err.to_string());
+    let builder_error = |err: ort::Error<SessionBuilder>| Error::OrtBuilder(err.to_string());
 
     let mut builder = ort::session::Session::builder()?
         .with_execution_providers(execution_providers)
