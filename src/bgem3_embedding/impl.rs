@@ -1,14 +1,11 @@
 #[cfg(feature = "hf-hub")]
 use crate::common::load_tokenizer_hf_hub;
 use crate::{
-    common::{init_session_builder, load_tokenizer},
+    common::{init_session_builder, load_tokenizer, Error, Result},
     models::bgem3::{models_list, Bgem3Model},
     text_embedding::InitOptionsUserDefined,
     ModelInfo, SparseEmbedding, TokenizerFiles,
 };
-#[cfg(feature = "hf-hub")]
-use anyhow::Context;
-use anyhow::Result;
 #[cfg(feature = "hf-hub")]
 use hf_hub::api::sync::ApiRepo;
 use ndarray::Array;
@@ -48,16 +45,21 @@ impl Bgem3Embedding {
 
         let model_info = Bgem3Embedding::get_model_info(&model_name);
         let model_file_name = &model_info.model_file;
-        let model_file_reference = model_repo
-            .get(model_file_name)
-            .context(format!("Failed to retrieve {} ", model_file_name))?;
+        let model_file_reference =
+            model_repo
+                .get(model_file_name)
+                .map_err(|e| Error::ModelRetrieval {
+                    file: model_file_name.clone(),
+                    source: Box::new(e),
+                })?;
 
         // Download additional files if needed
         if !model_info.additional_files.is_empty() {
             for file in &model_info.additional_files {
-                model_repo
-                    .get(file)
-                    .context(format!("Failed to retrieve {}", file))?;
+                model_repo.get(file).map_err(|e| Error::ModelRetrieval {
+                    file: file.clone(),
+                    source: Box::new(e),
+                })?;
             }
         }
 
@@ -153,7 +155,11 @@ impl Bgem3Embedding {
     ) -> Result<Bgem3EmbeddingOutput> {
         let texts = texts.as_ref();
         let batch_size = batch_size.unwrap_or(DEFAULT_BATCH_SIZE);
-        anyhow::ensure!(batch_size > 0, "batch_size must be greater than 0");
+        if batch_size == 0 {
+            return Err(Error::InvalidArgument(
+                "batch_size must be greater than 0".into(),
+            ));
+        }
 
         let mut all_dense = Vec::with_capacity(texts.len());
         let mut all_sparse = Vec::with_capacity(texts.len());
@@ -161,14 +167,12 @@ impl Bgem3Embedding {
 
         for batch in texts.chunks(batch_size) {
             let inputs = batch.iter().map(|text| text.as_ref()).collect();
-            let encodings = self.tokenizer.encode_batch(inputs, true).map_err(|e| {
-                anyhow::Error::msg(e.to_string()).context("Failed to encode the batch.")
-            })?;
+            let encodings = self
+                .tokenizer
+                .encode_batch(inputs, true)
+                .map_err(|e| Error::Tokenization(format!("Failed to encode the batch: {e}")))?;
 
-            let encoding_length = encodings
-                .first()
-                .ok_or_else(|| anyhow::anyhow!("Tokenizer returned empty encodings"))?
-                .len();
+            let encoding_length = encodings.first().ok_or(Error::EmptyTokenizations)?.len();
             let current_batch_size = batch.len();
             let max_size = encoding_length * current_batch_size;
 
@@ -187,30 +191,41 @@ impl Bgem3Embedding {
             });
 
             let inputs_ids_array =
-                Array::from_shape_vec((current_batch_size, encoding_length), ids_array)?;
+                Array::from_shape_vec((current_batch_size, encoding_length), ids_array)
+                    .map_err(|e| Error::InvalidShape(e.to_string()))?;
             let attention_mask_array =
-                Array::from_shape_vec((current_batch_size, encoding_length), mask_array)?;
+                Array::from_shape_vec((current_batch_size, encoding_length), mask_array)
+                    .map_err(|e| Error::InvalidShape(e.to_string()))?;
             let token_type_ids_array =
-                Array::from_shape_vec((current_batch_size, encoding_length), type_ids_array)?;
+                Array::from_shape_vec((current_batch_size, encoding_length), type_ids_array)
+                    .map_err(|e| Error::InvalidShape(e.to_string()))?;
 
             let mut session_inputs = ort::inputs![
-                "input_ids" => Value::from_array(inputs_ids_array.clone())?,
-                "attention_mask" => Value::from_array(attention_mask_array.clone())?,
+                "input_ids" => Value::from_array(inputs_ids_array.clone())
+                    .map_err(|e| Error::OrtSession(e.to_string()))?,
+                "attention_mask" => Value::from_array(attention_mask_array.clone())
+                    .map_err(|e| Error::OrtSession(e.to_string()))?,
             ];
 
             if self.need_token_type_ids {
                 session_inputs.push((
                     "token_type_ids".into(),
-                    Value::from_array(token_type_ids_array)?.into(),
+                    Value::from_array(token_type_ids_array)
+                        .map_err(|e| Error::OrtSession(e.to_string()))?
+                        .into(),
                 ));
             }
 
-            let outputs = self.session.run(session_inputs)?;
-            anyhow::ensure!(
-                outputs.len() >= 3,
-                "BGE-M3 expects the model to return 3 outputs (dense, sparse, colbert), got {}",
-                outputs.len()
-            );
+            let outputs = self
+                .session
+                .run(session_inputs)
+                .map_err(|e| Error::OrtSession(e.to_string()))?;
+            if outputs.len() < 3 {
+                return Err(Error::Other(format!(
+                    "BGE-M3 expects the model to return 3 outputs (dense, sparse, colbert), got {}",
+                    outputs.len()
+                )));
+            }
 
             // gpahal/bge-m3-onnx-int8 returns outputs in this exact order:
             // outputs[0] -> dense_vecs: [batch_size, 1024]
@@ -219,9 +234,12 @@ impl Bgem3Embedding {
 
             // Dense vecs
             let dense_output = &outputs[0];
-            let (dense_shape, dense_data) = dense_output.try_extract_tensor::<f32>()?;
+            let (dense_shape, dense_data) = dense_output
+                .try_extract_tensor::<f32>()
+                .map_err(|e| Error::TensorExtraction(e.to_string()))?;
             let dense_shape: Vec<usize> = dense_shape.iter().map(|&d| d as usize).collect();
-            let dense_view = ndarray::ArrayViewD::from_shape(dense_shape.as_slice(), dense_data)?;
+            let dense_view = ndarray::ArrayViewD::from_shape(dense_shape.as_slice(), dense_data)
+                .map_err(|e| Error::InvalidShape(e.to_string()))?;
 
             for row in dense_view.rows() {
                 all_dense.push(row.to_vec());
@@ -229,14 +247,17 @@ impl Bgem3Embedding {
 
             // Sparse vecs
             let sparse_output = &outputs[1];
-            let (sparse_shape, sparse_data) = sparse_output.try_extract_tensor::<f32>()?;
+            let (sparse_shape, sparse_data) = sparse_output
+                .try_extract_tensor::<f32>()
+                .map_err(|e| Error::TensorExtraction(e.to_string()))?;
             let sparse_shape: Vec<usize> = sparse_shape.iter().map(|&d| d as usize).collect();
-            anyhow::ensure!(
-                sparse_shape.len() == 3,
-                "BGE-M3 sparse output must be rank-3 [batch, seq_len, 1], got shape {sparse_shape:?}"
-            );
-            let sparse_view =
-                ndarray::ArrayViewD::from_shape(sparse_shape.as_slice(), sparse_data)?;
+            if sparse_shape.len() != 3 {
+                return Err(Error::Other(format!(
+                    "BGE-M3 sparse output must be rank-3 [batch, seq_len, 1], got shape {sparse_shape:?}"
+                )));
+            }
+            let sparse_view = ndarray::ArrayViewD::from_shape(sparse_shape.as_slice(), sparse_data)
+                .map_err(|e| Error::InvalidShape(e.to_string()))?;
 
             // Special tokens to skip: XLM-RoBERTa: CLS=0, PAD=1, EOS=2, UNK=3
             const SPECIAL_TOKENS: [i64; 4] = [0, 1, 2, 3];
@@ -271,14 +292,18 @@ impl Bgem3Embedding {
 
             // ColBERT vecs
             let colbert_output = &outputs[2];
-            let (colbert_shape, colbert_data) = colbert_output.try_extract_tensor::<f32>()?;
+            let (colbert_shape, colbert_data) = colbert_output
+                .try_extract_tensor::<f32>()
+                .map_err(|e| Error::TensorExtraction(e.to_string()))?;
             let colbert_shape: Vec<usize> = colbert_shape.iter().map(|&d| d as usize).collect();
-            anyhow::ensure!(
-                colbert_shape.len() == 3 && colbert_shape[1] < encoding_length,
-                "BGE-M3 colbert output must be rank-3 [batch, seq_len - 1, dim] with seq_len - 1 < {encoding_length}, got shape {colbert_shape:?}"
-            );
+            if colbert_shape.len() != 3 || colbert_shape[1] >= encoding_length {
+                return Err(Error::Other(format!(
+                    "BGE-M3 colbert output must be rank-3 [batch, seq_len - 1, dim] with seq_len - 1 < {encoding_length}, got shape {colbert_shape:?}"
+                )));
+            }
             let colbert_view =
-                ndarray::ArrayViewD::from_shape(colbert_shape.as_slice(), colbert_data)?;
+                ndarray::ArrayViewD::from_shape(colbert_shape.as_slice(), colbert_data)
+                    .map_err(|e| Error::InvalidShape(e.to_string()))?;
 
             // Shape of colbert_view is [batch_size, seq_len - 1, 1024]
             let colbert_seq_len = colbert_shape[1]; // seq_len - 1

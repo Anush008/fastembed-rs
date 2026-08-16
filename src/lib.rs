@@ -28,7 +28,7 @@
  ```
  use fastembed::{TextEmbedding, TextInitOptions, EmbeddingModel};
 
-# fn model_demo() -> anyhow::Result<()> {
+# fn model_demo() -> fastembed::Result<()> {
  // With default TextInitOptions
  let model = TextEmbedding::try_new(Default::default())?;
 
@@ -52,7 +52,7 @@
  ### Embeddings generation
 ```
 # use fastembed::{TextEmbedding, TextInitOptions, EmbeddingModel};
-# fn embedding_demo() -> anyhow::Result<()> {
+# fn embedding_demo() -> fastembed::Result<()> {
 # let mut model: TextEmbedding = TextEmbedding::try_new(Default::default())?;
  let documents = vec![
     "passage: Hello, World!",
@@ -88,7 +88,7 @@ mod text_embedding;
 
 pub use ort::execution_providers::ExecutionProviderDispatch;
 
-pub use crate::common::{get_cache_dir, Embedding, Error, SparseEmbedding, TokenizerFiles};
+pub use crate::common::{get_cache_dir, Embedding, Error, Result, SparseEmbedding, TokenizerFiles};
 pub use crate::models::{
     model_info::ModelInfo, model_info::RerankerModelInfo, quantization::QuantizationMode,
 };

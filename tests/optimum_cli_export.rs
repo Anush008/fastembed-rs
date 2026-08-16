@@ -7,10 +7,10 @@
 //! may not be the default output. This test is to ensure that the correct output key
 //! is used when generating embeddings.
 
-use std::{path::PathBuf, process};
+use std::{io, path::PathBuf, process};
 
 use fastembed::{
-    get_cache_dir, Pooling, QuantizationMode, TextEmbedding, TokenizerFiles,
+    get_cache_dir, Error, Pooling, QuantizationMode, Result, TextEmbedding, TokenizerFiles,
     UserDefinedEmbeddingModel,
 };
 
@@ -32,7 +32,7 @@ fn pull_model(
     model_name: &str,
     output: &PathBuf,
     pooling: Option<Pooling>,
-) -> anyhow::Result<TextEmbedding> {
+) -> Result<TextEmbedding> {
     eprintln!("Pulling {model_name} from the Hugging Face Hub...");
     process::Command::new("optimum-cli")
         .args(&[
@@ -46,20 +46,22 @@ fn pull_model(
                 .expect("Failed to convert path to string"),
         ])
         .output()
-        .map_err(|e| anyhow::anyhow!("Failed to pull model: {}", e))?;
+        .map_err(|e| Error::Other(format!("Failed to pull model: {e}")))?;
 
     load_model(output, pooling)
 }
 
 /// Load bytes from a file, with a nicer error message.
-fn load_bytes_from_file(path: &PathBuf) -> anyhow::Result<Vec<u8>> {
-    std::fs::read(path).map_err(|e| anyhow::anyhow!("Failed to read file at {:?}: {}", path, e))
+fn load_bytes_from_file(path: &PathBuf) -> io::Result<Vec<u8>> {
+    std::fs::read(path)
+        .map_err(|e| io::Error::new(e.kind(), format!("Failed to read file at {path:?}: {e}")))
 }
 
 /// Load a model from a local directory.
-fn load_model(output: &PathBuf, pooling: Option<Pooling>) -> anyhow::Result<TextEmbedding> {
+fn load_model(output: &PathBuf, pooling: Option<Pooling>) -> Result<TextEmbedding> {
     let model = UserDefinedEmbeddingModel {
         onnx_file: load_bytes_from_file(&output.join("model.onnx"))?,
+        external_initializers: Vec::new(),
         tokenizer_files: TokenizerFiles {
             tokenizer_file: load_bytes_from_file(&output.join("tokenizer.json"))?,
             config_file: load_bytes_from_file(&output.join("config.json"))?,
@@ -68,6 +70,7 @@ fn load_model(output: &PathBuf, pooling: Option<Pooling>) -> anyhow::Result<Text
         },
         pooling,
         quantization: QuantizationMode::None,
+        output_key: None,
     };
 
     TextEmbedding::try_new_from_user_defined(model, Default::default())
@@ -99,6 +102,7 @@ macro_rules! create_test {
             let model = load_model(&output, $pooling).unwrap_or_else(|_| {
                 pull_model(&model_name, &output, $pooling).expect("Failed to pull model")
             });
+            let mut model = model;
 
             let documents = vec![
                 "Hello, World!",
