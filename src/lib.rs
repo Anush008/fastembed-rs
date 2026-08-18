@@ -104,7 +104,8 @@ pub use crate::models::text_embedding::EmbeddingModel;
 #[deprecated(note = "use `TextInitOptions` instead")]
 pub use crate::text_embedding::TextInitOptions as InitOptions;
 pub use crate::text_embedding::{
-    InitOptionsUserDefined, TextEmbedding, TextInitOptions, UserDefinedEmbeddingModel,
+    FixedBatchShape, InitOptionsUserDefined, TextEmbedding, TextInitOptions,
+    UserDefinedEmbeddingModel,
 };
 
 // For Sparse Text Embedding

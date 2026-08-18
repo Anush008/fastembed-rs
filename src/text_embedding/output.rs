@@ -41,6 +41,11 @@ pub fn transformer_with_precedence(
                         array
                             .rows()
                             .into_iter()
+                            // Drop the padding-row tail (constant input
+                            // shape): it corresponds to nothing in the
+                            // input, so exactly as many embeddings come
+                            // out as there were texts.
+                            .take(batch.real_rows)
                             .map(|row| {
                                 row.as_slice()
                                     .ok_or_else(|| {
