@@ -6,10 +6,10 @@ use std::path::Path;
 use hf_hub::Repo;
 
 use fastembed::{
-    get_cache_dir, Embedding, EmbeddingModel, InitOptions, InitOptionsUserDefined, OnnxSource,
-    Pooling, QuantizationMode, RerankInitOptions, RerankInitOptionsUserDefined, RerankerModel,
-    RerankerModelInfo, SparseInitOptions, SparseTextEmbedding, TextEmbedding, TextRerank,
-    TokenizerFiles, UserDefinedEmbeddingModel, UserDefinedRerankingModel,
+    get_cache_dir, Embedding, EmbeddingModel, FixedBatchShape, InitOptions, InitOptionsUserDefined,
+    OnnxSource, Pooling, QuantizationMode, RerankInitOptions, RerankInitOptionsUserDefined,
+    RerankerModel, RerankerModelInfo, SparseInitOptions, SparseTextEmbedding, TextEmbedding,
+    TextRerank, TokenizerFiles, UserDefinedEmbeddingModel, UserDefinedRerankingModel,
 };
 
 /// A small epsilon value for floating point comparisons.
@@ -520,6 +520,93 @@ fn test_batch_size_does_not_change_output() {
     for (a, b) in single_batch.into_iter().zip(small_batch.into_iter()) {
         assert!(a == b, "Expect each sentence embedding are equal.");
     }
+}
+
+/// A pinned input shape must not change the numbers, and must not leak the
+/// padding rows: 5 texts at `rows: 4` is deliberately not a multiple, so the
+/// last batch is padded and the count would be wrong if the tail escaped.
+#[test]
+fn test_fixed_batch_shape_preserves_embeddings() {
+    let sentences = vec![
+        "Books are no more threatened by Kindle than stairs by elevators.",
+        "You are who you are when nobody's watching.",
+        "An original idea. That can't be too hard. The library must be full of them.",
+        "Gaia visited her daughter Mnemosyne, who was busy being unpronounceable.",
+        "You can never be overdressed or overeducated.",
+    ];
+
+    // Reference: the very same model without a pinned shape.
+    let mut reference = TextEmbedding::try_new(
+        InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_max_length(384),
+    )
+    .expect("Create model successfully");
+    let expected = reference
+        .embed(sentences.clone(), Some(4))
+        .expect("embed successfully");
+
+    let mut model = TextEmbedding::try_new(
+        InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_max_length(384),
+    )
+    .expect("Create model successfully")
+    .with_fixed_batch_shape(FixedBatchShape {
+        rows: 4,
+        seq_len: 384,
+    })
+    .expect("Pin the input shape successfully");
+    assert_eq!(
+        model.fixed_batch_shape(),
+        Some(FixedBatchShape {
+            rows: 4,
+            seq_len: 384
+        })
+    );
+
+    // `batch_size` is deliberately ignored once a shape is pinned.
+    let actual = model
+        .embed(sentences.clone(), Some(3))
+        .expect("embed successfully");
+
+    assert_eq!(actual.len(), sentences.len(), "padding rows leaked out");
+    assert_eq!(actual.len(), expected.len());
+    for (idx, (a, b)) in actual.iter().zip(expected.iter()).enumerate() {
+        assert_eq!(a.len(), b.len(), "dimension mismatch at {idx}");
+        let cosine: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+        assert!(
+            cosine > 0.999,
+            "embedding {idx} changed under a pinned shape: cosine {cosine}"
+        );
+    }
+}
+
+/// Shapes that cannot be delivered are rejected instead of being quietly
+/// adjusted.
+#[test]
+fn test_fixed_batch_shape_rejects_impossible_shapes() {
+    let model = TextEmbedding::try_new(
+        InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_max_length(384),
+    )
+    .expect("Create model successfully");
+
+    let zero = TextEmbedding::try_new(
+        InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_max_length(384),
+    )
+    .expect("Create model successfully")
+    .with_fixed_batch_shape(FixedBatchShape {
+        rows: 0,
+        seq_len: 384,
+    });
+    assert!(zero.is_err(), "zero rows must be rejected");
+
+    // Above the tokenizer truncation limit: the sequence would be truncated
+    // anyway, so the promised shape could not be delivered.
+    let too_long = model.with_fixed_batch_shape(FixedBatchShape {
+        rows: 4,
+        seq_len: 385,
+    });
+    assert!(
+        too_long.is_err(),
+        "seq_len above the truncation limit must be rejected"
+    );
 }
 
 #[test]

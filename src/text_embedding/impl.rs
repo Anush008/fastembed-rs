@@ -15,12 +15,13 @@ use ndarray::Array;
 use ort::{session::Session, value::Value};
 #[cfg(feature = "hf-hub")]
 use std::path::PathBuf;
-use tokenizers::Tokenizer;
+use tokenizers::{PaddingStrategy, Tokenizer, TruncationParams};
 
 #[cfg(feature = "hf-hub")]
 use super::TextInitOptions;
 use super::{
-    output, InitOptionsUserDefined, TextEmbedding, UserDefinedEmbeddingModel, DEFAULT_BATCH_SIZE,
+    output, FixedBatchShape, InitOptionsUserDefined, TextEmbedding, UserDefinedEmbeddingModel,
+    DEFAULT_BATCH_SIZE,
 };
 
 impl TextEmbedding {
@@ -142,7 +143,97 @@ impl TextEmbedding {
             pooling: post_process,
             quantization,
             output_key,
+            fixed_shape: None,
         }
+    }
+
+    /// Pin the model input shape to `shape.rows` x `shape.seq_len`.
+    ///
+    /// Two things change: the tokenizer pads to EXACTLY `seq_len` (instead of
+    /// "the longest sequence in the batch"), and a partial last batch is padded
+    /// up to `rows` rows. None of this is visible to the caller — the padding
+    /// rows are dropped through [`SingleBatchOutput::real_rows`], so there is
+    /// still exactly one embedding per input text.
+    ///
+    /// # When this is needed
+    /// Compiling execution providers (MIGraphX and friends) compile kernels per
+    /// input shape, and every new shape costs tens of seconds and hundreds of
+    /// megabytes of on-disk cache. On CPU there is nothing to win — the shape is
+    /// free there, and the padding rows would just burn cycles.
+    ///
+    /// # Errors
+    /// - [`QuantizationMode::Dynamic`] — dynamic quantization refits the data
+    ///   range per batch, which is why batching is disallowed for such models in
+    ///   the first place; there is no batch height to pin.
+    /// - `seq_len` above the tokenizer truncation limit: a longer sequence would
+    ///   be truncated anyway, so the promised shape would not be delivered.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use fastembed::{FixedBatchShape, TextEmbedding};
+    /// # fn main() -> fastembed::Result<()> {
+    /// let model = TextEmbedding::try_new(Default::default())?
+    ///     .with_fixed_batch_shape(FixedBatchShape { rows: 32, seq_len: 512 })?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn with_fixed_batch_shape(mut self, shape: FixedBatchShape) -> Result<Self> {
+        if shape.rows == 0 || shape.seq_len == 0 {
+            return Err(Error::InvalidArgument(
+                "Fixed batch shape requires non-zero rows and seq_len.".into(),
+            ));
+        }
+        if self.quantization == QuantizationMode::Dynamic {
+            return Err(Error::InvalidArgument(
+                "Fixed batch shape cannot be used with dynamic quantization: \
+                 the data range is refitted per batch, so batching is disallowed \
+                 for such models in the first place."
+                    .into(),
+            ));
+        }
+
+        // Truncation: the shape is only reachable if the tokenizer never emits a
+        // sequence longer than `seq_len`. The limit is set by `load_tokenizer`
+        // (max_length, clamped to the model's model_max_length), so we CHECK it
+        // here rather than raise it — otherwise we would silently promise a shape
+        // wider than the model can take.
+        let truncation_limit = self
+            .tokenizer
+            .get_truncation()
+            .map(|params| params.max_length)
+            .ok_or_else(|| {
+                Error::TokenizerConfig(
+                    "Tokenizer has no truncation params; cannot fix the input shape.".into(),
+                )
+            })?;
+        if shape.seq_len > truncation_limit {
+            return Err(Error::InvalidArgument(format!(
+                "Fixed seq_len {} exceeds the tokenizer truncation limit {truncation_limit}.",
+                shape.seq_len
+            )));
+        }
+
+        let mut padding = self.tokenizer.get_padding().cloned().ok_or_else(|| {
+            Error::TokenizerConfig(
+                "Tokenizer has no padding params; cannot fix the input shape.".into(),
+            )
+        })?;
+        padding.strategy = PaddingStrategy::Fixed(shape.seq_len);
+        self.tokenizer.with_padding(Some(padding));
+        self.tokenizer
+            .with_truncation(Some(TruncationParams {
+                max_length: shape.seq_len,
+                ..Default::default()
+            }))
+            .map_err(|e| Error::TokenizerConfig(e.to_string()))?;
+
+        self.fixed_shape = Some(shape);
+        Ok(self)
+    }
+
+    /// The constant input shape, if one is pinned.
+    pub fn fixed_batch_shape(&self) -> Option<FixedBatchShape> {
+        self.fixed_shape
     }
     /// Return the TextEmbedding model's directory from cache or remote retrieval
     #[cfg(feature = "hf-hub")]
@@ -356,6 +447,14 @@ impl TextEmbedding {
             ));
         }
 
+        // A constant input shape dictates the batch height: the chunks have to be
+        // cut by `rows` exactly, otherwise padding would not help — the chunks
+        // would still arrive with different heights. The caller-supplied
+        // batch_size is deliberately ignored here: the shape is a property of the
+        // model, not of an individual call.
+        let fixed_shape = self.fixed_shape;
+        let batch_size = fixed_shape.map_or(batch_size, |shape| shape.rows);
+
         let batches = texts
             .chunks(batch_size)
             .map(|batch| {
@@ -368,7 +467,27 @@ impl TextEmbedding {
 
                 // Extract the encoding length and batch size
                 let encoding_length = encodings.first().ok_or(Error::EmptyTokenizations)?.len();
-                let batch_size = batch.len();
+                let real_rows = batch.len();
+                // Tensor height: always `rows` under a constant shape, otherwise
+                // as many rows as there are texts in the chunk.
+                let batch_size = fixed_shape.map_or(real_rows, |shape| shape.rows);
+
+                // Shape oracle: the sequence length must be exactly what
+                // `with_fixed_batch_shape` promised. If the tokenizer produced a
+                // different one (the `tokenizer` field is public, so the padding
+                // strategy could have been changed from the outside), failing here
+                // is better than paying for a kernel compilation of an unexpected
+                // shape.
+                if let Some(shape) = fixed_shape {
+                    if encoding_length != shape.seq_len {
+                        return Err(Error::InvalidShape(format!(
+                            "Fixed batch shape promised seq_len {}, but the tokenizer \
+                             produced {encoding_length}; the padding strategy was \
+                             changed externally.",
+                            shape.seq_len
+                        )));
+                    }
+                }
 
                 let max_size = encoding_length * batch_size;
 
@@ -386,6 +505,18 @@ impl TextEmbedding {
                     mask_array.extend(mask.iter().map(|x| *x as i64));
                     type_ids_array.extend(type_ids.iter().map(|x| *x as i64));
                 });
+
+                // Pad the partial chunk up to the constant height. A padding row
+                // is a COPY of the last real row rather than zeros: a copy has a
+                // non-empty attention mask, so mean pooling over it does not
+                // divide by zero. Its embedding is dropped through `real_rows`
+                // anyway.
+                for _ in real_rows..batch_size {
+                    let last = encodings.last().ok_or(Error::EmptyTokenizations)?;
+                    ids_array.extend(last.get_ids().iter().map(|x| *x as i64));
+                    mask_array.extend(last.get_attention_mask().iter().map(|x| *x as i64));
+                    type_ids_array.extend(last.get_type_ids().iter().map(|x| *x as i64));
+                }
 
                 let inputs_ids_array =
                     Array::from_shape_vec((batch_size, encoding_length), ids_array)
@@ -419,6 +550,7 @@ impl TextEmbedding {
                 Ok(SingleBatchOutput {
                     outputs: outputs_map,
                     attention_mask_array,
+                    real_rows,
                 })
             })
             .collect::<Result<Vec<_>>>()?;
