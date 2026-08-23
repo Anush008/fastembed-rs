@@ -92,6 +92,8 @@ impl TextEmbedding {
             execution_providers,
             max_length,
             intra_threads,
+            disable_cpu_fallback,
+            dimension_overrides,
         } = options;
 
         let session = {
@@ -99,6 +101,17 @@ impl TextEmbedding {
                 Error::OrtBuilder(err.to_string())
             };
             let mut session_builder = init_session_builder(execution_providers, intra_threads)?;
+
+            if disable_cpu_fallback {
+                session_builder = session_builder
+                    .with_disable_cpu_fallback()
+                    .map_err(builder_error)?;
+            }
+            for (name, size) in dimension_overrides {
+                session_builder = session_builder
+                    .with_dimension_override(name, size)
+                    .map_err(builder_error)?;
+            }
 
             for external_initializer_file in model.external_initializers {
                 session_builder = session_builder

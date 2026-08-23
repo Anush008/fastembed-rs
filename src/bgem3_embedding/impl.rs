@@ -79,6 +79,7 @@ impl Bgem3Embedding {
             execution_providers,
             max_length,
             intra_threads,
+            ..
         } = options;
 
         let session = init_session_builder(execution_providers, intra_threads)?
@@ -99,6 +100,7 @@ impl Bgem3Embedding {
             execution_providers,
             max_length,
             intra_threads,
+            ..
         } = options;
 
         let session = init_session_builder(execution_providers, intra_threads)?
