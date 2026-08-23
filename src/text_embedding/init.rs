@@ -31,6 +31,14 @@ pub struct InitOptionsUserDefined {
     /// every available CPU core via `std::thread::available_parallelism`.
     /// Set this to cap CPU usage (e.g. on laptops) at the cost of throughput.
     pub intra_threads: Option<usize>,
+    /// Refuse session creation when any graph node would fall back to the CPU
+    /// execution provider. This is useful for accelerator conformance tests
+    /// and for applications where silent partial placement is incorrect.
+    pub disable_cpu_fallback: bool,
+    /// Override named free dimensions before ORT optimizes and places the
+    /// graph. Static-shape execution providers such as QNN can use this with
+    /// one user-defined model session per admitted shape.
+    pub dimension_overrides: Vec<(String, i64)>,
 }
 
 impl InitOptionsUserDefined {
@@ -60,6 +68,16 @@ impl InitOptionsUserDefined {
         self.intra_threads = Some(intra_threads);
         self
     }
+
+    pub fn with_disable_cpu_fallback(mut self, disable: bool) -> Self {
+        self.disable_cpu_fallback = disable;
+        self
+    }
+
+    pub fn with_dimension_override(mut self, name: impl Into<String>, size: i64) -> Self {
+        self.dimension_overrides.push((name.into(), size));
+        self
+    }
 }
 
 impl Default for InitOptionsUserDefined {
@@ -68,6 +86,8 @@ impl Default for InitOptionsUserDefined {
             execution_providers: Default::default(),
             max_length: DEFAULT_MAX_LENGTH,
             intra_threads: None,
+            disable_cpu_fallback: false,
+            dimension_overrides: Vec::new(),
         }
     }
 }
@@ -81,6 +101,8 @@ impl From<TextInitOptions> for InitOptionsUserDefined {
             execution_providers: options.execution_providers,
             max_length: options.max_length,
             intra_threads: options.intra_threads,
+            disable_cpu_fallback: false,
+            dimension_overrides: Vec::new(),
         }
     }
 }
@@ -145,4 +167,29 @@ pub struct TextEmbedding {
     pub(crate) need_token_type_ids: bool,
     pub(crate) quantization: QuantizationMode,
     pub(crate) output_key: Option<OutputKey>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn user_defined_session_controls_are_opt_in_and_composable() {
+        let defaults = InitOptionsUserDefined::default();
+        assert!(!defaults.disable_cpu_fallback);
+        assert!(defaults.dimension_overrides.is_empty());
+
+        let configured = InitOptionsUserDefined::new()
+            .with_disable_cpu_fallback(true)
+            .with_dimension_override("batch_size", 1)
+            .with_dimension_override("sequence_length", 512);
+        assert!(configured.disable_cpu_fallback);
+        assert_eq!(
+            configured.dimension_overrides,
+            [
+                ("batch_size".to_string(), 1),
+                ("sequence_length".to_string(), 512)
+            ]
+        );
+    }
 }

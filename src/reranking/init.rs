@@ -33,6 +33,12 @@ pub struct RerankInitOptionsUserDefined {
     /// every available CPU core via `std::thread::available_parallelism`.
     /// Set this to cap CPU usage (e.g. on laptops) at the cost of throughput.
     pub intra_threads: Option<usize>,
+    /// Refuse session creation when any graph node would fall back to ORT's
+    /// default CPU execution provider.
+    pub disable_cpu_fallback: bool,
+    /// Override named free dimensions before ORT optimizes and places the
+    /// user-defined reranker graph.
+    pub dimension_overrides: Vec<(String, i64)>,
 }
 
 impl Default for RerankInitOptionsUserDefined {
@@ -41,6 +47,8 @@ impl Default for RerankInitOptionsUserDefined {
             execution_providers: Default::default(),
             max_length: DEFAULT_MAX_LENGTH,
             intra_threads: None,
+            disable_cpu_fallback: false,
+            dimension_overrides: Vec::new(),
         }
     }
 }
@@ -72,6 +80,16 @@ impl RerankInitOptionsUserDefined {
         self.intra_threads = Some(intra_threads);
         self
     }
+
+    pub fn with_disable_cpu_fallback(mut self, disable: bool) -> Self {
+        self.disable_cpu_fallback = disable;
+        self
+    }
+
+    pub fn with_dimension_override(mut self, name: impl Into<String>, size: i64) -> Self {
+        self.dimension_overrides.push((name.into(), size));
+        self
+    }
 }
 
 /// Convert RerankInitOptions to RerankInitOptionsUserDefined
@@ -83,6 +101,8 @@ impl From<RerankInitOptions> for RerankInitOptionsUserDefined {
             execution_providers: options.execution_providers,
             max_length: options.max_length,
             intra_threads: options.intra_threads,
+            disable_cpu_fallback: false,
+            dimension_overrides: Vec::new(),
         }
     }
 }
@@ -143,8 +163,12 @@ mod tests {
     fn userdefined_builders_set_fields() {
         let o = RerankInitOptionsUserDefined::new()
             .with_max_length(128)
-            .with_intra_threads(2);
+            .with_intra_threads(2)
+            .with_disable_cpu_fallback(true)
+            .with_dimension_override("sequence_length", 128);
         assert_eq!(o.max_length, 128);
         assert_eq!(o.intra_threads, Some(2));
+        assert!(o.disable_cpu_fallback);
+        assert_eq!(o.dimension_overrides, vec![("sequence_length".into(), 128)]);
     }
 }
