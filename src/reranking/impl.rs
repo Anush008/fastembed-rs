@@ -93,9 +93,24 @@ impl TextRerank {
             execution_providers,
             max_length,
             intra_threads,
+            disable_cpu_fallback,
+            dimension_overrides,
         } = options;
 
         let mut session_builder = init_session_builder(execution_providers, intra_threads)?;
+        let builder_error = |err: ort::Error<ort::session::builder::SessionBuilder>| {
+            Error::OrtBuilder(err.to_string())
+        };
+        if disable_cpu_fallback {
+            session_builder = session_builder
+                .with_disable_cpu_fallback()
+                .map_err(builder_error)?;
+        }
+        for (name, size) in dimension_overrides {
+            session_builder = session_builder
+                .with_dimension_override(name, size)
+                .map_err(builder_error)?;
+        }
         let session = match &model.onnx_source {
             OnnxSource::Memory(bytes) => session_builder.commit_from_memory(bytes)?,
             OnnxSource::File(path) => session_builder.commit_from_file(path)?,
