@@ -13,7 +13,6 @@ pub struct Bgem3SparseWeights {
 }
 
 impl Bgem3SparseWeights {
-    #[allow(clippy::chunks_exact_to_as_chunks)]
     fn load() -> Self {
         const SAFETENSORS_DATA: &[u8] = include_bytes!("weights/sparse_linear.safetensors");
 
