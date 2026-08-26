@@ -28,12 +28,18 @@ jobs:
         run: bun install -D @semantic-release/git conventional-changelog-conventionalcommits@8 semantic-release-cargo
 
       - name: Get Author Name and Email
+        id: author_info
         run: |
           AUTHOR_NAME=$(git log -1 --pretty=format:%an ${{ github.sha }})
           AUTHOR_EMAIL=$(git log -1 --pretty=format:%ae ${{ github.sha }})
-          printf 'AUTHOR_NAME=%s\n' "$AUTHOR_NAME" >> $GITHUB_OUTPUT
-          printf 'AUTHOR_EMAIL=%s\n' "$AUTHOR_EMAIL" >> $GITHUB_OUTPUT
-        id: author_info
+          {
+            echo "AUTHOR_NAME<<EOF"
+            echo "$AUTHOR_NAME"
+            echo "EOF"
+            echo "AUTHOR_EMAIL<<EOF"
+            echo "$AUTHOR_EMAIL"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
   
       - name: "Semantic release🚀"
         id: release
