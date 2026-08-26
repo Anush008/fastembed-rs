@@ -231,7 +231,7 @@ pub fn normalize(v: &[f32]) -> Vec<f32> {
     v.iter().map(|&val| val / (norm + epsilon)).collect()
 }
 
-/// Pulls a model repo from HuggingFace..
+/// Pulls a model repo from HuggingFace.
 /// HF_HOME decides the location of the cache folder
 /// HF_ENDPOINT modifies the URL for the HuggingFace location.
 #[cfg(feature = "hf-hub")]

@@ -7,6 +7,10 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     steps:
       - name: "☁️ checkout repository"
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -24,12 +28,18 @@ jobs:
         run: bun install -D @semantic-release/git conventional-changelog-conventionalcommits@8 semantic-release-cargo
 
       - name: Get Author Name and Email
+        id: author_info
         run: |
           AUTHOR_NAME=$(git log -1 --pretty=format:%an ${{ github.sha }})
           AUTHOR_EMAIL=$(git log -1 --pretty=format:%ae ${{ github.sha }})
-          echo "AUTHOR_NAME=$AUTHOR_NAME" >> $GITHUB_OUTPUT
-          echo "AUTHOR_EMAIL=$AUTHOR_EMAIL" >> $GITHUB_OUTPUT
-        id: author_info
+          {
+            echo "AUTHOR_NAME<<EOF"
+            echo "$AUTHOR_NAME"
+            echo "EOF"
+            echo "AUTHOR_EMAIL<<EOF"
+            echo "$AUTHOR_EMAIL"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
   
       - name: "Semantic release🚀"
         id: release

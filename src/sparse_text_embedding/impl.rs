@@ -263,8 +263,8 @@ impl SparseTextEmbedding {
             .rows()
             .into_iter()
             .map(|row_scores| {
-                let mut values: Vec<f32> = Vec::with_capacity(scores.len());
-                let mut indices: Vec<usize> = Vec::with_capacity(scores.len());
+                let mut values: Vec<f32> = Vec::with_capacity(row_scores.len());
+                let mut indices: Vec<usize> = Vec::with_capacity(row_scores.len());
 
                 row_scores.into_iter().enumerate().for_each(|(idx, f)| {
                     if *f > 0.0 {
