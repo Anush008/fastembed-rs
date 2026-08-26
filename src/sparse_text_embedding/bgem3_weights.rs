@@ -13,6 +13,7 @@ pub struct Bgem3SparseWeights {
 }
 
 impl Bgem3SparseWeights {
+    #[allow(clippy::chunks_exact_to_as_chunks)]
     fn load() -> Self {
         const SAFETENSORS_DATA: &[u8] = include_bytes!("weights/sparse_linear.safetensors");
 
@@ -23,7 +24,7 @@ impl Bgem3SparseWeights {
         let weight: Vec<f32> = weight_view
             .data()
             .chunks_exact(4)
-            .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+            .map(|b| f32::from_le_bytes(b.try_into().expect("chunk is exactly 4 bytes")))
             .collect();
 
         let bias_view = tensors.tensor("bias").expect("Missing 'bias' tensor");
