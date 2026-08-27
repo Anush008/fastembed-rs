@@ -20,10 +20,14 @@ impl Bgem3SparseWeights {
             .expect("Failed to deserialize sparse_linear.safetensors");
 
         let weight_view = tensors.tensor("weight").expect("Missing 'weight' tensor");
-        let weight: Vec<f32> = weight_view
-            .data()
-            .chunks_exact(4)
-            .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+        let (weight_chunks, weight_remainder) = weight_view.data().as_chunks::<4>();
+        assert!(
+            weight_remainder.is_empty(),
+            "'weight' tensor byte length is not divisible by 4"
+        );
+        let weight: Vec<f32> = weight_chunks
+            .iter()
+            .map(|b| f32::from_le_bytes(*b))
             .collect();
 
         let bias_view = tensors.tensor("bias").expect("Missing 'bias' tensor");

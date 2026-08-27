@@ -12,6 +12,8 @@ env:
 jobs:
   build-onnx:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Restore ONNX Build
@@ -40,6 +42,8 @@ jobs:
   test:
     needs: build-onnx
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
     strategy:
@@ -74,6 +78,8 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -92,6 +98,8 @@ jobs:
 
   clippy-features:
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
