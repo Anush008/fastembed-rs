@@ -228,11 +228,29 @@ pub fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Res
 }
 
 pub fn normalize(v: &[f32]) -> Vec<f32> {
-    let norm = (v.iter().map(|val| val * val).sum::<f32>()).sqrt();
     let epsilon = 1e-12;
 
+    // Scale first so finite large values do not overflow while computing their
+    // squared sum. Dividing by the scale also avoids forming `scale * norm`,
+    // which can overflow for otherwise valid input vectors.
+    let scale = v.iter().map(|val| val.abs()).fold(0.0_f32, f32::max);
+    if scale == 0.0 {
+        return vec![0.0; v.len()];
+    }
+
+    let scaled_norm = v
+        .iter()
+        .map(|val| {
+            let scaled = val / scale;
+            scaled * scaled
+        })
+        .sum::<f32>()
+        .sqrt();
+
     // We add the super-small epsilon to avoid dividing by zero
-    v.iter().map(|&val| val / (norm + epsilon)).collect()
+    v.iter()
+        .map(|&val| (val / scale) / (scaled_norm + epsilon / scale))
+        .collect()
 }
 
 /// Pulls a model repo from HuggingFace.
@@ -361,5 +379,38 @@ mod tests {
             err.to_string().contains("model_max_length"),
             "error message was: {err}"
         );
+    }
+
+    fn l2_norm(values: &[f32]) -> f64 {
+        values
+            .iter()
+            .map(|&value| f64::from(value) * f64::from(value))
+            .sum::<f64>()
+            .sqrt()
+    }
+
+    #[test]
+    fn normalize_preserves_unit_direction_for_ordinary_values() {
+        let normalized = normalize(&[3.0, 4.0]);
+
+        assert!((normalized[0] - 0.6).abs() < 1e-6);
+        assert!((normalized[1] - 0.8).abs() < 1e-6);
+        assert!((l2_norm(&normalized) - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn normalize_keeps_zero_vector_zero() {
+        assert_eq!(normalize(&[0.0, 0.0]), vec![0.0, 0.0]);
+    }
+
+    #[test]
+    fn normalize_large_finite_values_without_overflow() {
+        let normalized = normalize(&[f32::MAX, f32::MAX]);
+        let expected_component = 1.0 / 2.0_f32.sqrt();
+
+        assert!(normalized.iter().all(|value| value.is_finite()));
+        assert!((normalized[0] - expected_component).abs() < 1e-6);
+        assert!((normalized[1] - expected_component).abs() < 1e-6);
+        assert!((l2_norm(&normalized) - 1.0).abs() < 1e-6);
     }
 }
