@@ -188,11 +188,13 @@ pub fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Res
         for (_, value) in root_object.iter() {
             if value.is_string() {
                 if let Some(content) = value.as_str() {
-                    tokenizer.add_special_tokens(&[AddedToken {
-                        content: content.into(),
-                        special: true,
-                        ..Default::default()
-                    }]);
+                    tokenizer
+                        .add_special_tokens([AddedToken {
+                            content: content.into(),
+                            special: true,
+                            ..Default::default()
+                        }])
+                        .map_err(|e| Error::TokenizerConfig(e.to_string()))?;
                 }
             } else if value.is_object() {
                 if let (
@@ -208,14 +210,16 @@ pub fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Res
                     value["rstrip"].as_bool(),
                     value["normalized"].as_bool(),
                 ) {
-                    tokenizer.add_special_tokens(&[AddedToken {
-                        content: content.into(),
-                        special: true,
-                        single_word,
-                        lstrip,
-                        rstrip,
-                        normalized,
-                    }]);
+                    tokenizer
+                        .add_special_tokens([AddedToken {
+                            content: content.into(),
+                            special: true,
+                            single_word,
+                            lstrip,
+                            rstrip,
+                            normalized,
+                        }])
+                        .map_err(|e| Error::TokenizerConfig(e.to_string()))?;
                 }
             }
         }
