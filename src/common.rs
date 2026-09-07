@@ -188,7 +188,7 @@ pub fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Res
         for (_, value) in root_object.iter() {
             if value.is_string() {
                 if let Some(content) = value.as_str() {
-                    tokenizer.add_special_tokens(&[AddedToken {
+                    tokenizer.add_special_tokens([AddedToken {
                         content: content.into(),
                         special: true,
                         ..Default::default()
@@ -208,7 +208,7 @@ pub fn load_tokenizer(tokenizer_files: TokenizerFiles, max_length: usize) -> Res
                     value["rstrip"].as_bool(),
                     value["normalized"].as_bool(),
                 ) {
-                    tokenizer.add_special_tokens(&[AddedToken {
+                    tokenizer.add_special_tokens([AddedToken {
                         content: content.into(),
                         special: true,
                         single_word,
