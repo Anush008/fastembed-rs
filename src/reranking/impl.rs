@@ -52,6 +52,7 @@ impl TextRerank {
             cache_dir,
             show_download_progress,
             intra_threads,
+            session_config,
         } = options;
 
         let model_repo = pull_from_hf(model_name.to_string(), cache_dir, show_download_progress)?;
@@ -75,7 +76,7 @@ impl TextRerank {
                     })?;
         }
 
-        let session = init_session_builder(execution_providers, intra_threads)?
+        let session = init_session_builder(execution_providers, intra_threads, session_config)?
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
@@ -95,9 +96,11 @@ impl TextRerank {
             intra_threads,
             disable_cpu_fallback,
             dimension_overrides,
+            session_config,
         } = options;
 
-        let mut session_builder = init_session_builder(execution_providers, intra_threads)?;
+        let mut session_builder =
+            init_session_builder(execution_providers, intra_threads, session_config)?;
         let builder_error = |err: ort::Error<ort::session::builder::SessionBuilder>| {
             Error::OrtBuilder(err.to_string())
         };

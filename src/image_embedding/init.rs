@@ -16,6 +16,10 @@ pub struct ImageInitOptionsUserDefined {
     /// every available CPU core via `std::thread::available_parallelism`.
     /// Set this to cap CPU usage (e.g. on laptops) at the cost of throughput.
     pub intra_threads: Option<usize>,
+    /// ONNX Runtime session configuration entries, applied with
+    /// `SessionBuilder::with_config_entry`. Use this for settings that have
+    /// no dedicated builder method, such as `mlas.disable_kleidiai`.
+    pub session_config: Vec<(String, String)>,
 }
 
 impl ImageInitOptionsUserDefined {
@@ -38,6 +42,14 @@ impl ImageInitOptionsUserDefined {
         self.intra_threads = Some(intra_threads);
         self
     }
+
+    /// Add an ONNX Runtime session configuration entry, applied with
+    /// `SessionBuilder::with_config_entry`. Call it once per entry.
+    /// Example: `.with_session_config("mlas.disable_kleidiai", "1")`.
+    pub fn with_session_config(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.session_config.push((key.into(), value.into()));
+        self
+    }
 }
 
 /// Convert ImageInitOptions to ImageInitOptionsUserDefined
@@ -48,6 +60,7 @@ impl From<ImageInitOptions> for ImageInitOptionsUserDefined {
         ImageInitOptionsUserDefined {
             execution_providers: options.execution_providers,
             intra_threads: options.intra_threads,
+            session_config: options.session_config,
         }
     }
 }

@@ -266,6 +266,7 @@ pub fn pull_from_hf(
 pub(crate) fn init_session_builder(
     execution_providers: Vec<ExecutionProviderDispatch>,
     intra_threads: Option<usize>,
+    session_config: Vec<(String, String)>,
 ) -> Result<SessionBuilder> {
     let threads = match intra_threads {
         Some(n) => n,
@@ -288,6 +289,12 @@ pub(crate) fn init_session_builder(
         .map_err(builder_error)?
         .with_intra_threads(threads)
         .map_err(builder_error)?;
+
+    for (key, value) in session_config {
+        builder = builder
+            .with_config_entry(&key, &value)
+            .map_err(builder_error)?;
+    }
 
     if has_directml {
         builder = builder
@@ -361,5 +368,14 @@ mod tests {
             err.to_string().contains("model_max_length"),
             "error message was: {err}"
         );
+    }
+    #[test]
+    fn init_session_builder_applies_config_entry() {
+        let builder = init_session_builder(
+            vec![],
+            Some(1),
+            vec![("session.disable_prepacking".into(), "1".into())],
+        );
+        assert!(builder.is_ok());
     }
 }

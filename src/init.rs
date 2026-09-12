@@ -18,6 +18,10 @@ pub struct InitOptionsWithLength<M> {
     /// every available CPU core via `std::thread::available_parallelism`.
     /// Set this to cap CPU usage (e.g. on laptops) at the cost of throughput.
     pub intra_threads: Option<usize>,
+    /// ONNX Runtime session configuration entries, applied with
+    /// `SessionBuilder::with_config_entry`. Use this for settings that have
+    /// no dedicated builder method, such as `mlas.disable_kleidiai`.
+    pub session_config: Vec<(String, String)>,
 }
 
 #[derive(Debug, Clone)]
@@ -31,6 +35,10 @@ pub struct InitOptions<M> {
     /// every available CPU core via `std::thread::available_parallelism`.
     /// Set this to cap CPU usage (e.g. on laptops) at the cost of throughput.
     pub intra_threads: Option<usize>,
+    /// ONNX Runtime session configuration entries, applied with
+    /// `SessionBuilder::with_config_entry`. Use this for settings that have
+    /// no dedicated builder method, such as `mlas.disable_kleidiai`.
+    pub session_config: Vec<(String, String)>,
 }
 
 impl<M: Default + HasMaxLength> Default for InitOptionsWithLength<M> {
@@ -42,6 +50,7 @@ impl<M: Default + HasMaxLength> Default for InitOptionsWithLength<M> {
             show_download_progress: true,
             max_length: M::MAX_LENGTH,
             intra_threads: None,
+            session_config: Vec::new(),
         }
     }
 }
@@ -54,6 +63,7 @@ impl<M: Default> Default for InitOptions<M> {
             cache_dir: get_cache_dir().into(),
             show_download_progress: true,
             intra_threads: None,
+            session_config: Vec::new(),
         }
     }
 }
@@ -96,6 +106,14 @@ impl<M: Default + HasMaxLength> InitOptionsWithLength<M> {
         self
     }
 
+    /// Add an ONNX Runtime session configuration entry, applied with
+    /// `SessionBuilder::with_config_entry`. Call it once per entry.
+    /// Example: `.with_session_config("mlas.disable_kleidiai", "1")`.
+    pub fn with_session_config(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.session_config.push((key.into(), value.into()));
+        self
+    }
+
     /// Set whether to show download progress
     pub fn with_show_download_progress(mut self, show_download_progress: bool) -> Self {
         self.show_download_progress = show_download_progress;
@@ -132,6 +150,14 @@ impl<M: Default> InitOptions<M> {
     /// usage at the cost of per-inference throughput.
     pub fn with_intra_threads(mut self, intra_threads: usize) -> Self {
         self.intra_threads = Some(intra_threads);
+        self
+    }
+
+    /// Add an ONNX Runtime session configuration entry, applied with
+    /// `SessionBuilder::with_config_entry`. Call it once per entry.
+    /// Example: `.with_session_config("mlas.disable_kleidiai", "1")`.
+    pub fn with_session_config(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.session_config.push((key.into(), value.into()));
         self
     }
 

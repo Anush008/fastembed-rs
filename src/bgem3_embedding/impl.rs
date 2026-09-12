@@ -35,6 +35,7 @@ impl Bgem3Embedding {
             show_download_progress,
             execution_providers,
             intra_threads,
+            session_config,
         } = options;
 
         let model_repo = Bgem3Embedding::retrieve_model(
@@ -63,7 +64,7 @@ impl Bgem3Embedding {
             }
         }
 
-        let session = init_session_builder(execution_providers, intra_threads)?
+        let session = init_session_builder(execution_providers, intra_threads, session_config)?
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
@@ -79,10 +80,11 @@ impl Bgem3Embedding {
             execution_providers,
             max_length,
             intra_threads,
+            session_config,
             ..
         } = options;
 
-        let session = init_session_builder(execution_providers, intra_threads)?
+        let session = init_session_builder(execution_providers, intra_threads, session_config)?
             .commit_from_memory(&model.onnx_file)?;
 
         let tokenizer = load_tokenizer(model.tokenizer_files, max_length)?;
@@ -100,10 +102,11 @@ impl Bgem3Embedding {
             execution_providers,
             max_length,
             intra_threads,
+            session_config,
             ..
         } = options;
 
-        let session = init_session_builder(execution_providers, intra_threads)?
+        let session = init_session_builder(execution_providers, intra_threads, session_config)?
             .commit_from_file(model_path.as_ref().join("model.onnx"))?;
 
         let tokenizer = load_tokenizer(tokenizer_files, max_length)?;
