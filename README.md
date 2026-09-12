@@ -345,9 +345,6 @@ println!("Sparse non-zero tokens: {}", sparse_emb.indices.len());
 println!("ColBERT token count: {}", output.colbert[0].len());
 ```
 
-> [!NOTE]
-> The default quantized model (`BGEM3Q`) is optimized for CPUs; passing a GPU execution provider (like CUDA) will fail. For GPU inference or custom requirements, you can export your own custom model (FP32, FP16, or INT8) using the ONNX export script from hf `gpahal/bge-m3-onnx-int8` and load it via `try_new_from_path`.
-
 ## Model cache
 
 Models download on first use and load from cache afterwards (no network needed at runtime once cached).
