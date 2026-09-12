@@ -38,6 +38,7 @@ impl TextEmbedding {
             cache_dir,
             show_download_progress,
             intra_threads,
+            session_config,
         } = options;
 
         let model_repo = TextEmbedding::retrieve_model(
@@ -68,7 +69,7 @@ impl TextEmbedding {
         // prioritise loading pooling config if available, if not (thanks qdrant!), look for it in hardcoded
         let post_processing = TextEmbedding::get_default_pooling_method(&model_name);
 
-        let session = init_session_builder(execution_providers, intra_threads)?
+        let session = init_session_builder(execution_providers, intra_threads, session_config)?
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
@@ -94,13 +95,15 @@ impl TextEmbedding {
             intra_threads,
             disable_cpu_fallback,
             dimension_overrides,
+            session_config,
         } = options;
 
         let session = {
             let builder_error = |err: ort::Error<ort::session::builder::SessionBuilder>| {
                 Error::OrtBuilder(err.to_string())
             };
-            let mut session_builder = init_session_builder(execution_providers, intra_threads)?;
+            let mut session_builder =
+                init_session_builder(execution_providers, intra_threads, session_config)?;
 
             if disable_cpu_fallback {
                 session_builder = session_builder

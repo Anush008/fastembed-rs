@@ -39,6 +39,10 @@ pub struct RerankInitOptionsUserDefined {
     /// Override named free dimensions before ORT optimizes and places the
     /// user-defined reranker graph.
     pub dimension_overrides: Vec<(String, i64)>,
+    /// ONNX Runtime session configuration entries, applied with
+    /// `SessionBuilder::with_config_entry`. Use this for settings that have
+    /// no dedicated builder method, such as `mlas.disable_kleidiai`.
+    pub session_config: Vec<(String, String)>,
 }
 
 impl Default for RerankInitOptionsUserDefined {
@@ -49,6 +53,7 @@ impl Default for RerankInitOptionsUserDefined {
             intra_threads: None,
             disable_cpu_fallback: false,
             dimension_overrides: Vec::new(),
+            session_config: Vec::new(),
         }
     }
 }
@@ -90,6 +95,14 @@ impl RerankInitOptionsUserDefined {
         self.dimension_overrides.push((name.into(), size));
         self
     }
+
+    /// Add an ONNX Runtime session configuration entry, applied with
+    /// `SessionBuilder::with_config_entry`. Call it once per entry.
+    /// Example: `.with_session_config("mlas.disable_kleidiai", "1")`.
+    pub fn with_session_config(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.session_config.push((key.into(), value.into()));
+        self
+    }
 }
 
 /// Convert RerankInitOptions to RerankInitOptionsUserDefined
@@ -103,6 +116,7 @@ impl From<RerankInitOptions> for RerankInitOptionsUserDefined {
             intra_threads: options.intra_threads,
             disable_cpu_fallback: false,
             dimension_overrides: Vec::new(),
+            session_config: options.session_config,
         }
     }
 }
@@ -170,5 +184,22 @@ mod tests {
         assert_eq!(o.intra_threads, Some(2));
         assert!(o.disable_cpu_fallback);
         assert_eq!(o.dimension_overrides, vec![("sequence_length".into(), 128)]);
+    }
+
+    #[test]
+    fn session_config_is_collected_and_carried_by_from() {
+        let opts = RerankInitOptions::new(RerankerModel::default())
+            .with_session_config("a", "1")
+            .with_session_config("b", "2");
+        assert_eq!(
+            opts.session_config,
+            vec![("a".into(), "1".into()), ("b".into(), "2".into())]
+        );
+
+        let user_defined = RerankInitOptionsUserDefined::from(opts);
+        assert_eq!(
+            user_defined.session_config,
+            vec![("a".into(), "1".into()), ("b".into(), "2".into())]
+        );
     }
 }

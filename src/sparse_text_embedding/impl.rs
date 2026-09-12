@@ -36,6 +36,7 @@ impl SparseTextEmbedding {
             show_download_progress,
             execution_providers,
             intra_threads,
+            session_config,
         } = options;
 
         let model_repo = SparseTextEmbedding::retrieve_model(
@@ -64,7 +65,7 @@ impl SparseTextEmbedding {
             }
         }
 
-        let session = init_session_builder(execution_providers, intra_threads)?
+        let session = init_session_builder(execution_providers, intra_threads, session_config)?
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;

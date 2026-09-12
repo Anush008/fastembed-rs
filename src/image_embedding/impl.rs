@@ -35,6 +35,7 @@ impl ImageEmbedding {
             cache_dir,
             show_download_progress,
             intra_threads,
+            session_config,
         } = options;
 
         let model_repo = ImageEmbedding::retrieve_model(
@@ -61,7 +62,7 @@ impl ImageEmbedding {
                     source: Box::new(e),
                 })?;
 
-        let session = init_session_builder(execution_providers, intra_threads)?
+        let session = init_session_builder(execution_providers, intra_threads, session_config)?
             .commit_from_file(model_file_reference)?;
 
         Ok(Self::new(preprocessor, session))
@@ -77,11 +78,12 @@ impl ImageEmbedding {
         let ImageInitOptionsUserDefined {
             execution_providers,
             intra_threads,
+            session_config,
         } = options;
 
         let preprocessor = Compose::from_bytes(model.preprocessor_file)?;
 
-        let session = init_session_builder(execution_providers, intra_threads)?
+        let session = init_session_builder(execution_providers, intra_threads, session_config)?
             .commit_from_memory(&model.onnx_file)?;
 
         Ok(Self::new(preprocessor, session))
