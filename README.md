@@ -175,18 +175,15 @@ table alone, without any inference. Both sides are compared with a dot product.
 use fastembed::{SparseInitOptions, SparseModel, SparseTextEmbedding};
 
 let mut model = SparseTextEmbedding::try_new(
-    SparseInitOptions::new(SparseModel::OpenSearchNeuralSparseDocV3Gte),
+    SparseInitOptions::new(SparseModel::OpenSearchNeuralSparseDocV3Gte).with_max_length(8192),
 )?;
 
-// Documents run through the encoder. Keep the batch size small: this model emits one score per
-// vocabulary entry per token, so the default batch size of 256 would allocate ~16 GB at once.
+//  This model emits one score per vocabulary entry per token.
+// So keep the batch size small.
 let documents = model.embed(vec!["Hello World"], Some(4))?;
 
-// Queries only need a shared reference, no session is touched
 let queries = model.query_embed(vec!["Hello World"])?;
 ```
-
-`query_embed` returns an error for the symmetric models, which have no separate query
 representation.
 
 ### Image Embeddings

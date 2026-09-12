@@ -316,12 +316,7 @@ impl SparseTextEmbedding {
     /// Method to generate sparse query embeddings without running any model inference.
     ///
     /// Only available for the inference-free (asymmetric) models, such as
-    /// [`SparseModel::OpenSearchNeuralSparseDocV3Gte`]: a query is tokenized, and each of its
-    /// unique non-special tokens is assigned the IDF weight shipped with the model. Documents
-    /// still have to go through [`SparseTextEmbedding::embed`], and the two are compared with a
-    /// dot product.
-    ///
-    /// Takes `&self` rather than `&mut self` because the ONNX session is never touched.
+    /// [`SparseModel::OpenSearchNeuralSparseDocV3Gte`].
     ///
     /// Accepts anything that can be referenced as a slice of elements implementing
     /// [`AsRef<str>`], such as `Vec<String>`, `Vec<&str>`, `&[String]`, or `&[&str]`.
