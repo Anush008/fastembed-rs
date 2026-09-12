@@ -124,7 +124,6 @@ let mut model = TextEmbedding::try_new(Default::default())?;
 let mut model = TextEmbedding::try_new(
     TextInitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true).with_intra_threads(4),
 )?;
-// Also available: `.with_session_config(key, value)` to pass raw ONNX Runtime session config entries.
 
 let documents = vec![
     "passage: Hello, World!",
