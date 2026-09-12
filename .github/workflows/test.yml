@@ -51,6 +51,7 @@ jobs:
       matrix:
         suite:
           - { name: bgem3, filter: "--test bgem3 --test bgem3_comparison" }
+          - { name: if-splade, filter: "--test if_splade" }
           - { name: text,  filter: "--test text-embeddings" }
           - { name: image, filter: "--test image-embeddings" }
 

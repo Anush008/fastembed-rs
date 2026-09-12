@@ -180,6 +180,14 @@ create_embeddings_test!(
 fn test_sparse_embeddings() {
     SparseTextEmbedding::list_supported_models()
         .iter()
+        // The inference-free models produce far denser documents and have a query path of their
+        // own, they are covered by the `if_splade` suite instead.
+        .filter(|supported_model| {
+            supported_model
+                .additional_files
+                .iter()
+                .all(|f| f != "idf.json")
+        })
         .for_each(|supported_model| {
             let mut model: SparseTextEmbedding =
                 SparseTextEmbedding::try_new(SparseInitOptions::new(supported_model.model.clone()))
@@ -201,6 +209,9 @@ fn test_sparse_embeddings() {
                 assert!(embedding.indices.len() < 100);
                 assert_eq!(embedding.indices.len(), embedding.values.len());
             });
+
+            // Symmetric models have no separate query representation
+            assert!(model.query_embed(documents).is_err());
 
             // Clear the model cache to avoid running out of space on GitHub Actions.
             if std::env::var("CI").is_ok() {
