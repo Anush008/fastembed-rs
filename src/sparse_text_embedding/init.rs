@@ -1,4 +1,5 @@
 use ort::session::Session;
+use std::collections::{HashMap, HashSet};
 use tokenizers::Tokenizer;
 
 use crate::{
@@ -41,4 +42,10 @@ pub struct SparseTextEmbedding {
     pub(crate) session: Session,
     pub(crate) need_token_type_ids: bool,
     pub(crate) model: SparseModel,
+    /// Ids of the tokenizer's special tokens, excluded from every embedding produced by
+    /// the inference-free models.
+    pub(crate) special_token_ids: HashSet<usize>,
+    /// Token id to IDF weight, read from the `idf.json` shipped with inference-free models.
+    /// [`None`] for models which do not have a separate query representation.
+    pub(crate) token_id_to_idf: Option<HashMap<usize, f32>>,
 }

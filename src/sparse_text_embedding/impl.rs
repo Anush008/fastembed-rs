@@ -1,5 +1,7 @@
 #[cfg(feature = "hf-hub")]
 use crate::common::{init_session_builder, load_tokenizer_hf_hub};
+#[cfg(feature = "hf-hub")]
+use crate::models::sparse::IDF_FILE;
 use crate::{
     common::{Error, Result},
     models::sparse::{models_list, SparseModel},
@@ -9,10 +11,10 @@ use crate::{
 use hf_hub::api::sync::ApiRepo;
 use ndarray::{Array, ArrayViewD, Axis, CowArray, Dim};
 use ort::{session::Session, value::Value};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 #[cfg_attr(not(feature = "hf-hub"), allow(unused_imports))]
 #[cfg(feature = "hf-hub")]
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokenizers::Tokenizer;
 
 #[cfg(feature = "hf-hub")]
@@ -56,12 +58,16 @@ impl SparseTextEmbedding {
                 })?;
 
         // Download additional files if needed (e.g., model.onnx.data for large models)
+        let mut idf_file_reference: Option<PathBuf> = None;
         if !model_info.additional_files.is_empty() {
             for file in &model_info.additional_files {
-                model_repo.get(file).map_err(|e| Error::ModelRetrieval {
+                let reference = model_repo.get(file).map_err(|e| Error::ModelRetrieval {
                     file: file.clone(),
                     source: Box::new(e),
                 })?;
+                if file == IDF_FILE {
+                    idf_file_reference = Some(reference);
+                }
             }
         }
 
@@ -69,23 +75,59 @@ impl SparseTextEmbedding {
             .commit_from_file(model_file_reference)?;
 
         let tokenizer = load_tokenizer_hf_hub(model_repo, max_length)?;
-        Ok(Self::new(tokenizer, session, model_name))
+        // Models declaring an `idf.json` embed queries from a lookup table instead of
+        // running inference, so the table is loaded up front alongside the tokenizer.
+        let token_id_to_idf = idf_file_reference
+            .map(|reference| Self::load_idf(&reference, &tokenizer))
+            .transpose()?;
+
+        Ok(Self::new(tokenizer, session, model_name, token_id_to_idf))
     }
 
     /// Private method to return an instance
     #[cfg_attr(not(feature = "hf-hub"), allow(dead_code))]
-    fn new(tokenizer: Tokenizer, session: Session, model: SparseModel) -> Self {
+    fn new(
+        tokenizer: Tokenizer,
+        session: Session,
+        model: SparseModel,
+        token_id_to_idf: Option<HashMap<usize, f32>>,
+    ) -> Self {
         let need_token_type_ids = session
             .inputs()
             .iter()
             .any(|input| input.name() == "token_type_ids");
+        let special_token_ids = tokenizer
+            .get_added_tokens_decoder()
+            .iter()
+            .filter(|(_, token)| token.special)
+            .map(|(id, _)| *id as usize)
+            .collect();
         Self {
             tokenizer,
             session,
             need_token_type_ids,
             model,
+            special_token_ids,
+            token_id_to_idf,
         }
     }
+
+    /// Read the `idf.json` sidecar, resolving its token strings to token ids via the
+    /// tokenizer's vocabulary. Tokens the tokenizer does not know about are dropped.
+    #[cfg(feature = "hf-hub")]
+    fn load_idf(idf_file: &Path, tokenizer: &Tokenizer) -> Result<HashMap<usize, f32>> {
+        let token_to_idf: HashMap<String, f32> = serde_json::from_slice(&std::fs::read(idf_file)?)
+            .map_err(|e| {
+                Error::Other(format!("Failed to parse the {IDF_FILE} of the model: {e}"))
+            })?;
+
+        let vocab = tokenizer.get_vocab(true);
+        Ok(token_to_idf
+            .into_iter()
+            .filter_map(|(token, idf)| vocab.get(&token).map(|&id| (id as usize, idf)))
+            .collect())
+    }
+
     /// Return the SparseTextEmbedding model's directory from cache or remote retrieval
     #[cfg(feature = "hf-hub")]
     fn retrieve_model(
@@ -236,6 +278,30 @@ impl SparseTextEmbedding {
                             &attention_mask_array,
                         )
                     }
+                    SparseModel::OpenSearchNeuralSparseDocV3Gte => {
+                        let logits_key = match outputs.len() {
+                            1 => outputs
+                                .keys()
+                                .next()
+                                .ok_or_else(|| Error::OutputKeyMissing {
+                                    key: "<only output>".into(),
+                                })?,
+                            _ => "logits",
+                        };
+
+                        let (shape, data) = outputs[logits_key]
+                            .try_extract_tensor::<f32>()
+                            .map_err(|e| Error::TensorExtraction(e.to_string()))?;
+                        let shape: Vec<usize> = shape.iter().map(|&d| d as usize).collect();
+                        let logits = ndarray::ArrayViewD::from_shape(shape.as_slice(), data)
+                            .map_err(|e| Error::InvalidShape(e.to_string()))?;
+
+                        Self::post_process_if_splade(
+                            &logits,
+                            &attention_mask_array,
+                            &self.special_token_ids,
+                        )
+                    }
                 };
 
                 Ok(embeddings)
@@ -246,6 +312,57 @@ impl SparseTextEmbedding {
             .collect();
 
         Ok(output)
+    }
+
+    /// Method to generate sparse query embeddings without running any model inference.
+    ///
+    /// Only available for the inference-free (asymmetric) models, such as
+    /// [`SparseModel::OpenSearchNeuralSparseDocV3Gte`].
+    ///
+    /// Accepts anything that can be referenced as a slice of elements implementing
+    /// [`AsRef<str>`], such as `Vec<String>`, `Vec<&str>`, `&[String]`, or `&[&str]`.
+    pub fn query_embed<S: AsRef<str> + Send + Sync>(
+        &self,
+        texts: impl AsRef<[S]>,
+    ) -> Result<Vec<SparseEmbedding>> {
+        let token_id_to_idf = self.token_id_to_idf.as_ref().ok_or_else(|| {
+            Error::InvalidArgument(format!(
+                "{} has no IDF table and no separate query representation, use `embed` instead",
+                self.model
+            ))
+        })?;
+
+        texts
+            .as_ref()
+            .iter()
+            .map(|text| {
+                let encoding = self
+                    .tokenizer
+                    .encode(text.as_ref(), true)
+                    .map_err(|e| Error::Tokenization(format!("Failed to encode the query: {e}")))?;
+
+                // Every unique token contributes its IDF weight exactly once, ordered by token id
+                let mut token_ids: Vec<usize> = encoding
+                    .get_ids()
+                    .iter()
+                    .map(|&id| id as usize)
+                    .filter(|id| !self.special_token_ids.contains(id))
+                    .collect();
+                token_ids.sort_unstable();
+                token_ids.dedup();
+
+                let mut indices = Vec::with_capacity(token_ids.len());
+                let mut values = Vec::with_capacity(token_ids.len());
+                for token_id in token_ids {
+                    if let Some(&idf) = token_id_to_idf.get(&token_id) {
+                        indices.push(token_id);
+                        values.push(idf);
+                    }
+                }
+
+                Ok(SparseEmbedding { values, indices })
+            })
+            .collect()
     }
 
     fn post_process_splade(
@@ -323,6 +440,56 @@ impl SparseTextEmbedding {
                 let mut indices: Vec<_> = token_weights.keys().copied().collect();
                 indices.sort_unstable();
                 let values: Vec<_> = indices.iter().map(|i| token_weights[i]).collect();
+
+                SparseEmbedding { values, indices }
+            })
+            .collect()
+    }
+
+    /// Post-processing for the inference-free SPLADE document encoder.
+    ///
+    /// The token logits are max-pooled over the unmasked positions and squashed with a double
+    /// log activation, `log(1 + log(1 + relu(x)))`, which the v3 models of the
+    /// opensearch-neural-sparse family use to make document embeddings sparser than the single
+    /// `log(1 + relu(x))` of SPLADE++.
+    fn post_process_if_splade(
+        logits: &ArrayViewD<f32>,
+        attention_mask: &Array<i64, Dim<[usize; 2]>>,
+        special_token_ids: &HashSet<usize>,
+    ) -> Vec<SparseEmbedding> {
+        let batch_size = attention_mask.shape()[0];
+        let seq_len = attention_mask.shape()[1];
+        let vocab_size = logits.shape()[2];
+
+        (0..batch_size)
+            .map(|batch_idx| {
+                // Starting the accumulator at `0.0` encodes both the ReLU floor and the zero
+                // contribution of the padded positions, which are skipped altogether.
+                let mut pooled = vec![0.0f32; vocab_size];
+
+                for seq_idx in 0..seq_len {
+                    if attention_mask[[batch_idx, seq_idx]] == 0 {
+                        continue;
+                    }
+
+                    let token_logits = logits.slice(ndarray::s![batch_idx, seq_idx, ..]);
+                    for (score, &logit) in pooled.iter_mut().zip(token_logits.iter()) {
+                        *score = score.max(logit);
+                    }
+                }
+
+                let mut values: Vec<f32> = Vec::new();
+                let mut indices: Vec<usize> = Vec::new();
+
+                for (token_id, &score) in pooled.iter().enumerate() {
+                    // Special tokens are dropped from the document side as well, otherwise they
+                    // would match every query
+                    if score <= 0.0 || special_token_ids.contains(&token_id) {
+                        continue;
+                    }
+                    values.push((1.0 + (1.0 + score).ln()).ln());
+                    indices.push(token_id);
+                }
 
                 SparseEmbedding { values, indices }
             })

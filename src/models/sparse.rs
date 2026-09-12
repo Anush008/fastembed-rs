@@ -2,6 +2,9 @@ use std::{fmt::Display, str::FromStr};
 
 use crate::ModelInfo;
 
+/// Sidecar file with the per-token IDF weights used to embed queries without inference.
+pub(crate) const IDF_FILE: &str = "idf.json";
+
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub enum SparseModel {
     /// prithivida/Splade_PP_en_v1
@@ -9,6 +12,8 @@ pub enum SparseModel {
     SPLADEPPV1,
     /// BAAI/bge-m3
     BGEM3,
+    /// opensearch-project/opensearch-neural-sparse-encoding-doc-v3-gte
+    OpenSearchNeuralSparseDocV3Gte,
 }
 
 pub fn models_list() -> Vec<ModelInfo<SparseModel>> {
@@ -34,6 +39,18 @@ pub fn models_list() -> Vec<ModelInfo<SparseModel>> {
                 "onnx/model.onnx_data".to_string(),
                 "onnx/Constant_7_attr__value".to_string(),
             ],
+            output_key: None,
+        },
+        ModelInfo {
+            model: SparseModel::OpenSearchNeuralSparseDocV3Gte,
+            dim: 0,
+            description: String::from(
+                "Inference-free SPLADE model. Documents are expanded with an ONNX encoder, \
+                 queries are encoded with a tokenizer and an IDF lookup table only",
+            ),
+            model_code: String::from("Qdrant/opensearch-neural-sparse-encoding-doc-v3-gte"),
+            model_file: String::from("model.onnx"),
+            additional_files: vec![IDF_FILE.to_string()],
             output_key: None,
         },
     ]
@@ -75,9 +92,14 @@ pub(crate) fn all_variants() -> Vec<SparseModel> {
         match m {
             SparseModel::SPLADEPPV1 => (),
             SparseModel::BGEM3 => (),
+            SparseModel::OpenSearchNeuralSparseDocV3Gte => (),
         }
     }
-    vec![SparseModel::SPLADEPPV1, SparseModel::BGEM3]
+    vec![
+        SparseModel::SPLADEPPV1,
+        SparseModel::BGEM3,
+        SparseModel::OpenSearchNeuralSparseDocV3Gte,
+    ]
 }
 
 #[cfg(test)]

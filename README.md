@@ -67,6 +67,7 @@ Quantized versions are also available for several models above (append `Q` to th
   
 - [**prithivida/Splade_PP_en_v1**](https://huggingface.co/prithivida/Splade_PP_en_v1) - Default
 - [**BAAI/bge-m3**](https://huggingface.co/BAAI/bge-m3)
+- [**opensearch-project/opensearch-neural-sparse-encoding-doc-v3-gte**](https://huggingface.co/Qdrant/opensearch-neural-sparse-encoding-doc-v3-gte) - Inference-free, see [Inference-free Sparse Embeddings](#inference-free-sparse-embeddings)
 
 </details>
 
@@ -163,6 +164,27 @@ let documents = vec![
 // Generate embeddings with the default batch size, 256
 let embeddings: Vec<SparseEmbedding> = model.embed(documents, None)?;
 ```
+
+### Inference-free Sparse Embeddings
+
+`SparseModel::OpenSearchNeuralSparseDocV3Gte` is asymmetric: documents are expanded by the ONNX
+encoder, while queries are embedded by `query_embed` from the tokenizer and a precomputed IDF
+table alone, without any inference. Both sides are compared with a dot product.
+
+```rust
+use fastembed::{SparseInitOptions, SparseModel, SparseTextEmbedding};
+
+let mut model = SparseTextEmbedding::try_new(
+    SparseInitOptions::new(SparseModel::OpenSearchNeuralSparseDocV3Gte).with_max_length(8192),
+)?;
+
+//  This model emits one score per vocabulary entry per token.
+// So keep the batch size small.
+let documents = model.embed(vec!["Hello World"], Some(4))?;
+
+let queries = model.query_embed(vec!["Hello World"])?;
+```
+representation.
 
 ### Image Embeddings
 
